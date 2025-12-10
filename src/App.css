@@ -2,169 +2,293 @@
 
 .app-root {
   min-height: 100vh;
-  background: #111;
-  color: #f8f8f8;
+  background: #050509;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding: 3rem 1.5rem;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    sans-serif;
+  color: #f9fafb;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Segoe UI", sans-serif;
 }
 
-.app-panel {
-  width: 100%;
-  max-width: 1200px;
-  background: #181818;
-  border-radius: 18px;
-  padding: 2.5rem 2rem 2rem;
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.6);
+.panel {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  background: radial-gradient(circle at top left, #1f2937 0, #020617 55%);
+  border-radius: 24px;
+  padding: 2.5rem 2rem 3rem;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(148, 163, 184, 0.2);
 }
 
-.app-header {
-  text-align: center;
-  margin-bottom: 2rem;
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
-.app-title {
-  font-size: 2.5rem;
+.panel-header h1 {
+  font-size: clamp(2.1rem, 3vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
   margin: 0;
 }
 
-.app-subtitle {
-  margin: 0.5rem 0 0;
-  color: #bbbbbb;
+.panel-subtitle {
+  margin: 0.25rem 0 0;
+  color: #9ca3af;
   font-size: 0.95rem;
 }
 
-.app-toolbar {
-  display: flex;
+.api-pill {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  font-size: 0.8rem;
+  color: #e5e7eb;
+  white-space: nowrap;
+}
+
+.panel-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 1rem;
+}
+
+.primary-button,
+.danger-button {
+  border: none;
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 0.6rem 1.4rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.12s ease,
+    background 0.12s ease,
+    opacity 0.12s ease;
 }
 
 .primary-button {
-  padding: 0.6rem 1.6rem;
-  border-radius: 999px;
-  border: none;
   background: #ffffff;
-  color: #111;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.08s ease, box-shadow 0.08s ease,
-    background 0.1s ease;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  color: #111827;
+  box-shadow:
+    0 14px 30px rgba(15, 23, 42, 0.55),
+    0 0 0 1px rgba(15, 23, 42, 0.3);
 }
 
 .primary-button:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.7),
+    0 0 0 1px rgba(15, 23, 42, 0.4);
 }
 
 .primary-button:disabled {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: default;
 }
 
-.backend-tag {
-  font-size: 0.8rem;
-  color: #999;
-  word-break: break-all;
+.danger-button {
+  background: #f97373;
+  color: #111827;
+  box-shadow: 0 10px 25px rgba(248, 113, 113, 0.4);
 }
 
-.backend-tag code {
-  background: #222;
-  padding: 0.25rem 0.5rem;
-  border-radius: 999px;
+.danger-button:hover:not(:disabled) {
+  background: #f43f5e;
+  color: #f9fafb;
+  transform: translateY(-1px);
+  box-shadow: 0 16px 35px rgba(244, 63, 94, 0.55);
 }
 
-.error-text {
-  margin-bottom: 1rem;
-  color: #ff6b6b;
-  text-align: center;
+.status {
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
 }
 
-.empty-text {
-  color: #aaa;
-  text-align: center;
-  padding: 2rem 0;
+.status-error {
+  color: #fecaca;
 }
 
-.table-container {
-  overflow-x: auto;
+.status-success {
+  color: #bbf7d0;
+}
+
+/* FORMULARIO */
+
+.form-section {
+  margin-top: 1.5rem;
+  margin-bottom: 2rem;
+  padding: 1.25rem 1.5rem 1.5rem;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.form-section h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.form-help {
+  margin: 0.35rem 0 1.1rem;
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.create-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1rem 1.25rem;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.form-row-full {
+  grid-column: 1 / -1;
+}
+
+.form-row label {
+  font-size: 0.9rem;
+  color: #e5e7eb;
+}
+
+.create-form select,
+.create-form textarea {
+  border-radius: 0.7rem;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(15, 23, 42, 0.85);
+  color: #e5e7eb;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.9rem;
+  outline: none;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.12s ease;
+}
+
+.create-form select:focus,
+.create-form textarea:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.4);
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.create-form select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.create-form textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* TABLA */
+
+.table-section {
+  margin-top: 1.5rem;
+}
+
+.table-wrapper {
+  margin-top: 0.25rem;
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.35);
 }
 
 .reservas-table {
   width: 100%;
   border-collapse: collapse;
-  background: #151515;
-  border-radius: 14px;
-  overflow: hidden;
+  font-size: 0.9rem;
 }
 
 .reservas-table thead {
-  background: #202020;
+  background: rgba(31, 41, 55, 0.98);
 }
 
 .reservas-table th,
 .reservas-table td {
-  padding: 0.75rem 1rem;
-  font-size: 0.9rem;
+  padding: 0.6rem 0.75rem;
+  text-align: left;
 }
 
 .reservas-table th {
-  text-align: left;
   font-weight: 600;
-  color: #dddddd;
-  border-bottom: 1px solid #2a2a2a;
+  color: #e5e7eb;
+  font-size: 0.85rem;
+}
+
+.reservas-table tbody tr:nth-child(odd) {
+  background: rgba(15, 23, 42, 0.85);
 }
 
 .reservas-table tbody tr:nth-child(even) {
-  background: #181818;
+  background: rgba(15, 23, 42, 0.7);
 }
 
 .reservas-table tbody tr:hover {
-  background: #202020;
+  background: rgba(30, 64, 175, 0.4);
 }
 
-.danger-button {
-  padding: 0.45rem 1rem;
-  border-radius: 999px;
-  border: none;
-  background: #ff4b4b;
-  color: #fff;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.1s ease, transform 0.08s ease,
-    box-shadow 0.08s ease;
-  box-shadow: 0 4px 14px rgba(255, 75, 75, 0.4);
+.empty-state {
+  margin-top: 0.6rem;
+  color: #9ca3af;
 }
 
-.danger-button:hover:not(:disabled) {
-  background: #ff3131;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(255, 75, 75, 0.55);
-}
-
-.danger-button:disabled {
-  opacity: 0.7;
-  cursor: default;
-}
+/* RESPONSIVE */
 
 @media (max-width: 768px) {
-  .app-panel {
-    padding: 1.75rem 1rem 1.5rem;
+  .panel {
+    padding: 1.8rem 1.4rem 2.2rem;
   }
 
-  .app-title {
-    font-size: 2rem;
-  }
-
-  .app-toolbar {
+  .panel-header {
+    flex-direction: column;
     align-items: flex-start;
+  }
+
+  .form-actions {
+    justify-content: stretch;
+  }
+
+  .primary-button,
+  .danger-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .panel-toolbar {
+    justify-content: stretch;
+  }
+
+  .panel-toolbar .primary-button {
+    width: 100%;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
   }
 }
