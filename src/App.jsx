@@ -1,969 +1,1441 @@
 // src/App.jsx
-import { useEffect, useMemo, useState } from 'react';
+
+import { useEffect, useMemo, useState, Fragment } from 'react';
 import './App.css';
 import {
-  API_BASE_URL,
-  getReservasDetalle,
-  deleteReserva,
-  createReserva,
-  getPacientes,
-  getProfesionales,
-  getHorariosByProfesionalId,
-  ensurePaciente,
+    API_BASE_URL,
+    getPacientes,
+    getProfesionales,
+    getHorariosByProfesional,
+    getReservasDetalle,
+    crearReserva,
+    crearPaciente,
+    cancelarReserva,
+    reagendarReserva,
 } from './api';
 
-// ----------------------------------------------------------------------
-// Catálogo de prestaciones (simplificado como ejemplo)
-// ----------------------------------------------------------------------
-const SERVICIOS = [
-  {
-    id: 'fono-adulto-eval-online',
-    especialidad: 'Fonoaudiología Adulto',
-    categoria: 'Evaluación',
-    modalidad: 'Online',
-    tratamiento: 'Evaluación fonoaudiológica adulto online',
-    codigo: '13-02-003',
-    descripcion: 'Evaluación de voz, habla y lenguaje',
-    valor: '$20.000',
-    profesionales: ['Bastián Miró', 'Fernanda Dreyse'],
-  },
-  {
-    id: 'psico-adulto-consulta-online',
-    especialidad: 'Psicología Adulto',
-    categoria: 'Consulta',
-    modalidad: 'Online',
-    tratamiento: 'Consulta Psicología Adulto online',
-    codigo: '09-02-2001',
-    descripcion: 'Psicodiagnóstico / Psicoterapia individual',
-    valor: '$25.000',
-    profesionales: ['Antonia Vásquez', 'Javiera Ayala'],
-  },
-  {
-    id: 'psico-infanto-eval-presencial',
-    especialidad: 'Psicología Infanto-Juvenil',
-    categoria: 'Evaluación',
-    modalidad: 'Presencial',
-    tratamiento:
-      'Evaluación Psicología Infanto-juvenil presencial - Stgo Centro',
-    codigo: '09-02-2002',
-    descripcion: 'Psicodiagnóstico infanto-juvenil',
-    valor: '$35.000',
-    profesionales: ['Antonia Vásquez', 'Centro Amida'],
-  },
-  {
-    id: 'matrona-adulto-teleconsulta',
-    especialidad: 'Matrona Adulto Teleconsulta',
-    categoria: 'Consulta',
-    modalidad: 'Online',
-    tratamiento: 'Consulta Matrona adulto teleconsulta',
-    codigo: '11-01-1942',
-    descripcion: 'Consulta Matrona Online',
-    valor: '$18.000',
-    profesionales: ['Katerine Navarrete'],
-  },
+const PASOS_FLUJO = [
+    'Datos personales',
+    'Especialidad y modalidad',
+    'Selección de día, profesional y horario',
+    'Resumen y confirmación',
 ];
 
-const unique = (arr) => [...new Set(arr)];
+// ----------------------- UTILIDADES -----------------------
 
-// ----------------------------------------------------------------------
-// COMPONENTE PRINCIPAL
-// ----------------------------------------------------------------------
-function App() {
-  const [activeTab, setActiveTab] = useState('admin');
-
-  return (
-    <div className="app-root">
-      <header className="app-header">
-        <div className="app-header-left">
-          <img
-            src="https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png"
-            alt="Centro Integral de Salud Dreyse"
-            className="app-logo"
-          />
-          <div className="app-title-block">
-            <h1 className="app-title">Agenda CISD</h1>
-            <p className="app-subtitle">
-              Panel de reservas (modo demo local / producción)
-            </p>
-          </div>
-        </div>
-
-        <div className="api-badge">
-          API:&nbsp;
-          <span>{API_BASE_URL}</span>
-        </div>
-      </header>
-
-      <div className="tabs">
-        <button
-          className={`tab ${activeTab === 'admin' ? 'tab--active' : ''}`}
-          onClick={() => setActiveTab('admin')}
-        >
-          Panel interno
-        </button>
-        <button
-          className={`tab ${
-            activeTab === 'paciente' ? 'tab--active' : ''
-          }`}
-          onClick={() => setActiveTab('paciente')}
-        >
-          Flujo paciente
-        </button>
-      </div>
-
-      <main className="app-content">
-        {activeTab === 'admin' ? <AdminPanel /> : <PatientFlow />}
-      </main>
-    </div>
-  );
+function limpiarRut(value) {
+    return (value || '').replace(/[^0-9kK]/g, '').toUpperCase();
 }
 
-// ----------------------------------------------------------------------
-// PANEL INTERNO
-// ----------------------------------------------------------------------
-function AdminPanel() {
-  const [reservas, setReservas] = useState([]);
-  const [loadingReservas, setLoadingReservas] = useState(false);
-  const [errorReservas, setErrorReservas] = useState('');
+function formatearRut(value) {
+    const clean = limpiarRut(value);
+    if (!clean) return '';
+    const cuerpo = clean.slice(0, -1);
+    const dv = clean.slice(-1);
+    if (!cuerpo) return dv;
 
-  const [pacientes, setPacientes] = useState([]);
-  const [profesionales, setProfesionales] = useState([]);
-  const [horariosProfesional, setHorariosProfesional] = useState([]);
-
-  const [nuevo, setNuevo] = useState({
-    pacienteId: '',
-    profesionalId: '',
-    horarioId: '',
-    motivo: '',
-  });
-
-  const [creating, setCreating] = useState(false);
-  const [feedback, setFeedback] = useState('');
-
-  useEffect(() => {
-    cargarTodo();
-  }, []);
-
-  async function cargarTodo() {
-    setLoadingReservas(true);
-    setErrorReservas('');
-    try {
-      const [r, p, pro] = await Promise.all([
-        getReservasDetalle(),
-        getPacientes(),
-        getProfesionales(),
-      ]);
-      setReservas(Array.isArray(r) ? r : []);
-      setPacientes(Array.isArray(p) ? p : []);
-      setProfesionales(Array.isArray(pro) ? pro : []);
-    } catch (err) {
-      console.error(err);
-      setErrorReservas('Error al cargar datos. Revisa la consola.');
-    } finally {
-      setLoadingReservas(false);
+    const reversed = cuerpo.split('').reverse();
+    const conPuntos = [];
+    for (let i = 0; i < reversed.length; i++) {
+        if (i > 0 && i % 3 === 0) conPuntos.push('.');
+        conPuntos.push(reversed[i]);
     }
-  }
+    const cuerpoFormateado = conPuntos.reverse().join('');
+    return `${cuerpoFormateado}-${dv}`;
+}
 
-  async function handleProfesionalChange(id) {
-    setNuevo((prev) => ({
-      ...prev,
-      profesionalId: id,
-      horarioId: '',
-    }));
-    setHorariosProfesional([]);
-    if (!id) return;
-    try {
-      const horarios = await getHorariosByProfesionalId(Number(id));
-      setHorariosProfesional(Array.isArray(horarios) ? horarios : []);
-    } catch (err) {
-      console.error(err);
+function esRutValido(rut) {
+    const clean = limpiarRut(rut);
+    if (clean.length < 2) return false;
+    const cuerpo = clean.slice(0, -1);
+    const dv = clean.slice(-1);
+
+    let suma = 0;
+    let factor = 2;
+    for (let i = cuerpo.length - 1; i >= 0; i--) {
+        suma += parseInt(cuerpo[i], 10) * factor;
+        factor = factor === 7 ? 2 : factor + 1;
     }
-  }
+    const resto = suma % 11;
+    const dvEsperado = 11 - resto;
+    let dvCalc;
+    if (dvEsperado === 11) dvCalc = '0';
+    else if (dvEsperado === 10) dvCalc = 'K';
+    else dvCalc = String(dvEsperado);
+    return dvCalc === dv.toUpperCase();
+}
 
-  async function handleCrearReserva(e) {
-    e.preventDefault();
-    setFeedback('');
+function formatearTelefono(value) {
+    const digits = (value || '').replace(/\D/g, '').slice(0, 9);
+    if (!digits) return '';
+    if (digits.length <= 1) return digits;
+    if (digits.length <= 5) return `${digits[0]} ${digits.slice(1)}`;
+    return `${digits[0]} ${digits.slice(1, 5)} ${digits.slice(5)}`;
+}
 
-    const { pacienteId, profesionalId, horarioId, motivo } = nuevo;
+function esTelefonoChilenoValido(value) {
+    const digits = (value || '').replace(/\D/g, '');
+    return digits.length === 9 && digits.startsWith('9');
+}
 
-    if (!pacienteId || !profesionalId || !horarioId) {
-      setFeedback('Completa paciente, profesional y horario.');
-      return;
-    }
+function esEmailValido(value) {
+    if (!value) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
 
-    try {
-      setCreating(true);
-      await createReserva({
-        pacienteId: Number(pacienteId),
-        profesionalId: Number(profesionalId),
-        horarioDisponibleId: Number(horarioId),
-        motivo: motivo || 'Reserva creada desde panel interno',
-      });
-      setFeedback('Reserva creada correctamente.');
-      setNuevo({
+function formatDateTime(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleString('es-CL', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
+function formatShortDay(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-CL', { weekday: 'short' }).toUpperCase();
+}
+
+function formatShortDate(iso) {
+    const d = new Date(iso);
+    return d.getDate().toString().padStart(2, '0');
+}
+
+function toDateKey(iso) {
+    const d = new Date(iso);
+    const year = d.getFullYear();
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// ----------------------- DATOS TRATAMIENTOS (RESUMEN) -----------------------
+
+const TRATAMIENTOS = [
+    {
+        id: 'FON-INF-EVAL-ONLINE',
+        especialidad: 'Fonoaudiología Infanto-Juvenil',
+        categoria: 'Fonoaudiología Infanto-Juvenil',
+        tratamiento: 'Evaluación fonoaudiológica infanto-juvenil online',
+        codigoFonasa: '13-02-2003',
+        descripcion: 'Evaluación de voz, habla y lenguaje',
+        valor: 35000,
+        profesionalesIds: [1, 2],
+    },
+    {
+        id: 'FON-ADULTO-EVAL-ONLINE',
+        especialidad: 'Fonoaudiología Adulto',
+        categoria: 'Fonoaudiología Adulto',
+        tratamiento: 'Evaluación fonoaudiológica adulto online',
+        codigoFonasa: '13-02-2003',
+        descripcion: 'Evaluación de voz, habla y lenguaje',
+        valor: 35000,
+        profesionalesIds: [1],
+    },
+    {
+        id: 'PSI-ADULTO-ONLINE',
+        especialidad: 'Psicología Adulto',
+        categoria: 'Psicología Adulto',
+        tratamiento: 'Evaluación Psicología Adulto online',
+        codigoFonasa: '09-02-2001',
+        descripcion: 'Psicodiagnóstico',
+        valor: 30000,
+        profesionalesIds: [3, 4],
+    },
+    {
+        id: 'PSI-INFANTO-ONLINE',
+        especialidad: 'Psicología Infanto-Juvenil',
+        categoria: 'Psicología Infanto-Juvenil',
+        tratamiento: 'Evaluación Psicología Infanto-Juvenil online',
+        codigoFonasa: '09-02-2001',
+        descripcion: 'Psicodiagnóstico',
+        valor: 30000,
+        profesionalesIds: [3, 4, 5],
+    },
+    {
+        id: 'PACK-PSI-BIENESTAR',
+        especialidad: 'Pack Psicologia',
+        categoria: 'Pack Psicologia',
+        tratamiento: 'Pack Bienestar Emocional (4 sesiones Psicologia online)',
+        codigoFonasa: 'PACK-PSI',
+        descripcion: 'Tratamiento Psicología Mensual (4 sesiones)',
+        valor: 90000,
+        profesionalesIds: [3, 4, 5],
+    },
+    {
+        id: 'MAT-ADULTO-ONLINE',
+        especialidad: 'Matrona Adulto Teleconsulta',
+        categoria: 'Matrona',
+        tratamiento: 'Consulta Matrona adulto online',
+        codigoFonasa: '11-01-1942',
+        descripcion: 'Consulta matrona',
+        valor: 18000,
+        profesionalesIds: [6],
+    },
+];
+
+// ----------------------- COMPONENTE PRINCIPAL -----------------------
+
+function App() {
+    const [activeTab, setActiveTab] = useState('panel'); // 'panel' | 'flujo'
+
+    const [pacientes, setPacientes] = useState([]);
+    const [profesionales, setProfesionales] = useState([]);
+    const [reservas, setReservas] = useState([]);
+
+    const [loadingInicial, setLoadingInicial] = useState(true);
+
+    // Panel interno
+    const [panelForm, setPanelForm] = useState({
         pacienteId: '',
         profesionalId: '',
         horarioId: '',
         motivo: '',
-      });
-      await cargarTodo();
-    } catch (err) {
-      console.error(err);
-      setFeedback('Error al crear la reserva.');
-    } finally {
-      setCreating(false);
+    });
+    const [horariosPorProfesional, setHorariosPorProfesional] = useState({});
+    const [panelSubmitting, setPanelSubmitting] = useState(false);
+    const [panelError, setPanelError] = useState('');
+    const [panelSuccess, setPanelSuccess] = useState('');
+    const [cancelandoId, setCancelandoId] = useState(null);
+
+    // Reagendar
+    const [reagendandoId, setReagendandoId] = useState(null);
+    const [reagendarHorarioId, setReagendarHorarioId] = useState('');
+    const [reagendarError, setReagendarError] = useState('');
+    const [reagendarLoading, setReagendarLoading] = useState(false);
+
+    // Flujo paciente
+    const [flowStep, setFlowStep] = useState(0);
+    const [flowData, setFlowData] = useState({
+        nombreCompleto: '',
+        rut: '',
+        telefono: '',
+        email: '',
+        especialidad: '',
+        tratamientoId: '',
+        tratamientoLabel: '',
+        codigoFonasa: '',
+        valor: 0,
+        profesionalesIds: [],
+        profesionalId: '',
+        horarioId: '',
+        fechaSeleccionadaKey: '',
+    });
+    const [flowHorariosPorProfesional, setFlowHorariosPorProfesional] =
+        useState({});
+    const [flowError, setFlowError] = useState('');
+    const [flowSuccess, setFlowSuccess] = useState('');
+    const [flowSubmitting, setFlowSubmitting] = useState(false);
+
+    // ------------------ CARGA INICIAL ------------------
+
+    useEffect(() => {
+        cargarInicial();
+    }, []);
+
+    async function cargarInicial() {
+        try {
+            setLoadingInicial(true);
+            const [pacs, pros, resvs] = await Promise.all([
+                getPacientes(),
+                getProfesionales(),
+                getReservasDetalle(),
+            ]);
+            setPacientes(pacs);
+            setProfesionales(pros);
+            setReservas(resvs);
+        } catch (err) {
+            console.error('Error cargando datos iniciales', err);
+        } finally {
+            setLoadingInicial(false);
+        }
     }
-  }
 
-  async function handleCancelar(id) {
-    if (!window.confirm('¿Cancelar esta reserva?')) return;
-    try {
-      await deleteReserva(id);
-      await cargarTodo();
-    } catch (err) {
-      console.error(err);
-      alert('Error al cancelar reserva');
+    async function refrescarReservas() {
+        try {
+            const resvs = await getReservasDetalle();
+            setReservas(resvs);
+        } catch (err) {
+            console.error('Error refrescando reservas', err);
+        }
     }
-  }
 
-  return (
-    <div className="panel">
-      <section className="panel-section">
-        <div className="panel-section-header">
-          <h2>Crear nueva reserva</h2>
-          <p className="panel-section-subtitle">
-            Selecciona paciente, profesional y uno de sus horarios
-            disponibles.
-          </p>
-        </div>
+    async function cargarHorariosProfesional(profesionalId) {
+        if (!profesionalId) return [];
+        if (horariosPorProfesional[profesionalId]) {
+            return horariosPorProfesional[profesionalId];
+        }
+        const horarios = await getHorariosByProfesional(profesionalId);
+        setHorariosPorProfesional((prev) => ({
+            ...prev,
+            [profesionalId]: horarios,
+        }));
+        return horarios;
+    }
 
-        <form className="form-grid" onSubmit={handleCrearReserva}>
-          <div className="form-field">
-            <label>Paciente</label>
-            <select
-              value={nuevo.pacienteId}
-              onChange={(e) =>
-                setNuevo((prev) => ({
-                  ...prev,
-                  pacienteId: e.target.value,
-                }))
-              }
-            >
-              <option value="">Selecciona un paciente</option>
-              {pacientes.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombreCompleto}
-                </option>
-              ))}
-            </select>
-          </div>
+    async function cargarHorariosProfesionalFlujo(profesionalId) {
+        if (!profesionalId) return [];
+        if (flowHorariosPorProfesional[profesionalId]) {
+            return flowHorariosPorProfesional[profesionalId];
+        }
+        const horarios = await getHorariosByProfesional(profesionalId);
+        setFlowHorariosPorProfesional((prev) => ({
+            ...prev,
+            [profesionalId]: horarios,
+        }));
+        return horarios;
+    }
 
-          <div className="form-field">
-            <label>Profesional</label>
-            <select
-              value={nuevo.profesionalId}
-              onChange={(e) => handleProfesionalChange(e.target.value)}
-            >
-              <option value="">Selecciona un profesional</option>
-              {profesionales.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombreCompleto} ({p.especialidad})
-                </option>
-              ))}
-            </select>
-          </div>
+    // ------------------ PANEL INTERNO: handlers ------------------
 
-          <div className="form-field">
-            <label>Horario</label>
-            <select
-              value={nuevo.horarioId}
-              onChange={(e) =>
-                setNuevo((prev) => ({ ...prev, horarioId: e.target.value }))
-              }
-              disabled={!nuevo.profesionalId}
-            >
-              <option value="">
-                {nuevo.profesionalId
-                  ? 'Selecciona un horario'
-                  : 'Selecciona un profesional primero'}
-              </option>
-              {horariosProfesional.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {new Date(h.fecha).toLocaleString('es-CL', {
-                    dateStyle: 'short',
-                    timeStyle: 'short',
-                  })}
-                </option>
-              ))}
-            </select>
-          </div>
+    function handlePanelChange(field, value) {
+        setPanelForm((prev) => ({
+            ...prev,
+            [field]: value,
+            ...(field === 'profesionalId' ? { horarioId: '' } : null),
+        }));
+        if (field === 'profesionalId' && value) {
+            cargarHorariosProfesional(parseInt(value, 10)).catch(console.error);
+        }
+    }
 
-          <div className="form-field form-field-full">
-            <label>Motivo de consulta</label>
-            <textarea
-              rows={2}
-              placeholder="Ej: Consulta de seguimiento, evaluación inicial…"
-              value={nuevo.motivo}
-              onChange={(e) =>
-                setNuevo((prev) => ({ ...prev, motivo: e.target.value }))
-              }
-            />
-          </div>
+    async function handleCrearReservaPanel(e) {
+        e.preventDefault();
+        setPanelError('');
+        setPanelSuccess('');
 
-          <div className="form-actions">
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={creating}
-            >
-              {creating ? 'Creando…' : 'Crear reserva'}
-            </button>
-            {feedback && <p className="feedback-text">{feedback}</p>}
-          </div>
-        </form>
-      </section>
+        const { pacienteId, profesionalId, horarioId, motivo } = panelForm;
 
-      <section className="panel-section">
-        <div className="panel-section-header">
-          <h2>Reservas registradas</h2>
-        </div>
-
-        {loadingReservas ? (
-          <p>Cargando reservas…</p>
-        ) : errorReservas ? (
-          <p className="error-text">{errorReservas}</p>
-        ) : reservas.length === 0 ? (
-          <p>No hay reservas registradas.</p>
-        ) : (
-          <div className="table-wrapper">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Motivo</th>
-                  <th>Paciente</th>
-                  <th>Profesional</th>
-                  <th>Especialidad</th>
-                  <th>Fecha</th>
-                  <th className="table-col-actions">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reservas.map((r) => (
-                  <tr key={r.id}>
-                    <td>{r.id}</td>
-                    <td>{r.motivo}</td>
-                    <td>{r.paciente?.nombreCompleto || '-'}</td>
-                    <td>{r.profesional?.nombreCompleto || '-'}</td>
-                    <td>{r.profesional?.especialidad || '-'}</td>
-                    <td>
-                      {r.horarioDisponible?.fecha
-                        ? new Date(
-                            r.horarioDisponible.fecha,
-                          ).toLocaleString('es-CL', {
-                            dateStyle: 'short',
-                            timeStyle: 'short',
-                          })
-                        : '-'}
-                    </td>
-                    <td className="table-col-actions">
-                      <button
-                        className="btn btn-danger btn-small"
-                        onClick={() => handleCancelar(r.id)}
-                      >
-                        Cancelar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-    </div>
-  );
-}
-
-// ----------------------------------------------------------------------
-// FLUJO PACIENTE
-// ----------------------------------------------------------------------
-function PatientFlow() {
-  const [step, setStep] = useState(1);
-
-  const [pacienteForm, setPacienteForm] = useState({
-    nombreCompleto: '',
-    rut: '',
-    telefono: '',
-    email: '',
-  });
-
-  const [especialidad, setEspecialidad] = useState('');
-  const [modalidad, setModalidad] = useState('');
-  const [servicioId, setServicioId] = useState('');
-
-  const [profesionalesApi, setProfesionalesApi] = useState([]);
-  const [proHorarios, setProHorarios] = useState([]);
-  const [seleccion, setSeleccion] = useState({
-    profesionalId: null,
-    horario: null,
-  });
-
-  const [loadingStep, setLoadingStep] = useState(false);
-  const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const pros = await getProfesionales();
-        setProfesionalesApi(Array.isArray(pros) ? pros : []);
-      } catch (err) {
-        console.error(err);
-      }
-    })();
-  }, []);
-
-  const especialidadesDisponibles = useMemo(
-    () => unique(SERVICIOS.map((s) => s.especialidad)),
-    [],
-  );
-
-  const modalidadesDisponibles = useMemo(() => {
-    if (!especialidad) return [];
-    return unique(
-      SERVICIOS.filter((s) => s.especialidad === especialidad).map(
-        (s) => s.modalidad,
-      ),
-    );
-  }, [especialidad]);
-
-  const tratamientosDisponibles = useMemo(() => {
-    if (!especialidad || !modalidad) return [];
-    return SERVICIOS.filter(
-      (s) =>
-        s.especialidad === especialidad && s.modalidad === modalidad,
-    );
-  }, [especialidad, modalidad]);
-
-  const servicioSeleccionado = useMemo(
-    () => SERVICIOS.find((s) => s.id === servicioId) || null,
-    [servicioId],
-  );
-
-  function nextStep() {
-    setError('');
-    setSuccessMsg('');
-    setStep((prev) => Math.min(prev + 1, 4));
-  }
-  function prevStep() {
-    setError('');
-    setSuccessMsg('');
-    setStep((prev) => Math.max(prev - 1, 1));
-  }
-
-  function canGoStep2() {
-    const { nombreCompleto, rut, telefono, email } = pacienteForm;
-    return (
-      nombreCompleto.trim() &&
-      rut.trim() &&
-      telefono.trim() &&
-      email.trim()
-    );
-  }
-
-  function canGoStep3() {
-    return !!servicioSeleccionado;
-  }
-
-  function canConfirm() {
-    return (
-      servicioSeleccionado &&
-      seleccion.profesionalId &&
-      seleccion.horario
-    );
-  }
-
-  useEffect(() => {
-    if (step !== 3 || !servicioSeleccionado) return;
-
-    (async () => {
-      try {
-        setLoadingStep(true);
-        setError('');
-        setProHorarios([]);
-
-        const nombresValidos = servicioSeleccionado.profesionales || [];
-
-        const profesionalesCompatibles = profesionalesApi.filter(
-          (p) => nombresValidos.includes(p.nombreCompleto),
-        );
-
-        const resultado = [];
-
-        for (const pro of profesionalesCompatibles) {
-          try {
-            const horarios = await getHorariosByProfesionalId(pro.id);
-            resultado.push({
-              profesional: pro,
-              horarios: Array.isArray(horarios) ? horarios : [],
-            });
-          } catch (err) {
-            console.error(
-              'Error cargando horarios para profesional',
-              pro.id,
-              err,
-            );
-          }
+        if (!pacienteId || !profesionalId || !horarioId || !motivo.trim()) {
+            setPanelError('Completa paciente, profesional, horario y motivo.');
+            return;
         }
 
-        setProHorarios(resultado);
-      } catch (err) {
-        console.error(err);
-        setError('Error al cargar horarios. Intenta nuevamente.');
-      } finally {
-        setLoadingStep(false);
-      }
-    })();
-  }, [step, servicioSeleccionado, profesionalesApi]);
-
-  async function handleConfirmarReserva() {
-    if (!canConfirm()) {
-      setError('Falta seleccionar profesional y horario.');
-      return;
+        try {
+            setPanelSubmitting(true);
+            await crearReserva({
+                pacienteId: parseInt(pacienteId, 10),
+                profesionalId: parseInt(profesionalId, 10),
+                horarioDisponibleId: parseInt(horarioId, 10),
+                motivo: motivo.trim(),
+            });
+            setPanelForm({
+                pacienteId: '',
+                profesionalId: '',
+                horarioId: '',
+                motivo: '',
+            });
+            setPanelSuccess('Reserva creada correctamente.');
+            await refrescarReservas();
+        } catch (err) {
+            setPanelError(err.message || 'Error al crear la reserva.');
+        } finally {
+            setPanelSubmitting(false);
+        }
     }
 
-    setError('');
-    setSuccessMsg('');
-    setLoadingStep(true);
-
-    try {
-      const pacienteBackend = await ensurePaciente({
-        nombreCompleto: pacienteForm.nombreCompleto.trim(),
-        email: pacienteForm.email.trim(),
-        telefono: pacienteForm.telefono.trim(),
-      });
-
-      const motivo = `[Flujo paciente] [RUT: ${
-        pacienteForm.rut
-      }] ${servicioSeleccionado.tratamiento} - ${
-        servicioSeleccionado.descripcion
-      }`;
-
-      await createReserva({
-        pacienteId: Number(pacienteBackend.id),
-        profesionalId: Number(seleccion.profesionalId),
-        horarioDisponibleId: Number(seleccion.horario.id),
-        motivo,
-      });
-
-      setSuccessMsg('¡Reserva creada correctamente!');
-      setStep(4);
-    } catch (err) {
-      console.error(err);
-      setError('Error al crear la reserva. Intenta nuevamente.');
-    } finally {
-      setLoadingStep(false);
+    async function handleCancelarReserva(id) {
+        if (!window.confirm('¿Seguro que quieres cancelar esta reserva?')) {
+            return;
+        }
+        try {
+            setCancelandoId(id);
+            await cancelarReserva(id);
+            await refrescarReservas();
+        } catch (err) {
+            alert(err.message || 'Error al cancelar la reserva.');
+        } finally {
+            setCancelandoId(null);
+        }
     }
-  }
 
-  return (
-    <div className="panel">
-      <section className="panel-section">
-        <div className="panel-section-header">
-          <h2>Flujo paciente</h2>
-          <p className="panel-section-subtitle">
-            Simula el proceso de reserva para pacientes, similar a
-            plataformas de clínicas.
-          </p>
-        </div>
+    async function handleAbrirReagendar(reserva) {
+        setReagendarError('');
+        setReagendandoId(reserva.id);
+        setReagendarHorarioId(reserva.horarioDisponibleId?.toString() || '');
+        try {
+            await cargarHorariosProfesional(reserva.profesionalId);
+        } catch (err) {
+            setReagendarError('No se pudieron cargar los horarios del profesional.');
+        }
+    }
 
-        <div className="stepper">
-          {['Paciente', 'Servicio', 'Profesional y horario', 'Resumen'].map(
-            (label, index) => {
-              const stepNumber = index + 1;
-              const isActive = step === stepNumber;
-              const isDone = step > stepNumber;
+    function handleCerrarReagendar() {
+        setReagendandoId(null);
+        setReagendarHorarioId('');
+        setReagendarError('');
+    }
 
-              return (
-                <div
-                  key={label}
-                  className={`stepper-item ${
-                    isActive ? 'stepper-item--active' : ''
-                  } ${isDone ? 'stepper-item--done' : ''}`}
-                >
-                  <div className="stepper-badge">{stepNumber}</div>
-                  <span>{label}</span>
-                </div>
-              );
-            },
-          )}
-        </div>
+    async function handleConfirmarReagendar(reserva) {
+        setReagendarError('');
+        if (!reagendarHorarioId) {
+            setReagendarError('Selecciona un nuevo horario para reagendar.');
+            return;
+        }
 
-        {error && <p className="error-text">{error}</p>}
-        {successMsg && <p className="success-text">{successMsg}</p>}
+        try {
+            setReagendarLoading(true);
+            await reagendarReserva(reserva.id, parseInt(reagendarHorarioId, 10));
+            await refrescarReservas();
+            handleCerrarReagendar();
+        } catch (err) {
+            setReagendarError(err.message || 'Error al reagendar la reserva.');
+        } finally {
+            setReagendarLoading(false);
+        }
+    }
 
-        {step === 1 && (
-          <div className="card">
-            <h3>1. Datos del paciente</h3>
-            <p className="card-subtitle">
-              Ingresa la información básica para identificar al paciente.
-            </p>
+    const horariosProfesionalReagendar = useMemo(() => {
+        if (!reagendandoId) return [];
+        const reserva = reservas.find((r) => r.id === reagendandoId);
+        if (!reserva) return [];
+        return horariosPorProfesional[reserva.profesionalId] || [];
+    }, [reagendandoId, reservas, horariosPorProfesional]);
 
-            <div className="form-grid">
-              <div className="form-field form-field-full">
-                <label>Nombre completo</label>
-                <input
-                  type="text"
-                  placeholder="Nombre y apellido"
-                  value={pacienteForm.nombreCompleto}
-                  onChange={(e) =>
-                    setPacienteForm((prev) => ({
-                      ...prev,
-                      nombreCompleto: e.target.value,
-                    }))
-                  }
-                />
-              </div>
+    // ------------------ FLUJO PACIENTE: DERIVADOS ------------------
 
-              <div className="form-field">
-                <label>RUT</label>
-                <input
-                  type="text"
-                  placeholder="Ej: 12.345.678-9"
-                  value={pacienteForm.rut}
-                  onChange={(e) =>
-                    setPacienteForm((prev) => ({
-                      ...prev,
-                      rut: e.target.value,
-                    }))
-                  }
-                />
-              </div>
+    const especialidadesDisponibles = useMemo(() => {
+        const set = new Set(TRATAMIENTOS.map((t) => t.especialidad));
+        return Array.from(set);
+    }, []);
 
-              <div className="form-field">
-                <label>Teléfono</label>
-                <input
-                  type="tel"
-                  placeholder="+569..."
-                  value={pacienteForm.telefono}
-                  onChange={(e) =>
-                    setPacienteForm((prev) => ({
-                      ...prev,
-                      telefono: e.target.value,
-                    }))
-                  }
-                />
-              </div>
+    const tratamientosFiltrados = useMemo(() => {
+        if (!flowData.especialidad) return [];
+        return TRATAMIENTOS.filter(
+            (t) => t.especialidad === flowData.especialidad
+        );
+    }, [flowData.especialidad]);
 
-              <div className="form-field form-field-full">
-                <label>Correo electrónico</label>
-                <input
-                  type="email"
-                  placeholder="nombre@correo.cl"
-                  value={pacienteForm.email}
-                  onChange={(e) =>
-                    setPacienteForm((prev) => ({
-                      ...prev,
-                      email: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="form-actions space-between">
-              <span />
-              <button
-                className="btn btn-primary"
-                disabled={!canGoStep2()}
-                onClick={nextStep}
-              >
-                Continuar a selección de servicio
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="card">
-            <h3>2. Selección de servicio</h3>
-            <p className="card-subtitle">
-              Elige la especialidad, modalidad y tratamiento que necesitas.
-            </p>
-
-            <div className="form-grid">
-              <div className="form-field">
-                <label>Especialidad</label>
-                <select
-                  value={especialidad}
-                  onChange={(e) => {
-                    setEspecialidad(e.target.value);
-                    setModalidad('');
-                    setServicioId('');
-                  }}
-                >
-                  <option value="">Selecciona una especialidad</option>
-                  {especialidadesDisponibles.map((esp) => (
-                    <option key={esp} value={esp}>
-                      {esp}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-field">
-                <label>Modalidad</label>
-                <select
-                  value={modalidad}
-                  onChange={(e) => {
-                    setModalidad(e.target.value);
-                    setServicioId('');
-                  }}
-                  disabled={!especialidad}
-                >
-                  <option value="">
-                    {especialidad
-                      ? 'Selecciona modalidad'
-                      : 'Selecciona especialidad primero'}
-                  </option>
-                  {modalidadesDisponibles.map((mod) => (
-                    <option key={mod} value={mod}>
-                      {mod}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-field form-field-full">
-                <label>Tratamiento</label>
-                <select
-                  value={servicioId}
-                  onChange={(e) => setServicioId(e.target.value)}
-                  disabled={!modalidad}
-                >
-                  <option value="">
-                    {modalidad
-                      ? 'Selecciona tratamiento'
-                      : 'Selecciona modalidad primero'}
-                  </option>
-                  {tratamientosDisponibles.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.tratamiento}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {servicioSeleccionado && (
-              <div className="service-summary">
-                <h4>Detalle del tratamiento seleccionado</h4>
-                <ul>
-                  <li>
-                    <strong>Categoría:</strong> {servicioSeleccionado.categoria}
-                  </li>
-                  <li>
-                    <strong>Código:</strong> {servicioSeleccionado.codigo}
-                  </li>
-                  <li>
-                    <strong>Descripción:</strong>{' '}
-                    {servicioSeleccionado.descripcion}
-                  </li>
-                  <li>
-                    <strong>Valor:</strong> {servicioSeleccionado.valor}
-                  </li>
-                  <li>
-                    <strong>Profesionales que aplican:</strong>{' '}
-                    {servicioSeleccionado.profesionales.join(', ')}
-                  </li>
-                </ul>
-              </div>
-            )}
-
-            <div className="form-actions space-between">
-              <button className="btn btn-ghost" onClick={prevStep}>
-                Volver
-              </button>
-              <button
-                className="btn btn-primary"
-                disabled={!canGoStep3()}
-                onClick={nextStep}
-              >
-                Continuar a profesional y horario
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="card">
-            <h3>3. Profesional y horario</h3>
-            <p className="card-subtitle">
-              Elige el profesional y la hora que más te acomode.
-            </p>
-
-            {loadingStep && <p>Cargando horarios…</p>}
-
-            {!loadingStep && proHorarios.length === 0 && (
-              <p>
-                No se encontraron profesionales con este tratamiento o
-                sin horarios disponibles.
-              </p>
-            )}
-
-            <div className="professionals-grid">
-              {proHorarios.map(({ profesional, horarios }) => (
-                <div key={profesional.id} className="professional-card">
-                  <h4>{profesional.nombreCompleto}</h4>
-                  <p className="professional-specialty">
-                    {profesional.especialidad}
-                  </p>
-
-                  {horarios.length === 0 ? (
-                    <p className="no-slots">
-                      Sin horarios disponibles en este momento.
-                    </p>
-                  ) : (
-                    <div className="slots-grid">
-                      {horarios.map((h) => {
-                        const isSelected =
-                          seleccion.profesionalId === profesional.id &&
-                          seleccion.horario?.id === h.id;
-                        return (
-                          <button
-                            key={h.id}
-                            type="button"
-                            className={`slot-btn ${
-                              isSelected ? 'slot-btn--selected' : ''
-                            }`}
-                            onClick={() =>
-                              setSeleccion({
-                                profesionalId: profesional.id,
-                                horario: h,
-                              })
-                            }
-                          >
-                            {new Date(h.fecha).toLocaleString('es-CL', {
-                              dateStyle: 'short',
-                              timeStyle: 'short',
-                            })}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="form-actions space-between">
-              <button className="btn btn-ghost" onClick={prevStep}>
-                Volver
-              </button>
-              <button
-                className="btn btn-primary"
-                disabled={!canConfirm() || loadingStep}
-                onClick={handleConfirmarReserva}
-              >
-                {loadingStep ? 'Creando reserva…' : 'Ir a resumen'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 4 && servicioSeleccionado && seleccion.horario && (
-          <div className="card">
-            <h3>4. Resumen de la atención</h3>
-            <p className="card-subtitle">
-              Revisa que todos los datos estén correctos.
-            </p>
-
-            <div className="summary-grid">
-              <div>
-                <h4>Paciente</h4>
-                <ul>
-                  <li>
-                    <strong>Nombre:</strong> {pacienteForm.nombreCompleto}
-                  </li>
-                  <li>
-                    <strong>RUT:</strong> {pacienteForm.rut}
-                  </li>
-                  <li>
-                    <strong>Teléfono:</strong> {pacienteForm.telefono}
-                  </li>
-                  <li>
-                    <strong>Email:</strong> {pacienteForm.email}
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h4>Prestación</h4>
-                <ul>
-                  <li>
-                    <strong>Especialidad:</strong>{' '}
-                    {servicioSeleccionado.especialidad}
-                  </li>
-                  <li>
-                    <strong>Categoría:</strong>{' '}
-                    {servicioSeleccionado.categoria}
-                  </li>
-                  <li>
-                    <strong>Tratamiento:</strong>{' '}
-                    {servicioSeleccionado.tratamiento}
-                  </li>
-                  <li>
-                    <strong>Código:</strong> {servicioSeleccionado.codigo}
-                  </li>
-                  <li>
-                    <strong>Valor:</strong> {servicioSeleccionado.valor}
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h4>Profesional y horario</h4>
-                <ul>
-                  <li>
-                    <strong>Profesional:</strong>{' '}
-                    {profesionalesApi.find(
-                      (p) => p.id === seleccion.profesionalId,
-                    )?.nombreCompleto || '-'}
-                  </li>
-                  <li>
-                    <strong>Fecha y hora:</strong>{' '}
-                    {new Date(
-                      seleccion.horario.fecha,
-                    ).toLocaleString('es-CL', {
-                      dateStyle: 'short',
-                      timeStyle: 'short',
-                    })}
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="form-actions space-between">
-              <button className="btn btn-ghost" onClick={() => setStep(3)}>
-                Volver a horarios
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={() =>
-                  setSuccessMsg(
-                    'Reserva ya fue creada en el paso anterior. Este resumen es sólo informativo.',
-                  )
+    const diasDisponiblesFlujo = useMemo(() => {
+        const mapDias = new Map();
+        flowData.profesionalesIds.forEach((proId) => {
+            const horarios = flowHorariosPorProfesional[proId] || [];
+            horarios.forEach((h) => {
+                const key = toDateKey(h.fecha);
+                if (!mapDias.has(key)) {
+                    mapDias.set(key, { key, isoEjemplo: h.fecha });
                 }
-              >
-                Finalizar
-              </button>
-            </div>
-          </div>
-        )}
-      </section>
-    </div>
-  );
+            });
+        });
+        const arr = Array.from(mapDias.values());
+        arr.sort((a, b) => (a.key < b.key ? -1 : 1));
+        return arr;
+    }, [flowHorariosPorProfesional, flowData.profesionalesIds]);
+
+    const horariosFiltradosFlujo = useMemo(() => {
+        if (!flowData.fechaSeleccionadaKey) return {};
+        const result = {};
+        flowData.profesionalesIds.forEach((proId) => {
+            const horarios = (flowHorariosPorProfesional[proId] || []).filter(
+                (h) => toDateKey(h.fecha) === flowData.fechaSeleccionadaKey
+            );
+            if (horarios.length) {
+                result[proId] = horarios;
+            }
+        });
+        return result;
+    }, [
+        flowData.fechaSeleccionadaKey,
+        flowHorariosPorProfesional,
+        flowData.profesionalesIds,
+    ]);
+
+    // ------------------ FLUJO PACIENTE: handlers ------------------
+
+    function updateFlow(field, value) {
+        setFlowData((prev) => ({ ...prev, [field]: value }));
+    }
+
+    async function handleNextFromStep1() {
+        setFlowError('');
+        const { nombreCompleto, rut, telefono, email } = flowData;
+
+        if (!nombreCompleto.trim()) {
+            setFlowError('Ingresa tu nombre completo.');
+            return;
+        }
+        if (!esRutValido(rut)) {
+            setFlowError('Ingresa un RUT chileno válido.');
+            return;
+        }
+        if (!esTelefonoChilenoValido(telefono)) {
+            setFlowError('Ingresa un teléfono chileno válido (9 dígitos).');
+            return;
+        }
+        if (!esEmailValido(email)) {
+            setFlowError('Ingresa un correo electrónico válido.');
+            return;
+        }
+
+        setFlowStep(1);
+    }
+
+    function handleNextFromStep2() {
+        setFlowError('');
+        if (!flowData.especialidad || !flowData.tratamientoId) {
+            setFlowError('Selecciona especialidad y modalidad de atención.');
+            return;
+        }
+        setFlowStep(2);
+    }
+
+    async function handleEnterStep3() {
+        setFlowError('');
+        const tratamiento = TRATAMIENTOS.find(
+            (t) => t.id === flowData.tratamientoId
+        );
+        if (!tratamiento) return;
+
+        const proIds = tratamiento.profesionalesIds || [];
+        for (const id of proIds) {
+            // eslint-disable-next-line no-await-in-loop
+            await cargarHorariosProfesionalFlujo(id);
+        }
+
+        const dias = [];
+        tratamiento.profesionalesIds.forEach((proId) => {
+            const horarios = flowHorariosPorProfesional[proId] || [];
+            horarios.forEach((h) => {
+                const key = toDateKey(h.fecha);
+                if (!dias.includes(key)) dias.push(key);
+            });
+        });
+
+        const fechaSeleccionadaKey = dias.sort()[0] || '';
+        setFlowData((prev) => ({
+            ...prev,
+            profesionalesIds: tratamiento.profesionalesIds,
+            fechaSeleccionadaKey,
+            profesionalId: '',
+            horarioId: '',
+        }));
+    }
+
+    function handleSelectDia(key) {
+        setFlowData((prev) => ({
+            ...prev,
+            fechaSeleccionadaKey: key,
+            profesionalId: '',
+            horarioId: '',
+        }));
+    }
+
+    function handleSelectHorario(proId, horarioId) {
+        setFlowData((prev) => ({
+            ...prev,
+            profesionalId: proId,
+            horarioId,
+        }));
+    }
+
+    function handleNextFromStep3() {
+        setFlowError('');
+        if (!flowData.profesionalId || !flowData.horarioId) {
+            setFlowError('Selecciona un profesional y un horario disponible.');
+            return;
+        }
+        setFlowStep(3);
+    }
+
+    async function handleConfirmarAgendamiento() {
+        setFlowError('');
+        setFlowSuccess('');
+
+        if (!flowData.profesionalId || !flowData.horarioId) {
+            setFlowError('Falta seleccionar profesional y horario.');
+            return;
+        }
+
+        try {
+            setFlowSubmitting(true);
+
+            const paciente = await crearPaciente({
+                nombreCompleto: flowData.nombreCompleto.trim(),
+                email: flowData.email.trim(),
+                telefono: flowData.telefono.replace(/\D/g, ''),
+            });
+
+            const motivo = `[Flujo paciente] [${flowData.tratamientoLabel}] ${flowData.rut} - ${flowData.nombreCompleto}`;
+
+            await crearReserva({
+                pacienteId: paciente.id,
+                profesionalId: flowData.profesionalId,
+                horarioDisponibleId: flowData.horarioId,
+                motivo,
+            });
+
+            await cargarInicial();
+            setFlowSuccess('Tu hora fue agendada correctamente.');
+            setFlowStep(0);
+            setFlowData({
+                nombreCompleto: '',
+                rut: '',
+                telefono: '',
+                email: '',
+                especialidad: '',
+                tratamientoId: '',
+                tratamientoLabel: '',
+                codigoFonasa: '',
+                valor: 0,
+                profesionalesIds: [],
+                profesionalId: '',
+                horarioId: '',
+                fechaSeleccionadaKey: '',
+            });
+        } catch (err) {
+            setFlowError(err.message || 'Error al confirmar la reserva.');
+        } finally {
+            setFlowSubmitting(false);
+        }
+    }
+
+    // ------------------ RENDER ------------------
+
+    return (
+        <div className="app-shell">
+            <header className="app-header">
+                <div className="app-header-left">
+                    <div className="logo-circle">C</div>
+                    <div>
+                        <div className="app-kicker">
+                            CISD · CENTRO INTEGRAL DE SALUD DREYSE
+                        </div>
+                        <h1 className="app-title">Agenda CISD</h1>
+                        <p className="app-subtitle">
+                            Panel interno de reservas para tu equipo clínico.
+                        </p>
+                    </div>
+                </div>
+                <div className="api-pill">
+                    API:{' '}
+                    <a href={API_BASE_URL} target="_blank" rel="noreferrer">
+                        {API_BASE_URL}
+                    </a>
+                </div>
+            </header>
+
+            <main className="app-main">
+                <div className="main-content">
+                    <div className="tabs">
+                        <button
+                            type="button"
+                            className={
+                                activeTab === 'panel' ? 'tab-btn tab-btn--active' : 'tab-btn'
+                            }
+                            onClick={() => setActiveTab('panel')}
+                        >
+                            Panel interno
+                        </button>
+                        <button
+                            type="button"
+                            className={
+                                activeTab === 'flujo' ? 'tab-btn tab-btn--active' : 'tab-btn'
+                            }
+                            onClick={() => setActiveTab('flujo')}
+                        >
+                            Flujo paciente
+                        </button>
+                    </div>
+
+                    {activeTab === 'panel' ? (
+                        <section className="panel-card">
+                            {/* CREAR RESERVA */}
+                            <div className="panel-section">
+                                <div className="panel-section-header">
+                                    <h2>Crear nueva reserva</h2>
+                                    <p>
+                                        Selecciona paciente, profesional y uno de sus horarios
+                                        disponibles.
+                                    </p>
+                                </div>
+
+                                {panelError && (
+                                    <div className="alert alert--error">{panelError}</div>
+                                )}
+                                {panelSuccess && (
+                                    <div className="alert">{panelSuccess}</div>
+                                )}
+
+                                <form className="reserva-form" onSubmit={handleCrearReservaPanel}>
+                                    <div className="form-grid">
+                                        <div className="form-field">
+                                            <label>Paciente</label>
+                                            <select
+                                                value={panelForm.pacienteId}
+                                                onChange={(e) =>
+                                                    handlePanelChange('pacienteId', e.target.value)
+                                                }
+                                            >
+                                                <option value="">Selecciona un paciente</option>
+                                                {pacientes.map((p) => (
+                                                    <option key={p.id} value={p.id}>
+                                                        {p.nombreCompleto}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="form-field">
+                                            <label>Profesional</label>
+                                            <select
+                                                value={panelForm.profesionalId}
+                                                onChange={(e) =>
+                                                    handlePanelChange('profesionalId', e.target.value)
+                                                }
+                                            >
+                                                <option value="">Selecciona un profesional</option>
+                                                {profesionales.map((p) => (
+                                                    <option key={p.id} value={p.id}>
+                                                        {p.nombreCompleto} · {p.especialidad}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="form-field">
+                                            <label>Horario</label>
+                                            <select
+                                                value={panelForm.horarioId}
+                                                onChange={(e) =>
+                                                    handlePanelChange('horarioId', e.target.value)
+                                                }
+                                                disabled={!panelForm.profesionalId}
+                                            >
+                                                <option value="">
+                                                    {panelForm.profesionalId
+                                                        ? 'Selecciona un horario disponible'
+                                                        : 'Selecciona primero un profesional'}
+                                                </option>
+                                                {(horariosPorProfesional[
+                                                    panelForm.profesionalId
+                                                        ? parseInt(panelForm.profesionalId, 10)
+                                                        : -1
+                                                ] || []
+                                                ).map((h) => (
+                                                    <option key={h.id} value={h.id}>
+                                                        {formatDateTime(h.fecha)}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="form-field">
+                                            <label>Motivo de consulta</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Ej: Consulta de seguimiento, evaluación inicial…"
+                                                value={panelForm.motivo}
+                                                onChange={(e) =>
+                                                    handlePanelChange('motivo', e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div style={{ marginTop: 10 }}>
+                                        <button
+                                            type="submit"
+                                            className="primary-btn"
+                                            disabled={panelSubmitting}
+                                        >
+                                            {panelSubmitting ? 'Creando reserva…' : 'Crear reserva'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            {/* LISTADO RESERVAS */}
+                            <div className="panel-section" style={{ marginTop: 16 }}>
+                                <div className="panel-section-header">
+                                    <h2>Reservas registradas</h2>
+                                    <p>
+                                        Revisa y administra las reservas agendadas. Incluye los
+                                        datos de contacto del paciente.
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    className="ghost-btn"
+                                    onClick={refrescarReservas}
+                                    disabled={loadingInicial}
+                                >
+                                    Actualizar
+                                </button>
+
+                                <div className="table-wrapper">
+                                    <table className="reservas-table">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Motivo</th>
+                                                <th>Paciente</th>
+                                                <th>Contacto paciente</th>
+                                                <th>Profesional</th>
+                                                <th>Especialidad</th>
+                                                <th>Fecha</th>
+                                                <th className="cell-actions">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {reservas.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={8}>No hay reservas registradas.</td>
+                                                </tr>
+                                            ) : (
+                                                reservas.map((r) => (
+                                                    <Fragment key={r.id}>
+                                                        <tr>
+                                                            <td>{r.id}</td>
+                                                            <td className="cell-motivo">{r.motivo}</td>
+                                                            <td>{r.pacienteNombre}</td>
+                                                            <td>
+                                                                {r.pacienteTelefono && (
+                                                                    <div>{r.pacienteTelefono}</div>
+                                                                )}
+                                                                {r.pacienteEmail && (
+                                                                    <div>{r.pacienteEmail}</div>
+                                                                )}
+                                                                {!r.pacienteTelefono &&
+                                                                    !r.pacienteEmail &&
+                                                                    '—'}
+                                                            </td>
+                                                            <td>{r.profesionalNombre}</td>
+                                                            <td>{r.especialidad}</td>
+                                                            <td>{formatDateTime(r.fecha)}</td>
+                                                            <td className="cell-actions">
+                                                                <button
+                                                                    type="button"
+                                                                    className="ghost-btn"
+                                                                    style={{ marginRight: 4 }}
+                                                                    onClick={() => handleAbrirReagendar(r)}
+                                                                >
+                                                                    Reagendar
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="danger-btn"
+                                                                    onClick={() => handleCancelarReserva(r.id)}
+                                                                    disabled={cancelandoId === r.id}
+                                                                >
+                                                                    {cancelandoId === r.id
+                                                                        ? 'Cancelando…'
+                                                                        : 'Cancelar'}
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+
+                                                        {reagendandoId === r.id && (
+                                                            <tr key={`${r.id}-reagendar`}>
+                                                                <td colSpan={8}>
+                                                                    <div
+                                                                        style={{
+                                                                            marginTop: 8,
+                                                                            padding: 10,
+                                                                            borderRadius: 10,
+                                                                            border: '1px solid var(--border-soft)',
+                                                                            backgroundColor: '#fafafa',
+                                                                            display: 'flex',
+                                                                            flexDirection: 'column',
+                                                                            gap: 8,
+                                                                        }}
+                                                                    >
+                                                                        <strong>Reagendar reserva #{r.id}</strong>
+                                                                        <div className="form-grid">
+                                                                            <div className="form-field">
+                                                                                <label>Nuevo horario</label>
+                                                                                <select
+                                                                                    value={reagendarHorarioId}
+                                                                                    onChange={(e) =>
+                                                                                        setReagendarHorarioId(
+                                                                                            e.target.value
+                                                                                        )
+                                                                                    }
+                                                                                >
+                                                                                    <option value="">
+                                                                                        Selecciona un nuevo horario
+                                                                                    </option>
+                                                                                    {horariosProfesionalReagendar.map(
+                                                                                        (h) => (
+                                                                                            <option
+                                                                                                key={h.id}
+                                                                                                value={h.id}
+                                                                                            >
+                                                                                                {formatDateTime(h.fecha)}
+                                                                                            </option>
+                                                                                        )
+                                                                                    )}
+                                                                                </select>
+                                                                            </div>
+                                                                        </div>
+                                                                        {reagendarError && (
+                                                                            <div className="alert alert--error">
+                                                                                {reagendarError}
+                                                                            </div>
+                                                                        )}
+                                                                        <div
+                                                                            style={{
+                                                                                display: 'flex',
+                                                                                justifyContent: 'flex-end',
+                                                                                gap: 8,
+                                                                            }}
+                                                                        >
+                                                                            <button
+                                                                                type="button"
+                                                                                className="ghost-btn"
+                                                                                onClick={handleCerrarReagendar}
+                                                                                disabled={reagendarLoading}
+                                                                            >
+                                                                                Cerrar
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                className="primary-btn"
+                                                                                onClick={() =>
+                                                                                    handleConfirmarReagendar(r)
+                                                                                }
+                                                                                disabled={reagendarLoading}
+                                                                            >
+                                                                                {reagendarLoading
+                                                                                    ? 'Guardando…'
+                                                                                    : 'Guardar cambios'}
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </Fragment>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </section>
+                    ) : (
+                        // ------------------ FLUJO PACIENTE ------------------
+                        <section className="panel-card">
+                            <div className="panel-section">
+                                <div className="panel-section-header">
+                                    <h2>Agenda tu hora</h2>
+                                    <p>
+                                        Completa tus datos, elige especialidad y modalidad de
+                                        atención y luego selecciona día, profesional y horario.
+                                    </p>
+                                </div>
+
+                                {/* TIMELINE */}
+                                <div className="steps-timeline">
+                                    <div className="steps-line-base">
+                                        <div
+                                            className="steps-line-fill"
+                                            style={{
+                                                width: `${(flowStep / (PASOS_FLUJO.length - 1)) * 100
+                                                    }%`,
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="steps-nodes">
+                                        {PASOS_FLUJO.map((_, idx) => {
+                                            const status =
+                                                idx === flowStep
+                                                    ? 'active'
+                                                    : idx < flowStep
+                                                        ? 'done'
+                                                        : '';
+                                            return (
+                                                <div
+                                                    key={idx}
+                                                    className={`steps-node${status ? ` steps-node--${status}` : ''
+                                                        }`}
+                                                >
+                                                    {idx + 1}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="steps-labels">
+                                        {PASOS_FLUJO.map((label, idx) => {
+                                            const status =
+                                                idx === flowStep
+                                                    ? 'active'
+                                                    : idx < flowStep
+                                                        ? 'done'
+                                                        : '';
+                                            return (
+                                                <div
+                                                    key={label}
+                                                    className={`steps-label${status ? ` steps-label--${status}` : ''
+                                                        }`}
+                                                >
+                                                    {label}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {flowError && (
+                                    <div className="alert alert--error">{flowError}</div>
+                                )}
+                                {flowSuccess && (
+                                    <div className="alert">{flowSuccess}</div>
+                                )}
+
+                                {/* CONTENIDO DE CADA PASO */}
+                                {flowStep === 0 && (
+                                    <div className="reserva-form">
+                                        <div className="form-grid">
+                                            <div className="form-field">
+                                                <label>Nombre completo</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Nombre Apellido"
+                                                    value={flowData.nombreCompleto}
+                                                    onChange={(e) =>
+                                                        updateFlow('nombreCompleto', e.target.value)
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="form-field">
+                                                <label>RUT</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="12.345.678-9"
+                                                    value={flowData.rut}
+                                                    onChange={(e) =>
+                                                        updateFlow('rut', formatearRut(e.target.value))
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="form-field">
+                                                <label>Teléfono</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="9 1234 5678"
+                                                    value={flowData.telefono}
+                                                    onChange={(e) =>
+                                                        updateFlow(
+                                                            'telefono',
+                                                            formatearTelefono(e.target.value),
+                                                        )
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="form-field">
+                                                <label>Correo electrónico</label>
+                                                <input
+                                                    type="email"
+                                                    placeholder="correo@dominio.cl"
+                                                    value={flowData.email}
+                                                    onChange={(e) =>
+                                                        updateFlow('email', e.target.value)
+                                                    }
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="step-actions">
+                                            <button
+                                                type="button"
+                                                className="primary-btn"
+                                                onClick={handleNextFromStep1}
+                                            >
+                                                Continuar a especialidad
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {flowStep === 1 && (
+                                    <div className="reserva-form">
+                                        <div className="form-grid">
+                                            <div className="form-field">
+                                                <label>Especialidad</label>
+                                                <select
+                                                    value={flowData.especialidad}
+                                                    onChange={(e) =>
+                                                        updateFlow('especialidad', e.target.value)
+                                                    }
+                                                >
+                                                    <option value="">Selecciona especialidad</option>
+                                                    {especialidadesDisponibles.map((esp) => (
+                                                        <option key={esp} value={esp}>
+                                                            {esp}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="form-field">
+                                                <label>Modalidad / Tratamiento</label>
+                                                <select
+                                                    value={flowData.tratamientoId}
+                                                    onChange={(e) => {
+                                                        const id = e.target.value;
+                                                        const trat = TRATAMIENTOS.find(
+                                                            (t) => t.id === id
+                                                        );
+                                                        updateFlow('tratamientoId', id);
+                                                        if (trat) {
+                                                            setFlowData((prev) => ({
+                                                                ...prev,
+                                                                tratamientoLabel: trat.tratamiento,
+                                                                codigoFonasa: trat.codigoFonasa,
+                                                                valor: trat.valor,
+                                                                profesionalesIds: trat.profesionalesIds,
+                                                                profesionalId: '',
+                                                                horarioId: '',
+                                                                fechaSeleccionadaKey: '',
+                                                            }));
+                                                        }
+                                                    }}
+                                                >
+                                                    <option value="">
+                                                        Selecciona modalidad de atención
+                                                    </option>
+                                                    {tratamientosFiltrados.map((t) => (
+                                                        <option key={t.id} value={t.id}>
+                                                            {t.tratamiento}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="step-actions">
+                                            <button
+                                                type="button"
+                                                className="ghost-btn"
+                                                onClick={() => setFlowStep(0)}
+                                            >
+                                                Volver
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="primary-btn"
+                                                onClick={() => {
+                                                    handleNextFromStep2();
+                                                    if (!flowError) {
+                                                        handleEnterStep3().catch(console.error);
+                                                    }
+                                                }}
+                                            >
+                                                Ver agenda disponible
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {flowStep === 2 && (
+                                    <div className="reserva-form">
+                                        <div className="summary-card">
+                                            <div className="summary-row">
+                                                <span className="summary-label">Especialidad:</span>
+                                                <span className="summary-value">
+                                                    {flowData.especialidad || '—'}
+                                                </span>
+                                            </div>
+                                            <div className="summary-row">
+                                                <span className="summary-label">
+                                                    Tratamiento:
+                                                </span>
+                                                <span className="summary-value">
+                                                    {flowData.tratamientoLabel || '—'}
+                                                </span>
+                                            </div>
+                                            <div className="summary-row">
+                                                <span className="summary-label">
+                                                    Modalidad / valor:
+                                                </span>
+                                                <span className="summary-value">
+                                                    {flowData.valor
+                                                        ? `Online · $${flowData.valor.toLocaleString(
+                                                            'es-CL'
+                                                        )}`
+                                                        : '—'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="step-3-layout" style={{ marginTop: 12 }}>
+                                            <div>
+                                                <div className="dia-selector-title">
+                                                    Selecciona día
+                                                </div>
+                                                <div className="day-strip">
+                                                    {diasDisponiblesFlujo.map((d) => (
+                                                        <button
+                                                            key={d.key}
+                                                            type="button"
+                                                            className={`day-chip${flowData.fechaSeleccionadaKey === d.key
+                                                                    ? ' day-chip--active'
+                                                                    : ''
+                                                                }`}
+                                                            onClick={() => handleSelectDia(d.key)}
+                                                        >
+                                                            <span className="day-chip-weekday">
+                                                                {formatShortDay(d.isoEjemplo)}
+                                                            </span>
+                                                            <span className="day-chip-date">
+                                                                {formatShortDate(d.isoEjemplo)}
+                                                            </span>
+                                                        </button>
+                                                    ))}
+                                                    {diasDisponiblesFlujo.length === 0 && (
+                                                        <span style={{ fontSize: '0.8rem' }}>
+                                                            No hay horarios configurados para esta
+                                                            prestación.
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="profesionales-block">
+                                                <div className="profesionales-title">
+                                                    Profesionales y horarios
+                                                </div>
+                                                <div className="profesionales-grid">
+                                                    {flowData.profesionalesIds.map((proId) => {
+                                                        const prof = profesionales.find(
+                                                            (p) => p.id === proId
+                                                        );
+                                                        const hs =
+                                                            horariosFiltradosFlujo[proId] || [];
+                                                        if (!prof) return null;
+                                                        return (
+                                                            <div
+                                                                key={proId}
+                                                                className="profesional-card"
+                                                            >
+                                                                <div className="profesional-header">
+                                                                    <div className="pro-avatar">
+                                                                        {prof.nombreCompleto
+                                                                            .split(' ')
+                                                                            .map((w) => w[0])
+                                                                            .join('')
+                                                                            .slice(0, 2)
+                                                                            .toUpperCase()}
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="pro-info-main">
+                                                                            {prof.nombreCompleto}
+                                                                        </div>
+                                                                        <div className="pro-info-sub">
+                                                                            {prof.especialidad}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="pro-times">
+                                                                    {hs.length === 0 ? (
+                                                                        <span
+                                                                            style={{ fontSize: '0.75rem' }}
+                                                                        >
+                                                                            Sin horarios en este día.
+                                                                        </span>
+                                                                    ) : (
+                                                                        hs.map((h) => (
+                                                                            <button
+                                                                                key={h.id}
+                                                                                type="button"
+                                                                                className={`pro-time-chip${flowData.horarioId === h.id &&
+                                                                                        flowData.profesionalId ===
+                                                                                        proId
+                                                                                        ? ' pro-time-chip--active'
+                                                                                        : ''
+                                                                                    }`}
+                                                                                onClick={() =>
+                                                                                    handleSelectHorario(
+                                                                                        proId,
+                                                                                        h.id
+                                                                                    )
+                                                                                }
+                                                                            >
+                                                                                {new Date(
+                                                                                    h.fecha
+                                                                                ).toLocaleTimeString('es-CL', {
+                                                                                    hour: '2-digit',
+                                                                                    minute: '2-digit',
+                                                                                })}
+                                                                            </button>
+                                                                        ))
+                                                                    )}
+                                                                </div>
+                                                                <div className="pro-footer">
+                                                                    Horas disponibles este día:{' '}
+                                                                    {hs.length}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="step-actions">
+                                            <button
+                                                type="button"
+                                                className="ghost-btn"
+                                                onClick={() => setFlowStep(1)}
+                                            >
+                                                Volver
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="primary-btn"
+                                                onClick={handleNextFromStep3}
+                                            >
+                                                Ir a resumen
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {flowStep === 3 && (
+                                    <div className="reserva-form">
+                                        <div className="summary-grid">
+                                            <div className="summary-card">
+                                                <div className="summary-title">
+                                                    Datos personales
+                                                </div>
+                                                <div className="summary-row">
+                                                    <span className="summary-label">
+                                                        Nombre:
+                                                    </span>
+                                                    <span className="summary-value">
+                                                        {flowData.nombreCompleto || '—'}
+                                                    </span>
+                                                </div>
+                                                <div className="summary-row">
+                                                    <span className="summary-label">RUT:</span>
+                                                    <span className="summary-value">
+                                                        {flowData.rut || '—'}
+                                                    </span>
+                                                </div>
+                                                <div className="summary-row">
+                                                    <span className="summary-label">
+                                                        Teléfono:
+                                                    </span>
+                                                    <span className="summary-value">
+                                                        {flowData.telefono || '—'}
+                                                    </span>
+                                                </div>
+                                                <div className="summary-row">
+                                                    <span className="summary-label">
+                                                        Correo:
+                                                    </span>
+                                                    <span className="summary-value">
+                                                        {flowData.email || '—'}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="summary-card">
+                                                <div className="summary-title">
+                                                    Detalle de la cita
+                                                </div>
+                                                <div className="summary-row">
+                                                    <span className="summary-label">
+                                                        Especialidad:
+                                                    </span>
+                                                    <span className="summary-value">
+                                                        {flowData.especialidad || '—'}
+                                                    </span>
+                                                </div>
+                                                <div className="summary-row">
+                                                    <span className="summary-label">
+                                                        Tratamiento:
+                                                    </span>
+                                                    <span className="summary-value">
+                                                        {flowData.tratamientoLabel || '—'}
+                                                    </span>
+                                                </div>
+                                                <div className="summary-row">
+                                                    <span className="summary-label">
+                                                        Código Fonasa:
+                                                    </span>
+                                                    <span className="summary-value">
+                                                        {flowData.codigoFonasa || '—'}
+                                                    </span>
+                                                </div>
+                                                <div className="summary-row">
+                                                    <span className="summary-label">
+                                                        Profesional:
+                                                    </span>
+                                                    <span className="summary-value">
+                                                        {(() => {
+                                                            const p = profesionales.find(
+                                                                (x) => x.id === flowData.profesionalId
+                                                            );
+                                                            return p?.nombreCompleto || '—';
+                                                        })()}
+                                                    </span>
+                                                </div>
+                                                <div className="summary-row">
+                                                    <span className="summary-label">
+                                                        Fecha / hora:
+                                                    </span>
+                                                    <span className="summary-value">
+                                                        {(() => {
+                                                            const proId = flowData.profesionalId;
+                                                            const horarios =
+                                                                flowHorariosPorProfesional[proId] || [];
+                                                            const h = horarios.find(
+                                                                (x) => x.id === flowData.horarioId
+                                                            );
+                                                            return h ? formatDateTime(h.fecha) : '—';
+                                                        })()}
+                                                    </span>
+                                                </div>
+                                                <div className="summary-row">
+                                                    <span className="summary-label">Valor:</span>
+                                                    <span className="summary-value">
+                                                        {flowData.valor
+                                                            ? `$${flowData.valor.toLocaleString(
+                                                                'es-CL'
+                                                            )}`
+                                                            : '—'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <p className="muted-text">
+                                            En el siguiente paso podrás integrar una pasarela de
+                                            pago para confirmar tu reserva automáticamente.
+                                        </p>
+
+                                        <div className="step-actions">
+                                            <button
+                                                type="button"
+                                                className="ghost-btn"
+                                                onClick={() => setFlowStep(2)}
+                                                disabled={flowSubmitting}
+                                            >
+                                                Volver
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="primary-btn"
+                                                onClick={handleConfirmarAgendamiento}
+                                                disabled={flowSubmitting}
+                                            >
+                                                {flowSubmitting
+                                                    ? 'Confirmando…'
+                                                    : 'Confirmar agendamiento'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+                    )}
+                </div>
+            </main>
+        </div>
+    );
 }
 
 export default App;

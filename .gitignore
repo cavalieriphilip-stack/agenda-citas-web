@@ -25,3 +25,4 @@ dist-ssr
 
 # Env local (no se sube)
 .env
+.vs/

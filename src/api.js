@@ -1,116 +1,76 @@
 // src/api.js
-// Helper centralizado para hablar con la API de agenda (back en Render o localhost)
+// Cliente HTTP simple para la API de Agenda CISD
 
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+    import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 async function apiFetch(path, options = {}) {
-  const url = `${API_BASE_URL}${path}`;
-
-  const config = {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-    ...options,
-  };
-
-  try {
-    const res = await fetch(url, config);
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+        headers: {
+            'Content-Type': 'application/json',
+            ...(options.headers || {}),
+        },
+        ...options,
+    });
 
     if (!res.ok) {
-      let errorBody = '';
-      try {
-        errorBody = await res.text();
-      } catch {
-        // ignore
-      }
-      const message =
-        errorBody || `Error ${res.status} al llamar a ${path}`;
-      throw new Error(message);
+        const text = await res.text();
+        let msg = text || `Error ${res.status} en ${path}`;
+        try {
+            const parsed = JSON.parse(text);
+            if (parsed?.message) msg = parsed.message;
+        } catch (_) {
+            // texto plano, no pasa nada
+        }
+        throw new Error(msg);
     }
 
-    // Algunos endpoints (DELETE) devuelven sólo mensaje
-    const text = await res.text();
-    if (!text) return null;
-    try {
-      return JSON.parse(text);
-    } catch {
-      return text;
-    }
-  } catch (err) {
-    console.error('apiFetch error', err);
-    throw err;
-  }
+    if (res.status === 204) return null;
+    return res.json();
 }
 
-// ------- ENDPOINTS ESPECÍFICOS -------
-
-// Salud
-export function getStatus() {
-  return apiFetch('/status');
-}
-
-// Reservas
-export function getReservasDetalle() {
-  return apiFetch('/reservas/detalle');
-}
-
-export function createReserva(data) {
-  return apiFetch('/reservas', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export function deleteReserva(id) {
-  return apiFetch(`/reservas/${id}`, {
-    method: 'DELETE',
-  });
-}
-
-// Pacientes
+// PACIENTES
 export function getPacientes() {
-  return apiFetch('/pacientes');
+    return apiFetch('/pacientes');
 }
 
-export function createPaciente(data) {
-  return apiFetch('/pacientes', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+export function crearPaciente(data) {
+    return apiFetch('/pacientes', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
 }
 
-// Profesionales
+// PROFESIONALES / HORARIOS
 export function getProfesionales() {
-  return apiFetch('/profesionales');
+    return apiFetch('/profesionales');
 }
 
-export function getHorariosByProfesionalId(id) {
-  return apiFetch(`/profesionales/${id}/horarios`);
+export function getHorariosByProfesional(id) {
+    return apiFetch(`/profesionales/${id}/horarios`);
 }
 
-// Helper: intenta reutilizar paciente por email si existe
-export async function ensurePaciente({ nombreCompleto, email, telefono }) {
-  const lista = await getPacientes();
+// RESERVAS
+export function getReservasDetalle() {
+    return apiFetch('/reservas/detalle');
+}
 
-  const existente =
-    email &&
-    Array.isArray(lista) &&
-    lista.find(
-      (p) =>
-        typeof p.email === 'string' &&
-        p.email.toLowerCase() === email.toLowerCase(),
-    );
+export function crearReserva(data) {
+    return apiFetch('/reservas', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+}
 
-  if (existente) return existente;
+export function cancelarReserva(id) {
+    return apiFetch(`/reservas/${id}`, {
+        method: 'DELETE',
+    });
+}
 
-  const creado = await createPaciente({
-    nombreCompleto,
-    email: email || null,
-    telefono: telefono || null,
-  });
-
-  return creado;
+export function reagendarReserva(id, nuevoHorarioDisponibleId) {
+    return apiFetch(`/reservas/${id}/reagendar`, {
+        method: 'PUT',
+        body: JSON.stringify({ nuevoHorarioDisponibleId }),
+    });
 }
