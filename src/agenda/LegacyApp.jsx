@@ -1,4 +1,4 @@
-﻿// src/LegacyApp.jsx
+// src/LegacyApp.jsx
 import { useEffect, useMemo, useState, Fragment } from "react";
 import "./App.css";
 import {
