@@ -1,13 +1,14 @@
-// src/api.js
-// Detecta automáticamente la URL del backend (Nube vs Local)
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// src/api.js - V27 (CONEXIÓN FORZADA A LA NUBE)
+
+// 👇 AQUÍ ESTABA EL ERROR. Usaremos tu URL real de Render que vi en tus fotos.
+// NOTA: No le pongas la barra "/" al final.
+export const API_BASE_URL = 'https://agenda-citas-ienp.onrender.com';
 
 export async function getPacientes() {
     const res = await fetch(`${API_BASE_URL}/pacientes`);
     return await res.json();
 }
 
-// BUSCAR POR RUT
 export async function buscarPacientePorRut(rut) {
     const rutLimpio = encodeURIComponent(rut); 
     const res = await fetch(`${API_BASE_URL}/pacientes/buscar/${rutLimpio}`);
