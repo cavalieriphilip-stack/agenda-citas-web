@@ -8,7 +8,7 @@ import {
     buscarPacientePorRut
 } from './api';
 
-// DATA MAESTRA
+// --- DATA MAESTRA ---
 const TRATAMIENTOS = [
     { id: 1, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto online', valor: 20000 },
     { id: 2, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto presencial', valor: 35000 },
@@ -54,8 +54,6 @@ const fmtMoney = (v) => `$${v.toLocaleString('es-CL')}`;
 const fmtDate = (iso) => iso ? new Date(iso).toLocaleString('es-CL', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
 const toDateKey = (iso) => { 
     if(!iso) return '';
-    // Fix zona horaria para visualizacion:
-    // Cortamos el string ISO en la T para obtener YYYY-MM-DD puro sin conversión horaria
     return iso.split('T')[0]; 
 };
 const formatRut = (rut) => rut.replace(/[^0-9kK]/g, '').toUpperCase();
@@ -130,6 +128,179 @@ function DashboardContent({ module, view }) {
 
 // ---------------------- SUBVISTAS ADMIN ----------------------
 
+function AgendaNuevaReserva({ reload, reservas }) {
+    const [pacientes, setPacientes] = useState([]);
+    const [pros, setPros] = useState([]);
+    const [horarios, setHorarios] = useState([]);
+    const [form, setForm] = useState({ pacienteId: '', profesionalId: '', horarioId: '', motivo: '', especialidad: '', tratamientoId: '' });
+
+    useEffect(() => { getPacientes().then(setPacientes); getProfesionales().then(setPros); }, []);
+
+    const especialidades = [...new Set(TRATAMIENTOS.map(t => t.especialidad))];
+    const prestaciones = TRATAMIENTOS.filter(t => t.especialidad === form.especialidad);
+
+    const prosFiltrados = form.tratamientoId
+        ? pros.filter(p => {
+            const trat = TRATAMIENTOS.find(x => x.id === parseInt(form.tratamientoId));
+            return trat && p.tratamientos && p.tratamientos.includes(trat.tratamiento);
+        })
+        : [];
+
+    const handlePro = async (pid) => {
+        setForm({ ...form, profesionalId: pid });
+        setHorarios([]);
+        if (!pid || pid === "") return; 
+        try {
+            const h = await getHorariosByProfesional(pid);
+            if (Array.isArray(h)) { setHorarios(h); } else { setHorarios([]); }
+        } catch(e) { setHorarios([]); }
+    }
+
+    const save = async (e) => {
+        e.preventDefault();
+        if (!form.tratamientoId) return alert("Tratamiento obligatorio");
+        const trat = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId));
+        try {
+            await crearReserva({ pacienteId: parseInt(form.pacienteId), profesionalId: parseInt(form.profesionalId), horarioDisponibleId: form.horarioId, motivo: trat.tratamiento });
+            alert('Creada con éxito'); reload();
+        } catch (e) { alert('Error al crear reserva'); }
+    };
+
+    return (
+        <div>
+            <div className="page-header"><div className="page-title"><h1>Nueva Reserva Manual</h1></div></div>
+            <div className="pro-card">
+                <form onSubmit={save}>
+                    <div className="input-row">
+                        <div>
+                            <label className="form-label">Especialidad</label>
+                            <select className="form-control" value={form.especialidad} onChange={e => setForm({ ...form, especialidad: e.target.value, tratamientoId: '' })}>
+                                <option value="">Seleccionar...</option>{especialidades.map(e => <option key={e} value={e}>{e}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="form-label">Tratamiento</label>
+                            <select className="form-control" disabled={!form.especialidad} onChange={e => setForm({ ...form, tratamientoId: e.target.value })}>
+                                <option value="">Seleccionar...</option>{prestaciones.map(t => <option key={t.id} value={t.id}>{t.tratamiento}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="input-row">
+                        <div>
+                            <label className="form-label">Paciente</label>
+                            <select className="form-control" onChange={e => setForm({ ...form, pacienteId: e.target.value })}>
+                                <option value="">Seleccionar...</option>{pacientes.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto} ({p.rut})</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="form-label">Profesional</label>
+                            <select className="form-control" disabled={!form.tratamientoId} onChange={e => handlePro(e.target.value)}>
+                                <option value="">Seleccionar...</option>{prosFiltrados.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <div style={{ marginBottom: 20 }}>
+                        <label className="form-label">Horario</label>
+                        <select className="form-control" onChange={e => setForm({ ...form, horarioId: e.target.value })}>
+                            <option value="">Seleccionar...</option>
+                            {Array.isArray(horarios) && horarios.map(h => <option key={h.id} value={h.id}>{fmtDate(h.fecha)}</option>)}
+                        </select>
+                    </div>
+                    <button className="btn-primary">Crear Reserva</button>
+                </form>
+            </div>
+            <h3 style={{ marginTop: 40 }}>Reservas Recientes</h3>
+            <div className="pro-card" style={{ padding: 0 }}>
+                <table className="data-table">
+                    <thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th></tr></thead>
+                    <tbody>
+                        {reservas.slice(0, 5).map(r => (<tr key={r.id}><td>{fmtDate(r.fecha)}</td><td>{r.pacienteNombre}</td><td>{r.profesionalNombre}</td></tr>))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    )
+}
+
+function AgendaResumen({reservas, reload}){
+    const [editId,setEditId]=useState(null);
+    const [editPro,setEditPro]=useState('');
+    const [editHorario,setEditHorario]=useState('');
+    const [editTratamiento, setEditTratamiento] = useState('');
+    const [pros,setPros]=useState([]);
+    const [horarios,setHorarios]=useState([]);
+
+    useEffect(()=>{getProfesionales().then(setPros)},[]);
+
+    const startEdit=async(r)=>{
+        setEditId(r.id);
+        setEditPro(r.profesionalId);
+        setEditTratamiento(r.motivo);
+        const h=await getHorariosByProfesional(r.profesionalId);
+        setHorarios(Array.isArray(h) ? h : []);
+    };
+
+    const handleProChange=async(pid)=>{
+        setEditPro(pid);
+        setEditTratamiento(''); 
+        const h=await getHorariosByProfesional(pid);
+        setHorarios(Array.isArray(h) ? h : []);
+    };
+
+    const saveEdit=async(id)=>{
+        if(!editHorario) return alert('Selecciona hora');
+        try{
+            await reagendarReserva(id, editHorario, editPro, editTratamiento);
+            alert('Modificado con éxito');
+            setEditId(null);
+            reload();
+        }catch(e){alert('Error al modificar')}
+    };
+
+    return (
+        <div>
+            <div className="page-header"><div className="page-title"><h1>Resumen de Agendamientos</h1></div></div>
+            <div className="pro-card" style={{padding:0, overflowX:'auto'}}>
+                <table className="data-table">
+                    <thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th><th>Tratamiento</th><th>Valor</th><th>Acciones</th></tr></thead>
+                    <tbody>{reservas.map(r=>{
+                        const match=TRATAMIENTOS.find(t=>r.motivo.includes(t.tratamiento));
+                        const valor = match ? match.valor : 0;
+
+                        if(editId===r.id) return (
+                            <tr key={r.id} style={{background:'#fdf2f8'}}>
+                                <td colSpan={5}>
+                                    <div style={{display:'flex', flexDirection:'column', gap:10}}>
+                                        <div style={{display:'flex', gap:10}}>
+                                            <select className="form-control" value={editPro} onChange={e=>handleProChange(e.target.value)}>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select>
+                                            <select className="form-control" value={editHorario} onChange={e=>setEditHorario(e.target.value)}><option value="">Selecciona hora...</option>{horarios.map(h=><option key={h.id} value={h.id}>{fmtDate(h.fecha)}</option>)}</select>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><button className="btn-primary" onClick={()=>saveEdit(r.id)}>Guardar</button><button className="btn-edit" onClick={()=>setEditId(null)}>X</button></td>
+                            </tr>
+                        );
+
+                        return(
+                            <tr key={r.id}>
+                                <td>{fmtDate(r.fecha)}</td>
+                                <td><strong>{r.pacienteNombre}</strong><br/><small>{r.pacienteEmail}</small></td>
+                                <td>{r.profesionalNombre}</td>
+                                <td>{r.motivo}</td>
+                                <td>{fmtMoney(valor)}</td>
+                                <td>
+                                    <button className="btn-edit" onClick={()=>startEdit(r)} style={{marginRight:5}}>Modificar</button>
+                                    <button className="btn-danger" onClick={async()=>{if(confirm('¿Eliminar?')){await cancelarReserva(r.id);reload()}}}>Eliminar</button>
+                                </td>
+                            </tr>
+                        )
+                    })}</tbody>
+                </table>
+            </div>
+        </div>
+    )
+}
+
 function AgendaPacientes(){
     const [pacientes,setPacientes]=useState([]);
     const [form,setForm]=useState({nombreCompleto:'',email:'',telefono:'', rut:''});
@@ -196,7 +367,6 @@ function AgendaPacientes(){
                     <thead><tr><th>RUT</th><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Acciones</th></tr></thead>
                     <tbody>{pacientes.map(p=>(
                         <tr key={p.id}>
-                            {/* AQUÍ ESTABA EL ERROR: MOSTRAR p.rut */}
                             <td>{p.rut || '-'}</td>
                             <td>{p.nombreCompleto}</td>
                             <td>{p.email}</td>
@@ -249,9 +419,7 @@ function AgendaProfesionales() {
                 body:JSON.stringify(payload)
             });
             
-            if (res.status === 409) {
-                return alert("Error: El profesional ya existe.");
-            }
+            if (res.status === 409) return alert("Error: El profesional ya existe.");
             if (!res.ok) throw new Error();
 
             alert('Profesional Guardado'); 
@@ -310,8 +478,7 @@ function AgendaProfesionales() {
                                 <td>{p.especialidad}</td>
                                 <td>
                                     <ul style={{margin:0, paddingLeft:20, fontSize:'0.8rem', color:'#666'}}>
-                                        {/* FIX: Leer string tratamientos */}
-                                        {p.tratamientos && p.tratamientos.length > 0 ? p.tratamientos.split(',').map((t, idx) => (
+                                        {p.tratamientos ? p.tratamientos.split(',').map((t, idx) => (
                                             <li key={idx}>{t}</li>
                                         )) : <li>Sin tratamientos asignados</li>}
                                     </ul>
@@ -353,9 +520,7 @@ function AgendaHorarios(){
     const handleFechaChange = (e) => {
         const fecha = e.target.value; setFechaSel(fecha);
         if (fecha) {
-            // FIX: No usar objeto Date para diaNombre para evitar UTC shifts visuales
             const parts = fecha.split('-'); // YYYY-MM-DD
-            // Truco: instanciar con horas para asegurar dia correcto
             const dateObj = new Date(parts[0], parts[1]-1, parts[2]);
             const diaIndex = dateObj.getDay(); 
             const nombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -368,7 +533,6 @@ function AgendaHorarios(){
         e.preventDefault();
         if(!form.profesionalId || !fechaSel) return alert("Selecciona profesional y fecha"); 
         
-        // Enviamos la fecha tal cual viene del input date (YYYY-MM-DD)
         const payload = { ...form, fecha: fechaSel }; 
         await fetch(`${API_BASE_URL}/configuracion`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
         
@@ -388,8 +552,8 @@ function AgendaHorarios(){
         try {
             const h = await getHorariosByProfesional(p.id);
             if(Array.isArray(h)) {
-                // Agrupar
                 const agrupados = h.reduce((acc, curr) => {
+                    // Usamos ID (fecha ISO) para agrupar visualmente pero solo la parte YYYY-MM-DD
                     const f = curr.fecha.split('T')[0];
                     if(!acc[f]) acc[f] = [];
                     acc[f].push(curr);
@@ -465,7 +629,6 @@ function AgendaHorarios(){
                 </table>
             </div>
 
-            {/* --- PORTAL PARA EL POPUP --- */}
             {modalOpen && createPortal(
                 <div className="modal-overlay">
                     <div className="modal-content">
@@ -475,7 +638,7 @@ function AgendaHorarios(){
                             {Object.keys(horariosVisual).length === 0 ? <p>No hay horarios cargados.</p> : 
                                 Object.entries(horariosVisual).sort().map(([fecha, slots]) => (
                                     <div key={fecha} style={{marginBottom:15, borderBottom:'1px solid #eee', paddingBottom:10}}>
-                                        {/* Fix visualizacion fecha */}
+                                        {/* Fix visualización */}
                                         <strong style={{display:'block', marginBottom:5}}>{new Date(fecha + 'T00:00:00').toLocaleDateString('es-CL', {weekday:'long', day:'numeric', month:'long'})}</strong>
                                         <div style={{display:'flex', gap:5, flexWrap:'wrap'}}>
                                             {slots.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).map(s => (
@@ -496,9 +659,41 @@ function AgendaHorarios(){
     )
 }
 
-function AgendaNuevaReserva({ reload, reservas }) { return <div style={{padding:20}}>Vista Nueva Reserva (Simplificada)</div> }
-function AgendaResumen({reservas, reload}){ return <div style={{padding:20}}>Vista Resumen (Simplificada)</div> } 
-function FinanzasReporte({total,count,reservas}){ return <div style={{padding:20}}>Vista Finanzas (Simplificada)</div> }
+function FinanzasReporte({total,count,reservas}){
+    return(
+        <div>
+            <div className="page-header"><div className="page-title"><h1>Reporte Financiero</h1></div></div>
+            <div className="kpi-grid">
+                <div className="kpi-box">
+                    <div className="kpi-label">Ingresos Totales</div>
+                    <div className="kpi-value">{fmtMoney(total)}</div>
+                </div>
+                <div className="kpi-box">
+                    <div className="kpi-label">Citas Agendadas</div>
+                    <div className="kpi-value">{count}</div>
+                </div>
+            </div>
+            <div className="pro-card" style={{padding:0}}>
+                <table className="data-table">
+                    <thead><tr><th>Fecha</th><th>Paciente</th><th>Tratamiento</th><th>Valor</th></tr></thead>
+                    <tbody>
+                        {reservas.map(r=>{
+                            const match=TRATAMIENTOS.find(t=>r.motivo.includes(t.tratamiento));
+                            return(
+                                <tr key={r.id}>
+                                    <td>{fmtDate(r.fecha)}</td>
+                                    <td>{r.pacienteNombre}</td>
+                                    <td>{r.motivo}</td>
+                                    <td><b>{match?fmtMoney(match.valor):'-'}</b></td>
+                                </tr>
+                            )
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    )
+}
 
 // =========================================================
 // WEB PACIENTE (ESTILO REDSALUD)
@@ -511,7 +706,6 @@ function WebPaciente() {
     const [bookingSuccess, setBookingSuccess] = useState(false);
     const [pacienteId, setPacienteId] = useState(null);
     
-    // ESTADO PARA LA VISTA DE AGENDAS TIPO REDSALUD
     const [multiAgenda, setMultiAgenda] = useState({}); 
     const [selectedDateKey, setSelectedDateKey] = useState(null); 
     const [availableDates, setAvailableDates] = useState([]); 
@@ -547,7 +741,7 @@ function WebPaciente() {
 
         results.forEach(({profesional, slots}) => {
             slots.forEach(slot => {
-                const dateKey = toDateKey(slot.fecha); // Usamos el helper YYYY-MM-DD
+                const dateKey = toDateKey(slot.fecha);
                 datesSet.add(dateKey);
                 if (!agendaMap[dateKey]) agendaMap[dateKey] = [];
                 let proEntry = agendaMap[dateKey].find(entry => entry.profesional.id === profesional.id);
@@ -670,7 +864,6 @@ function WebPaciente() {
                             <>
                                 <div className="rs-date-tabs">
                                     {availableDates.map(dateStr => {
-                                        // Fix visualización tabs
                                         const dateObj = new Date(dateStr + 'T00:00:00');
                                         return (
                                             <div key={dateStr} className={`rs-date-tab ${selectedDateKey === dateStr ? 'selected' : ''}`} onClick={() => setSelectedDateKey(dateStr)}>

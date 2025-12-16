@@ -1,7 +1,4 @@
-// src/api.js - V27 (CONEXIÓN FORZADA A LA NUBE)
-
-// 👇 AQUÍ ESTABA EL ERROR. Usaremos tu URL real de Render que vi en tus fotos.
-// NOTA: No le pongas la barra "/" al final.
+// src/api.js
 export const API_BASE_URL = 'https://agenda-citas-ienp.onrender.com';
 
 export async function getPacientes() {
