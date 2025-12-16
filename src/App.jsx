@@ -5,7 +5,7 @@ import {
     API_BASE_URL, getPacientes, getProfesionales, getHorariosByProfesional,
     getReservasDetalle, crearReserva, crearPaciente, cancelarReserva, reagendarReserva,
     updatePaciente, deletePaciente, getConfiguraciones, deleteConfiguracion,
-    buscarPacientePorRut
+    buscarPacientePorRut, updateProfesional, deleteProfesional
 } from './api';
 
 // --- DATA MAESTRA ---
@@ -385,49 +385,99 @@ function AgendaPacientes(){
 
 function AgendaProfesionales() {
     const [pros, setPros] = useState([]);
-    const [form, setForm] = useState({nombreCompleto:'', especialidad:''});
-    const [selectedTreatments, setSelectedTreatments] = useState([]);
-    
+    // Formulario ahora maneja Arrays para especialidades y tratamientos
+    const [form, setForm] = useState({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] });
+    const [isEditing, setIsEditing] = useState(false);
+
     const especialidadesUnicas = [...new Set(TRATAMIENTOS.map(t => t.especialidad))];
-    const tratamientosDisponibles = form.especialidad ? TRATAMIENTOS.filter(t => t.especialidad === form.especialidad) : [];
+    
+    // Filtrar tratamientos basado en TODAS las especialidades seleccionadas
+    const tratamientosDisponibles = TRATAMIENTOS.filter(t => 
+        form.especialidades.includes(t.especialidad)
+    );
 
     const load = () => getProfesionales().then(setPros);
     useEffect(() => { load(); }, []);
 
-    const handleCheck = (tratamiento) => {
-        if (selectedTreatments.includes(tratamiento)) {
-            setSelectedTreatments(selectedTreatments.filter(t => t !== tratamiento));
+    // Manejo de Checkbox Especialidades
+    const handleSpecCheck = (esp) => {
+        if (form.especialidades.includes(esp)) {
+            // Si ya está, lo quitamos y también limpiamos los tratamientos de esa especialidad
+            const nuevasEsp = form.especialidades.filter(e => e !== esp);
+            const tratamientosMantener = form.tratamientos.filter(t => {
+                const match = TRATAMIENTOS.find(tr => tr.tratamiento === t);
+                return match && nuevasEsp.includes(match.especialidad);
+            });
+            setForm({ ...form, especialidades: nuevasEsp, tratamientos: tratamientosMantener });
         } else {
-            setSelectedTreatments([...selectedTreatments, tratamiento]);
+            // Si no está, lo agregamos
+            setForm({ ...form, especialidades: [...form.especialidades, esp] });
         }
+    };
+
+    // Manejo de Checkbox Tratamientos
+    const handleTratCheck = (trat) => {
+        if (form.tratamientos.includes(trat)) {
+            setForm({ ...form, tratamientos: form.tratamientos.filter(t => t !== trat) });
+        } else {
+            setForm({ ...form, tratamientos: [...form.tratamientos, trat] });
+        }
+    };
+
+    // Cargar datos para editar
+    const handleEdit = (p) => {
+        setForm({
+            id: p.id,
+            nombreCompleto: p.nombreCompleto,
+            // Convertimos los strings guardados "A,B" en arrays ["A","B"]
+            especialidades: p.especialidad ? p.especialidad.split(',') : [],
+            tratamientos: p.tratamientos ? p.tratamientos.split(',') : []
+        });
+        setIsEditing(true);
+        window.scrollTo(0,0);
+    };
+
+    const handleDelete = async (id) => {
+        if(confirm('¿Eliminar este profesional? Se borrarán sus configuraciones de horario.')) {
+            await deleteProfesional(id);
+            load();
+        }
+    };
+
+    const cancelEdit = () => {
+        setForm({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] });
+        setIsEditing(false);
     };
 
     const save = async (e) => {
         e.preventDefault();
-        if(!form.especialidad) return alert("Selecciona especialidad");
-        
+        if (form.especialidades.length === 0) return alert("Selecciona al menos una especialidad");
+
         const payload = {
             nombreCompleto: form.nombreCompleto,
-            especialidad: form.especialidad,
-            tratamientos: selectedTreatments.join(',')
+            // Guardamos como String separado por comas
+            especialidad: form.especialidades.join(','), 
+            tratamientos: form.tratamientos.join(',')
         };
 
         try {
-            const res = await fetch(`${API_BASE_URL}/profesionales`, {
-                method:'POST', 
-                headers:{'Content-Type':'application/json'}, 
-                body:JSON.stringify(payload)
-            });
-            
-            if (res.status === 409) return alert("Error: El profesional ya existe.");
-            if (!res.ok) throw new Error();
-
-            alert('Profesional Guardado'); 
-            setForm({nombreCompleto:'', especialidad:''}); 
-            setSelectedTreatments([]);
+            if (isEditing) {
+                await updateProfesional(form.id, payload);
+                alert('Profesional Actualizado Correctamente');
+            } else {
+                const res = await fetch(`${API_BASE_URL}/profesionales`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.status === 409) return alert("Error: El profesional ya existe.");
+                if (!res.ok) throw new Error();
+                alert('Profesional Creado');
+            }
+            cancelEdit();
             load();
-        } catch(e) {
-            alert("Error al guardar profesional");
+        } catch (e) {
+            alert("Error al guardar");
         }
     }
 
@@ -435,53 +485,85 @@ function AgendaProfesionales() {
         <div>
             <div className="page-header"><div className="page-title"><h1>Gestión de Profesionales</h1></div></div>
             <div className="pro-card">
+                <h3 style={{marginTop:0}}>{isEditing ? 'Editar Profesional' : 'Nuevo Profesional'}</h3>
                 <form onSubmit={save}>
-                    <div className="input-row">
-                        <div><label className="form-label">Nombre Completo</label><input className="form-control" value={form.nombreCompleto} onChange={e=>setForm({...form, nombreCompleto:e.target.value})}/></div>
-                        <div>
-                            <label className="form-label">Especialidad</label>
-                            <select className="form-control" value={form.especialidad} onChange={e=>{setForm({...form, especialidad:e.target.value}); setSelectedTreatments([]);}}>
-                                <option value="">Seleccionar...</option>{especialidadesUnicas.map(esp => <option key={esp} value={esp}>{esp}</option>)}
-                            </select>
+                    <div className="input-row" style={{marginBottom:15}}>
+                        <div style={{width:'100%'}}>
+                            <label className="form-label">Nombre Completo</label>
+                            <input className="form-control" value={form.nombreCompleto} onChange={e => setForm({ ...form, nombreCompleto: e.target.value })} />
                         </div>
                     </div>
-                    <div style={{marginBottom:20}}>
-                        <label className="form-label">Tratamientos (Multiselección)</label>
-                        {form.especialidad ? (
+
+                    <div style={{ marginBottom: 20 }}>
+                        <label className="form-label">Especialidades (Puedes marcar varias)</label>
+                        <div className="multicheck-container" style={{ maxHeight: '150px' }}>
+                            {especialidadesUnicas.map(esp => (
+                                <label key={esp} className="check-item">
+                                    <input
+                                        type="checkbox"
+                                        checked={form.especialidades.includes(esp)}
+                                        onChange={() => handleSpecCheck(esp)}
+                                    />
+                                    <strong>{esp}</strong>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div style={{ marginBottom: 20 }}>
+                        <label className="form-label">Tratamientos Disponibles (Según especialidades)</label>
+                        {form.especialidades.length > 0 ? (
                             <div className="multicheck-container">
                                 {tratamientosDisponibles.map(t => (
                                     <label key={t.id} className="check-item">
-                                        <input 
-                                            type="checkbox" 
-                                            checked={selectedTreatments.includes(t.tratamiento)}
-                                            onChange={() => handleCheck(t.tratamiento)}
+                                        <input
+                                            type="checkbox"
+                                            checked={form.tratamientos.includes(t.tratamiento)}
+                                            onChange={() => handleTratCheck(t.tratamiento)}
                                         />
-                                        {t.tratamiento}
+                                        {t.tratamiento} <small style={{color:'#888'}}>({t.especialidad})</small>
                                     </label>
                                 ))}
                             </div>
                         ) : (
-                            <div style={{color:'#666', fontStyle:'italic'}}>Selecciona una especialidad primero...</div>
+                            <div style={{ color: '#666', fontStyle: 'italic', padding: 10, background: '#f9f9f9', borderRadius: 8 }}>
+                                Selecciona una especialidad arriba para ver los tratamientos...
+                            </div>
                         )}
                     </div>
-                    <button className="btn-primary">Guardar Profesional</button>
+
+                    <div style={{display:'flex', gap:10}}>
+                        <button className="btn-primary">{isEditing ? 'Guardar Cambios' : 'Crear Profesional'}</button>
+                        {isEditing && <button type="button" className="btn-edit" onClick={cancelEdit}>Cancelar</button>}
+                    </div>
                 </form>
             </div>
-            <h3>Staff Médico y Tratamientos</h3>
-            <div className="pro-card" style={{padding:0}}>
+
+            <h3>Staff Médico</h3>
+            <div className="pro-card" style={{ padding: 0 }}>
                 <table className="data-table">
-                    <thead><tr><th>Nombre</th><th>Especialidad</th><th>Tratamientos Asignados</th></tr></thead>
+                    <thead><tr><th>Nombre</th><th>Especialidades</th><th>Tratamientos</th><th>Acciones</th></tr></thead>
                     <tbody>
-                        {pros.map(p=>(
+                        {pros.map(p => (
                             <tr key={p.id}>
-                                <td>{p.nombreCompleto}</td>
-                                <td>{p.especialidad}</td>
+                                <td><strong>{p.nombreCompleto}</strong></td>
                                 <td>
-                                    <ul style={{margin:0, paddingLeft:20, fontSize:'0.8rem', color:'#666'}}>
-                                        {p.tratamientos ? p.tratamientos.split(',').map((t, idx) => (
+                                    {p.especialidad ? p.especialidad.split(',').map((e, i) => (
+                                        <span key={i} style={{display:'block', fontSize:'0.85rem', marginBottom:2}}>• {e}</span>
+                                    )) : '-'}
+                                </td>
+                                <td>
+                                    <ul style={{ margin: 0, paddingLeft: 20, fontSize: '0.8rem', color: '#666' }}>
+                                        {p.tratamientos && p.tratamientos.length > 0 ? p.tratamientos.split(',').map((t, idx) => (
                                             <li key={idx}>{t}</li>
-                                        )) : <li>Sin tratamientos asignados</li>}
+                                        )) : <li>Sin tratamientos</li>}
                                     </ul>
+                                </td>
+                                <td>
+                                    <div style={{display:'flex', gap:5}}>
+                                        <button className="btn-edit" onClick={() => handleEdit(p)}>Editar</button>
+                                        <button className="btn-danger" onClick={() => handleDelete(p.id)}>X</button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -520,7 +602,7 @@ function AgendaHorarios(){
     const handleFechaChange = (e) => {
         const fecha = e.target.value; setFechaSel(fecha);
         if (fecha) {
-            const parts = fecha.split('-'); // YYYY-MM-DD
+            const parts = fecha.split('-'); 
             const dateObj = new Date(parts[0], parts[1]-1, parts[2]);
             const diaIndex = dateObj.getDay(); 
             const nombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -553,7 +635,6 @@ function AgendaHorarios(){
             const h = await getHorariosByProfesional(p.id);
             if(Array.isArray(h)) {
                 const agrupados = h.reduce((acc, curr) => {
-                    // Usamos ID (fecha ISO) para agrupar visualmente pero solo la parte YYYY-MM-DD
                     const f = curr.fecha.split('T')[0];
                     if(!acc[f]) acc[f] = [];
                     acc[f].push(curr);
@@ -638,7 +719,6 @@ function AgendaHorarios(){
                             {Object.keys(horariosVisual).length === 0 ? <p>No hay horarios cargados.</p> : 
                                 Object.entries(horariosVisual).sort().map(([fecha, slots]) => (
                                     <div key={fecha} style={{marginBottom:15, borderBottom:'1px solid #eee', paddingBottom:10}}>
-                                        {/* Fix visualización */}
                                         <strong style={{display:'block', marginBottom:5}}>{new Date(fecha + 'T00:00:00').toLocaleDateString('es-CL', {weekday:'long', day:'numeric', month:'long'})}</strong>
                                         <div style={{display:'flex', gap:5, flexWrap:'wrap'}}>
                                             {slots.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).map(s => (

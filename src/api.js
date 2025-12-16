@@ -1,4 +1,5 @@
-// src/api.js
+// src/api.js - MODO PRODUCCIÓN (RENDER) ☁️
+// Esta es la URL de tu backend que ya está en Render
 export const API_BASE_URL = 'https://agenda-citas-ienp.onrender.com';
 
 export async function getPacientes() {
@@ -15,6 +16,24 @@ export async function buscarPacientePorRut(rut) {
 export async function getProfesionales() {
     const res = await fetch(`${API_BASE_URL}/profesionales`);
     return await res.json();
+}
+
+// ACTUALIZAR PROFESIONAL
+export async function updateProfesional(id, data) {
+    const res = await fetch(`${API_BASE_URL}/profesionales/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Error al actualizar profesional');
+    return await res.json();
+}
+
+// ELIMINAR PROFESIONAL
+export async function deleteProfesional(id) {
+    const res = await fetch(`${API_BASE_URL}/profesionales/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Error al eliminar profesional');
+    return true;
 }
 
 export async function getHorariosByProfesional(id) {
