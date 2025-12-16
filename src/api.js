@@ -1,76 +1,93 @@
 // src/api.js
-// Cliente HTTP simple para la API de Agenda CISD
+// Detecta automáticamente la URL del backend (Nube vs Local)
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-export const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-
-async function apiFetch(path, options = {}) {
-    const res = await fetch(`${API_BASE_URL}${path}`, {
-        headers: {
-            'Content-Type': 'application/json',
-            ...(options.headers || {}),
-        },
-        ...options,
-    });
-
-    if (!res.ok) {
-        const text = await res.text();
-        let msg = text || `Error ${res.status} en ${path}`;
-        try {
-            const parsed = JSON.parse(text);
-            if (parsed?.message) msg = parsed.message;
-        } catch (_) {
-            // texto plano, no pasa nada
-        }
-        throw new Error(msg);
-    }
-
-    if (res.status === 204) return null;
-    return res.json();
+export async function getPacientes() {
+    const res = await fetch(`${API_BASE_URL}/pacientes`);
+    return await res.json();
 }
 
-// PACIENTES
-export function getPacientes() {
-    return apiFetch('/pacientes');
+// BUSCAR POR RUT
+export async function buscarPacientePorRut(rut) {
+    const rutLimpio = encodeURIComponent(rut); 
+    const res = await fetch(`${API_BASE_URL}/pacientes/buscar/${rutLimpio}`);
+    return await res.json(); 
 }
 
-export function crearPaciente(data) {
-    return apiFetch('/pacientes', {
+export async function getProfesionales() {
+    const res = await fetch(`${API_BASE_URL}/profesionales`);
+    return await res.json();
+}
+
+export async function getHorariosByProfesional(id) {
+    const res = await fetch(`${API_BASE_URL}/profesionales/${id}/horarios`);
+    return await res.json();
+}
+
+export async function getReservasDetalle() {
+    const res = await fetch(`${API_BASE_URL}/reservas/detalle`);
+    return await res.json();
+}
+
+export async function getConfiguraciones() {
+    const res = await fetch(`${API_BASE_URL}/configuracion`);
+    return await res.json();
+}
+
+export async function deleteConfiguracion(id) {
+    const res = await fetch(`${API_BASE_URL}/configuracion/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Error al eliminar config');
+    return true;
+}
+
+export async function crearReserva(data) {
+    const res = await fetch(`${API_BASE_URL}/reservas`, {
         method: 'POST',
-        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
     });
+    if (!res.ok) throw new Error('Error al reservar');
+    return await res.json();
 }
 
-// PROFESIONALES / HORARIOS
-export function getProfesionales() {
-    return apiFetch('/profesionales');
-}
-
-export function getHorariosByProfesional(id) {
-    return apiFetch(`/profesionales/${id}/horarios`);
-}
-
-// RESERVAS
-export function getReservasDetalle() {
-    return apiFetch('/reservas/detalle');
-}
-
-export function crearReserva(data) {
-    return apiFetch('/reservas', {
+export async function crearPaciente(data) {
+    const res = await fetch(`${API_BASE_URL}/pacientes`, {
         method: 'POST',
-        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
     });
+    if (!res.ok) throw new Error('Error al crear paciente');
+    return await res.json();
 }
 
-export function cancelarReserva(id) {
-    return apiFetch(`/reservas/${id}`, {
-        method: 'DELETE',
-    });
-}
-
-export function reagendarReserva(id, nuevoHorarioDisponibleId) {
-    return apiFetch(`/reservas/${id}/reagendar`, {
+export async function updatePaciente(id, data) {
+    const res = await fetch(`${API_BASE_URL}/pacientes/${id}`, {
         method: 'PUT',
-        body: JSON.stringify({ nuevoHorarioDisponibleId }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
     });
+    if (!res.ok) throw new Error('Error al actualizar paciente');
+    return await res.json();
+}
+
+export async function deletePaciente(id) {
+    const res = await fetch(`${API_BASE_URL}/pacientes/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Error al eliminar paciente');
+    return true;
+}
+
+export async function cancelarReserva(id) {
+    const res = await fetch(`${API_BASE_URL}/reservas/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Error al cancelar');
+    return true;
+}
+
+export async function reagendarReserva(id, nuevoHorarioId, nuevoProfesionalId, nuevoMotivo) {
+    const res = await fetch(`${API_BASE_URL}/reservas/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nuevoHorarioId, nuevoProfesionalId, nuevoMotivo })
+    });
+    if (!res.ok) throw new Error('Error al reagendar');
+    return await res.json();
 }
