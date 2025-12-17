@@ -1,246 +1,262 @@
 /* ============================================================
-   1. RESET Y BASE (ESTABILIDAD + RESPONSIVE REAL)
+   1. ESTRUCTURA MAESTRA (Ocupar 100% Real)
    ============================================================ */
 :root {
-  color-scheme: light; /* Fuerza inputs blancos en iPhone/Android */
-
-  /* Variables responsivas */
-  --top-nav-h: 60px;
-  --top-nav-h-mobile: 56px;
-  --page-pad: clamp(14px, 2.6vw, 30px);
-  --card-pad: clamp(14px, 2.4vw, 25px);
-  --sidebar-w: 260px; 
+  color-scheme: light; /* Fuerza modo claro siempre */
 }
 
-* { box-sizing: border-box; }
+* { 
+  box-sizing: border-box; /* Fundamental para cálculos de ancho */
+}
 
-html, body { height: 100%; }
-
-body {
+/* Forzamos que toda la cadena de contenedores ocupe el 100% */
+html, body, #root {
+  width: 100%;
+  height: 100%;
   margin: 0;
+  padding: 0;
+  overflow: hidden; /* Evitamos scroll en la ventana, solo en los paneles */
   font-family: 'Segoe UI', system-ui, sans-serif;
   background-color: #f4f7f6;
   color: #333;
-  /* Altura dinámica para móviles modernos */
-  min-height: 100vh;
-  height: 100dvh; 
-  overflow: hidden;      /* El scroll vive dentro de los paneles, no en el body */
 }
 
 /* ============================================================
-   2. LAYOUT PRINCIPAL (SÓLIDO)
+   2. LAYOUT GENERAL (La caja contenedora)
    ============================================================ */
 .dashboard-layout {
   display: flex;
   flex-direction: column;
+  width: 100%;
   height: 100%;
-  min-height: 0; /* CLAVE: permite que los hijos con overflow funcionen */
 }
 
-/* Barra Superior */
+/* HEADER (Fijo arriba) */
 .top-nav {
+  height: 60px;
+  min-height: 60px; /* No dejemos que se aplaste */
+  background: #fff;
+  border-bottom: 1px solid #ddd;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #fff;
-  padding: 0 max(15px, env(safe-area-inset-right)); /* Safe area iPhone */
-  padding-left: max(15px, env(safe-area-inset-left));
-  height: var(--top-nav-h);
-  border-bottom: 1px solid #e0e0e0;
-  flex-shrink: 0;
-  z-index: 20;
-  gap: 12px;
+  padding: 0 20px;
+  z-index: 50;
 }
 
-.brand-area { display: flex; align-items: center; gap: 12px; font-weight: bold; font-size: 1.1rem; min-width: 0; }
-.cisd-logo-admin { height: 32px; }
+.brand-area { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 1.1rem; }
+.cisd-logo-admin { height: 35px; }
 .mobile-menu-btn { display: none; } /* Oculto en PC */
 
-/* Tabs Superiores */
-.module-switcher { display: flex; gap: 5px; min-width: 0; }
+.module-switcher { display: flex; gap: 10px; }
 .module-tab {
-  background: transparent; border: 1px solid transparent; padding: 8px 16px; border-radius: 6px;
-  cursor: pointer; font-weight: 500; color: #666; transition: 0.2s; font-size: 0.9rem; white-space: nowrap;
+  padding: 8px 16px; border: none; background: transparent; 
+  cursor: pointer; color: #666; font-weight: 500; border-radius: 6px;
 }
-.module-tab:hover { background: #f5f5f5; }
 .module-tab.active { background: #000; color: #fff; }
 
 .btn-top-action {
-  background: #000; color: #fff; padding: 8px 16px; text-decoration: none;
-  border-radius: 6px; font-size: 0.85rem; font-weight: 600; white-space: nowrap;
+  background: #000; color: #fff; padding: 8px 15px; text-decoration: none; border-radius: 6px; font-size: 0.9rem;
 }
 
-/* Área de Trabajo */
+/* ÁREA DE TRABAJO (Lo que sobra de altura) */
 .workspace {
+  flex: 1; /* Ocupa todo el espacio restante */
   display: flex;
-  flex: 1;
-  min-height: 0;   /* CLAVE: permite scroll interno */
-  overflow: hidden;
+  overflow: hidden; /* El scroll va dentro de los hijos */
   position: relative;
+  width: 100%;
 }
 
-/* Sidebar PC */
+/* SIDEBAR (Escritorio) */
 .sidebar {
-  flex: 0 0 var(--sidebar-w); /* No encoger ni crecer */
-  width: var(--sidebar-w);
+  width: 260px;
+  min-width: 260px; /* Fijo, no se encoge */
   background: #fff;
-  border-right: 1px solid #e0e0e0;
+  border-right: 1px solid #ddd;
   display: flex; flex-direction: column;
   padding: 20px;
-  overflow-y: auto;
+  overflow-y: auto; /* Scroll si el menú es muy largo */
 }
 
 .sidebar-header {
-  font-size: 0.75rem; color: #9ca3af; font-weight: 800; text-transform: uppercase;
-  margin-bottom: 12px; letter-spacing: 0.5px;
+  font-size: 0.75rem; color: #999; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;
 }
-
 .nav-item {
-  padding: 10px 15px; border-radius: 6px; cursor: pointer; color: #4b5563;
-  transition: 0.1s; font-size: 0.95rem; margin-bottom: 4px; display: block;
+  padding: 12px; border-radius: 8px; cursor: pointer; color: #555; margin-bottom: 5px; font-size: 0.95rem;
 }
-.nav-item:hover { background: #f3f4f6; color: #111; }
-.nav-item.active { background: #f3f4f6; color: #000; font-weight: 600; border-left: 3px solid #000; }
+.nav-item:hover { background: #f5f5f5; color: #000; }
+.nav-item.active { background: #f0f0f0; color: #000; font-weight: 600; }
 
-/* Contenido Principal */
+/* MAIN STAGE (Contenido principal) */
 .main-stage {
-  flex: 1;
-  min-width: 0;     /* EL FIX MÁGICO: evita overflow horizontal en flex */
-  width: 100%;
-  padding: var(--page-pad);
-  overflow-y: auto; /* Scroll vertical aquí */
-  -webkit-overflow-scrolling: touch;
+  flex: 1; /* Ocupa el ancho restante */
   background: #f8fafc;
+  padding: 30px;
+  overflow-y: auto; /* EL SCROLL PRINCIPAL ESTÁ AQUÍ */
+  -webkit-overflow-scrolling: touch; /* Suavidad en iPhone */
+  width: 100%; /* Asegura ancho total disponible */
 }
 
 /* ============================================================
-   3. COMPONENTES (INPUTS / TABLAS)
+   3. COMPONENTES (ADAPTABLES 100%)
    ============================================================ */
-.page-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 25px; }
-.page-title h1 { margin: 0; font-size: clamp(1.25rem, 1.2rem + 0.8vw, 1.6rem); color: #111; letter-spacing: -0.5px; }
+.page-header { margin-bottom: 20px; }
+.page-title h1 { margin: 0; font-size: 1.5rem; color: #111; }
 
-/* Tarjetas */
+/* TARJETAS */
 .pro-card {
-  background: #fff; border-radius: 12px; padding: var(--card-pad);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #eee;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.03);
   margin-bottom: 20px;
-  
-  /* Manejo de tablas grandes */
-  max-width: 100%;
-  overflow-x: auto; 
+  width: 100%; /* Ocupa todo el ancho del padre */
 }
 
-/* Inputs Blancos Forzados */
-.form-label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.9rem; color: #374151; }
+/* FORMULARIOS (Flexible Grid) */
+.input-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  flex-wrap: wrap; /* ESTO ES CLAVE: Si no caben, bajan */
+}
+
+.input-row > div {
+  flex: 1; /* Intentan ocupar partes iguales */
+  min-width: 250px; /* Pero si bajan de 250px, ocupan 100% y bajan de línea */
+}
+
+.form-label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; color: #444; }
+
 .form-control {
-  width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px;
-  font-size: 0.95rem; outline: none;
-  background-color: #ffffff !important;
-  color: #111827 !important;
+  width: 100%; /* Siempre 100% de su contenedor */
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+  outline: none;
+  background-color: #fff !important; /* BLANCO FORZADO */
+  color: #000 !important;
   -webkit-appearance: none;
 }
-.form-control:focus { border-color: #000; }
+.form-control:focus { border-color: #000; box-shadow: 0 0 0 2px rgba(0,0,0,0.05); }
 
-/* Grid de Inputs */
-.input-row { display: flex; gap: 20px; margin-bottom: 15px; flex-wrap: wrap; }
-.input-row > div { flex: 1; min-width: 250px; } /* Se apilan si hay poco espacio */
-
-/* Botones */
-.btn-primary { background: #000; color: #fff; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 600; }
-.btn-edit, .btn-danger { padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; margin-right: 5px; border: 1px solid transparent; white-space: nowrap; }
-.btn-edit { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
-.btn-danger { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
-
-/* Tablas */
-.data-table {
-  width: 100%; border-collapse: collapse; font-size: 0.9rem;
-  min-width: 600px; /* Fuerza el scroll horizontal si la pantalla es chica */
+/* BOTONES */
+.btn-primary {
+  background: #000; color: #fff; border: none; padding: 12px 24px;
+  border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600;
+  width: 100%; /* En móvil ocupa todo, en desktop se limita con max-width si quieres */
+  max-width: fit-content;
 }
-.data-table th { text-align: left; padding: 12px 15px; background: #f9fafb; color: #6b7280; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
-.data-table td { padding: 12px 15px; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: middle; }
+@media (max-width: 768px) { .btn-primary { max-width: 100%; } }
+
+.btn-edit, .btn-danger { padding: 6px 12px; border-radius: 6px; cursor: pointer; margin-right: 5px; border: 1px solid transparent; font-size: 0.85rem; }
+.btn-edit { background: #f0f0f0; color: #333; }
+.btn-danger { background: #fee2e2; color: #d00; }
+
+/* TABLAS (Scroll horizontal automático) */
+.data-table-container {
+  width: 100%;
+  overflow-x: auto; /* Scroll si la tabla es grande */
+}
+.data-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+.data-table th { text-align: left; padding: 12px; background: #f9f9f9; border-bottom: 2px solid #eee; font-size: 0.85rem; text-transform: uppercase; color: #666; }
+.data-table td { padding: 12px; border-bottom: 1px solid #eee; color: #333; }
+
+/* Estilos extra para listas (checkboxes) */
+.multicheck-container { display: flex; flex-direction: column; gap: 8px; }
+.check-item { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; }
+
+/* KPI Dashboard */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Adaptable */
+  gap: 20px; margin-bottom: 20px;
+}
+.kpi-box { background: #fff; padding: 20px; border-radius: 10px; border: 1px solid #eee; }
+.kpi-value { font-size: 2rem; font-weight: bold; color: #000; }
 
 /* ============================================================
    4. WEB PACIENTE
    ============================================================ */
 .web-shell {
-  min-height: 100vh; height: 100dvh; width: 100%; background: #fff;
+  width: 100%; height: 100%; background: #fff;
   display: flex; flex-direction: column; align-items: center;
-  padding: clamp(20px, 4vw, 40px) 15px;
+  padding: 30px 20px;
   overflow-y: auto;
 }
-.cisd-logo-web { width: 140px; margin-bottom: 30px; }
-.web-card { width: 100%; max-width: 440px; }
+.cisd-logo-web { width: 150px; margin-bottom: 30px; }
+.web-card { width: 100%; max-width: 450px; }
 .cisd-input, .cisd-select {
-  width: 100%; padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb;
-  border-radius: 10px; margin-top: 5px; font-size: 1rem; outline: none;
+  width: 100%; padding: 14px; border: 1px solid #ddd; background: #f9f9f9;
+  border-radius: 10px; font-size: 1rem; margin-top: 5px; outline: none;
 }
 .web-btn-black {
-  width: 100%; background: #000; color: #fff; padding: 14px; border: none;
+  width: 100%; background: #000; color: #fff; padding: 15px; border: none;
   border-radius: 30px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 20px;
 }
-.web-btn-white { background: transparent; border: none; color: #666; margin-top: 15px; cursor: pointer; text-decoration: underline; }
-.web-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+.web-btn-white { background: transparent; border: none; color: #666; margin-top: 20px; cursor: pointer; text-decoration: underline; }
+.web-actions { display: flex; justify-content: space-between; align-items: center; }
 
 /* Tabs RedSalud */
-.rs-date-tabs { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; margin-bottom: 20px; scroll-snap-type: x mandatory; }
+.rs-date-tabs { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; margin-bottom: 20px; }
 .rs-date-tab {
-  flex: 0 0 auto; min-width: 70px; height: 70px; border: 1px solid #e5e7eb; border-radius: 10px;
+  flex: 0 0 auto; min-width: 70px; height: 70px; border: 1px solid #eee; border-radius: 10px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  cursor: pointer; background: #fff; scroll-snap-align: start;
+  cursor: pointer;
 }
 .rs-date-tab.selected { background: #000; color: #fff; border-color: #000; }
-.rs-pro-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 15px; margin-bottom: 10px; }
-.rs-pro-info { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; }
-.rs-avatar { width: 40px; height: 40px; background: #f3f4f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #666; }
-.rs-slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 8px; }
-.rs-slot-btn { background: #fff; border: 1px solid #d1d5db; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; text-align: center; }
-.rs-slot-btn:hover { border-color: #000; background: #f9fafb; }
+.rs-pro-card { border: 1px solid #eee; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
+.rs-pro-info { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+.rs-avatar { width: 40px; height: 40px; background: #eee; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+.rs-slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px; }
+.rs-slot-btn { background: #fff; border: 1px solid #ddd; padding: 8px; border-radius: 6px; cursor: pointer; text-align: center; }
 
 /* ============================================================
-   5. RESPONSIVE MÓVIL (EL MENÚ Y OVERLAY)
+   5. MÓVIL (Modo App)
    ============================================================ */
-.sidebar-overlay { display: none; } /* Oculto por defecto */
+.sidebar-overlay { display: none; }
 
 @media (max-width: 768px) {
-  :root { --top-nav-h: var(--top-nav-h-mobile); }
-
-  /* Header móvil */
-  .top-nav { height: var(--top-nav-h-mobile); gap: 10px; }
-  .brand-area { font-size: 1rem; }
-  .cisd-logo-admin { height: 28px; }
-  .mobile-menu-btn { display: block; background: none; border: none; font-size: 24px; cursor: pointer; margin-right: 8px; color: #000; flex-shrink: 0; }
+  /* 1. Header se adapta */
+  .top-nav { padding: 0 15px; }
+  .brand-area span { font-size: 1rem; }
+  .admin-title-text, .module-switcher { display: none; } /* Ocultar en móvil */
   
-  /* Ocultar elementos escritorio */
-  .admin-title-text, .module-switcher { display: none; }
+  /* 2. Botón Menú */
+  .mobile-menu-btn { display: block; background: none; border: none; font-size: 26px; cursor: pointer; margin-right: 10px; }
 
-  /* Sidebar Flotante (Deslizable) */
+  /* 3. Sidebar Flotante (Overlay absoluto) */
   .sidebar {
-    position: fixed;
-    top: var(--top-nav-h-mobile);
-    left: -110%; /* Completamente fuera */
-    width: 80%; max-width: 280px;
-    height: calc(100dvh - var(--top-nav-h-mobile));
+    position: absolute; /* O fixed, pero absolute respeta el layout relativo del padre */
+    top: 0; left: 0; bottom: 0; /* Ocupa todo el alto del workspace */
     z-index: 1000;
-    transition: left 0.3s ease;
-    box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+    width: 80%; max-width: 300px;
+    transform: translateX(-100%); /* Escondido */
+    transition: transform 0.3s ease;
     border-right: none;
+    box-shadow: 2px 0 15px rgba(0,0,0,0.2);
   }
-  .sidebar.open { left: 0; }
+  .sidebar.open { transform: translateX(0); } /* Mostrar */
 
-  /* Fondo Oscuro */
+  /* Fondo oscuro */
   .sidebar-overlay {
-    display: block; /* React controla si se renderiza o no */
-    position: fixed;
-    top: var(--top-nav-h-mobile);
-    left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 900;
+    display: block; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5); z-index: 900;
   }
 
-  /* Ajustes Contenido */
-  .main-stage { padding: 15px; }
+  /* 4. Ajustes Contenido */
+  .main-stage { padding: 15px; } /* Menos padding en móvil */
   
-  /* Tablas con scroll */
-  .pro-card { padding: 15px; overflow-x: auto; }
-  .data-table { min-width: 600px; } /* Fuerza scroll */
+  /* Inputs: Forzar columna */
+  .input-row { flex-direction: column; gap: 15px; }
+  .input-row > div { min-width: 100%; } /* Ocupan todo el ancho */
+
+  /* Tablas: Forzar scroll dentro de la tarjeta */
+  .pro-card {
+    padding: 15px;
+    overflow-x: auto; /* Aquí ocurre la magia del scroll horizontal */
+  }
 }
