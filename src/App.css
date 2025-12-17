@@ -248,7 +248,11 @@ html, body, #root {
   }
 
   /* 4. Ajustes Contenido */
-  .main-stage { padding: 15px; } /* Menos padding en móvil */
+  .main-stage {
+    padding: 15px;
+    /* Agregamos espacio extra abajo para que nada quede tapado por el navegador */
+    padding-bottom: 80px; 
+  }
   
   /* Inputs: Forzar columna */
   .input-row { flex-direction: column; gap: 15px; }
