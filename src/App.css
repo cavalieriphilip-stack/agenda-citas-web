@@ -324,3 +324,106 @@ html, body, #root {
 
 /* Animación suave para el modal */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ... (Mantén todo tu CSS anterior) ... */
+
+/* ============================================================
+   7. MODIFICACIONES MÓVIL (ACORDEONES / DESPLEGABLES)
+   ============================================================ */
+
+/* Por defecto (PC), ocultamos la vista móvil y mostramos la tabla */
+.mobile-view-only { display: none; }
+.desktop-view-only { display: block; }
+
+/* ESTILOS DE LA TARJETA DESPLEGABLE */
+.mobile-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.mobile-card-header {
+  padding: 15px;
+  background: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  transition: background 0.2s;
+}
+
+.mobile-card-header.open {
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.mobile-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #111;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-card-subtitle {
+  font-size: 0.8rem;
+  color: #666;
+  font-weight: normal;
+  margin-top: 2px;
+}
+
+.mobile-card-icon {
+  font-size: 1.2rem;
+  color: #999;
+  margin-left: 10px;
+}
+
+.mobile-card-body {
+  padding: 15px;
+  background: #fdfdfd;
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.mobile-data-row {
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+}
+.mobile-label { font-weight: 600; font-size: 0.75rem; color: #888; text-transform: uppercase; }
+.mobile-value { font-size: 0.95rem; }
+
+/* ESTILO ESPECIAL PARA LISTA DE HORARIOS (Punto 4) */
+.mobile-simple-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  border-bottom: 1px solid #eee;
+  background: #fff;
+}
+.mobile-simple-list-item:last-child { border-bottom: none; }
+
+/* --- MEDIA QUERY MÓVIL --- */
+@media (max-width: 768px) {
+  /* Invertimos la visibilidad */
+  .desktop-view-only { display: none; }
+  .mobile-view-only { display: block; }
+  
+  /* Ocultamos el contenedor de scroll de tablas antiguo para usar las cards */
+  .data-table-container { display: none; } 
+  
+  /* Ajuste para los botones dentro de las cards */
+  .mobile-card-body .btn-edit, 
+  .mobile-card-body .btn-danger {
+    padding: 8px 16px;
+    width: 100%;
+    margin-bottom: 8px;
+    text-align: center;
+    display: block;
+  }
+}
