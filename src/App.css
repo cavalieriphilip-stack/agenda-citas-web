@@ -1,253 +1,185 @@
 /* =========================================
-   1. RESET Y BASE (GLOBAL)
+   1. RESET ROBUSTO (GLOBAL)
    ========================================= */
-* { box-sizing: border-box; }
+:root {
+    color-scheme: light; /* FUERZA MODO CLARO (Arregla inputs negros) */
+}
+
+* { 
+    box-sizing: border-box; /* Vital para que el padding no rompa el ancho */
+}
 
 body { 
     margin: 0; 
     font-family: 'Segoe UI', system-ui, sans-serif; 
     background-color: #f4f7f6; 
     color: #333;
+    width: 100vw;          /* Ancho exacto de la ventana */
+    overflow-x: hidden;    /* PROHIBIDO el scroll horizontal en toda la web */
     -webkit-font-smoothing: antialiased;
 }
 
 /* =========================================
-   2. LAYOUT PRINCIPAL (DESKTOP)
+   2. LAYOUT DE ESCRITORIO (Estable)
    ========================================= */
 .dashboard-layout { 
     display: flex; 
     flex-direction: column; 
-    height: 100vh; /* Altura completa de la ventana */
-    overflow: hidden; /* Evita scroll doble en la ventana principal */
+    height: 100vh; 
+    width: 100%;
+    overflow: hidden; /* Mantiene todo dentro de la caja */
 }
 
 /* Barra Superior */
 .top-nav {
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center;
-    background: #fff; 
-    padding: 0 20px; 
-    height: 64px;
+    display: flex; justify-content: space-between; align-items: center;
+    background: #fff; padding: 0 20px; height: 64px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
-    z-index: 50;
-    flex-shrink: 0; 
+    z-index: 50; flex-shrink: 0; 
 }
-
-.brand-area { 
-    display: flex; align-items: center; gap: 15px; 
-    font-weight: bold; font-size: 1.2rem; 
-}
+.brand-area { display: flex; align-items: center; gap: 15px; font-weight: bold; font-size: 1.2rem; }
 .cisd-logo-admin { height: 40px; }
-.admin-title-text { display: block; }
 .mobile-menu-btn { display: none; } /* Oculto en PC */
 
-.module-switcher { display: flex; gap: 10px; }
-.module-tab {
-    background: #f0f0f0; border: none; padding: 8px 16px; border-radius: 6px;
-    cursor: pointer; font-weight: 500; color: #666; transition: 0.2s;
-}
-.module-tab.active { background: #000; color: #fff; }
-
-.btn-top-action {
-    background: #000; color: #fff; padding: 8px 15px; text-decoration: none;
-    border-radius: 6px; font-size: 0.9rem;
-}
-
-/* CONTENEDOR CENTRAL (Sidebar + Main) */
+/* Contenedor Principal */
 .workspace { 
     display: flex; 
     flex: 1; 
-    overflow: hidden; /* Importante para que el scroll sea interno */
+    height: calc(100vh - 64px); /* Resto de la altura exacta */
+    overflow: hidden; 
     position: relative;
+    width: 100%;
 }
 
-/* Sidebar PC */
+/* Sidebar PC (Fija a la izquierda) */
 .sidebar {
     width: 260px;
-    min-width: 260px; /* Evita que se aplaste */
+    min-width: 260px; /* No se aplasta */
     background: #fff; 
     border-right: 1px solid #eee;
-    display: flex; flex-direction: column; 
     overflow-y: auto;
     padding: 20px;
-    gap: 5px;
+    display: flex; flex-direction: column; gap: 5px;
 }
 
-.sidebar-header {
-    font-size: 0.75rem; color: #999; font-weight: bold; 
-    text-transform: uppercase; margin: 15px 0 10px 0; letter-spacing: 1px;
-}
-.nav-item {
-    padding: 12px 15px; border-radius: 8px; cursor: pointer; color: #555;
-    transition: 0.2s; font-size: 0.95rem; font-weight: 500;
-}
-.nav-item:hover { background: #f8f9fa; color: #000; }
-.nav-item.active { background: #f0f0f0; color: #000; font-weight: 700; }
-
-/* Main Stage PC */
 .main-stage { 
     flex: 1; 
-    padding: 40px; 
-    overflow-y: auto; /* El scroll ocurre aquí, no en el body */
+    min-width: 0; /* EL TRUCO DE ORO: Permite que el contenido se encoja si es necesario */
+    padding: 30px; 
+    overflow-y: auto; /* Scroll vertical solo aquí */
     background: #f8fafc; 
 }
 
 /* =========================================
-   3. COMPONENTES UI (Inputs y Tablas)
+   3. ESTILOS DE COMPONENTES (Inputs Blancos)
    ========================================= */
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 10px; }
-.page-title h1 { margin: 0; font-size: 1.8rem; color: #111; letter-spacing: -0.5px; }
+.page-header { margin-bottom: 20px; }
+.page-title h1 { margin: 0; font-size: 1.6rem; color: #111; }
 
 .pro-card { 
     background: #fff; border-radius: 12px; padding: 25px; 
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); 
-    border: 1px solid #f1f1f1;
-    margin-bottom: 25px; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; 
+    width: 100%; /* Asegura que no crezca más que el padre */
 }
 
-/* --- FORMULARIOS (Corrección de color gris) --- */
-.form-label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; color: #374151; }
+/* INPUTS: Corrección de color y forma */
+.form-label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.9rem; }
 .form-control {
-    width: 100%; 
-    padding: 12px; 
-    border: 1px solid #e5e7eb; 
-    border-radius: 8px;
-    font-size: 1rem; 
-    outline: none; 
-    transition: 0.2s;
-    background-color: #fff !important; /* FORZAR BLANCO */
-    color: #1f2937 !important;         /* FORZAR TEXTO OSCURO */
+    width: 100%; padding: 10px 12px; 
+    border: 1px solid #ccc; border-radius: 8px;
+    font-size: 1rem; outline: none;
+    background-color: #ffffff !important; /* BLANCO PURO */
+    color: #000000 !important;            /* TEXTO NEGRO */
+    appearance: none;                     /* Elimina estilos nativos del móvil */
 }
-.form-control:focus { border-color: #000; ring: 2px solid #eee; }
+.form-control:focus { border-color: #000; box-shadow: 0 0 0 2px rgba(0,0,0,0.05); }
 
-.input-row { display: flex; gap: 20px; margin-bottom: 20px; }
+.input-row { display: flex; gap: 20px; margin-bottom: 15px; }
 .input-row > div { flex: 1; }
 
-.btn-primary {
-    background: #111; color: #fff; border: none; padding: 12px 24px;
-    border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 600;
-    transition: background 0.2s;
-}
-.btn-primary:hover { background: #333; }
+/* Botones */
+.btn-primary { background: #000; color: #fff; border: none; padding: 12px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; max-width: 200px;}
+.btn-edit { background: #eee; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-right: 5px; }
+.btn-danger { background: #ffe5e5; color: #d00; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
 
-.btn-edit { background: #f3f4f6; color:#1f2937; border: 1px solid #e5e7eb; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-right: 5px; font-weight: 500;}
-.btn-danger { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500;}
-
-/* --- TABLAS (Desktop) --- */
+/* Tablas Desktop */
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
-.data-table th { text-align: left; padding: 15px; background: #f9fafb; color: #6b7280; font-weight: 600; border-bottom: 1px solid #e5e7eb; font-size: 0.85rem; text-transform: uppercase;}
-.data-table td { padding: 15px; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: middle; }
-.data-table tr:last-child td { border-bottom: none; }
-
-/* Checkboxes */
-.multicheck-container { 
-    display: flex; flex-direction: column; gap: 8px; 
-    max-height: 200px; overflow-y: auto; 
-    border: 1px solid #e5e7eb; padding: 15px; border-radius: 8px; 
-    background: #fff;
-}
-.check-item { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; cursor: pointer; }
-.check-item input { accent-color: #000; width: 18px; height: 18px; }
-
-/* KPI Boxes */
-.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
-.kpi-box { background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #f1f1f1; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-.kpi-label { font-size: 0.9rem; color: #666; margin-bottom: 5px; }
-.kpi-value { font-size: 2rem; font-weight: 800; color: #111; }
+.data-table th { text-align: left; padding: 12px; background: #f9f9f9; border-bottom: 2px solid #eee; font-size: 0.85rem; text-transform: uppercase; color: #666; }
+.data-table td { padding: 12px; border-bottom: 1px solid #eee; }
 
 /* =========================================
-   4. WEB PACIENTE (Estilos Públicos)
-   ========================================= */
-.web-shell { 
-    min-height: 100vh; width: 100%; background: #fff; 
-    display: flex; flex-direction: column; align-items: center; padding: 40px 20px; 
-}
-.cisd-logo-web { width: 160px; margin-bottom: 40px; }
-.web-card { width: 100%; max-width: 480px; animation: fadeIn 0.4s ease; }
-.cisd-input, .cisd-select {
-    width: 100%; padding: 14px; border: 1px solid #e5e7eb; background: #f9fafb;
-    border-radius: 12px; font-size: 1rem; outline: none; margin-top: 5px;
-}
-.cisd-input:focus { background: #fff; border-color: #000; }
-.web-btn-black {
-    width: 100%; background: #000; color: #fff; padding: 16px; border: none;
-    border-radius: 50px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 20px;
-}
-.web-btn-white { background: transparent; border: none; color: #666; cursor: pointer; font-size: 0.95rem; text-decoration: underline; margin-top: 20px;}
-.web-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
-
-/* RedSalud Tabs */
-.rs-date-tabs { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 15px; margin-bottom: 20px; scrollbar-width: none; }
-.rs-date-tab {
-    min-width: 75px; height: 75px; border: 1px solid #e5e7eb; border-radius: 12px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    cursor: pointer; transition: 0.2s; background: #fff;
-}
-.rs-date-tab.selected { background: #000; color: #fff; border-color: #000; }
-.rs-day-name { font-size: 0.8rem; text-transform: uppercase; margin-bottom: 4px; }
-.rs-day-number { font-size: 1.4rem; font-weight: 700; }
-
-.rs-pro-list { display: flex; flex-direction: column; gap: 15px; }
-.rs-pro-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; }
-.rs-pro-info { display: flex; gap: 15px; align-items: center; margin-bottom: 15px; }
-.rs-avatar { width: 45px; height: 45px; background: #f3f4f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #555; }
-.rs-slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 10px; }
-.rs-slot-btn {
-    background: #fff; border: 1px solid #d1d5db; padding: 10px; border-radius: 8px;
-    cursor: pointer; font-size: 0.9rem; transition: 0.1s; text-align: center;
-}
-.rs-slot-btn:hover { border-color: #000; background: #f9fafb; }
-
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-
-/* =========================================
-   5. RESPONSIVE MOBILE (LA MAGIA)
+   4. MÓVIL (LA ADAPTACIÓN REAL)
    ========================================= */
 @media (max-width: 768px) {
-    /* Header compacto */
+    /* Header Compacto */
     .top-nav { padding: 0 15px; height: 60px; }
-    .brand-area { font-size: 1rem; }
-    .mobile-menu-btn { display: block; background: none; border: none; font-size: 26px; cursor: pointer; color: #000; margin-right: 5px; }
-    
-    /* Ocultar elementos desktop */
-    .admin-title-text { display: none; } 
-    .module-switcher { display: none; } 
-    .nav-actions { display: none; } /* Ocultar botón web paciente en header móvil si molesta */
+    .brand-area span { font-size: 1rem; }
+    .mobile-menu-btn { display: block; background: none; border: none; font-size: 24px; cursor: pointer; }
+    .module-switcher, .nav-actions, .admin-title-text { display: none; } /* Limpiar header */
 
-    /* Sidebar Flotante */
+    /* Sidebar Flotante (Overlay) */
     .sidebar {
-        position: fixed; 
-        top: 60px; 
-        left: -100%; /* Escondido */
-        width: 80%; 
-        max-width: 280px; 
-        height: calc(100vh - 60px); /* Altura restante */
-        z-index: 2000; 
-        transition: left 0.3s ease; 
-        box-shadow: 4px 0 15px rgba(0,0,0,0.1);
-        border-right: none;
+        position: fixed; top: 60px; left: -100%; width: 85%; max-width: 300px; height: calc(100vh - 60px);
+        z-index: 2000; transition: left 0.3s ease; box-shadow: 10px 0 20px rgba(0,0,0,0.1); border: none;
     }
     .sidebar.open { left: 0; }
-    .sidebar-overlay {
-        display: block; position: fixed; top: 60px; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.5); z-index: 1500;
-    }
+    .sidebar-overlay { display: block; position: fixed; top: 60px; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1500; }
 
-    /* Ajustes de Contenido Móvil */
-    .main-stage { padding: 15px 15px 80px 15px; } /* Más padding abajo */
-    .page-title h1 { font-size: 1.4rem; }
-    
+    /* Contenido Principal Móvil */
+    .main-stage { padding: 15px; width: 100%; }
+
+    /* Inputs apilados */
     .input-row { flex-direction: column; gap: 15px; }
-    
-    /* --- ARREGLO DE TABLAS MÓVIL --- */
-    /* El contenedor .pro-card ahora tendrá scroll si la tabla es grande */
+    .btn-primary { width: 100%; max-width: none; } /* Botón ancho completo en móvil */
+
+    /* --- SOLUCIÓN TABLAS MÓVIL --- */
+    /* En lugar de romper, hacemos que el contenedor tenga scroll suave */
     .pro-card { 
         padding: 15px; 
-        overflow-x: auto; /* PERMITE SCROLL HORIZONTAL */
+        overflow-x: auto; /* PERMITE SCROLL SI ES NECESARIO */
+        -webkit-overflow-scrolling: touch; /* Scroll suave en iPhone */
     }
-    .data-table { min-width: 600px; /* Fuerza ancho mínimo para activar el scroll */ }
     
+    /* Aseguramos que la tabla no se aplaste horriblemente */
+    .data-table { 
+        min-width: 600px; /* Fuerza un ancho mínimo para que el scroll se active */
+    }
+
+    /* Web Paciente */
     .web-shell { padding: 20px 15px; }
+    .web-card { width: 100%; }
+    .rs-date-tabs { justify-content: flex-start; } /* Alineación izquierda para scroll natural */
 }
+
+/* =========================================
+   5. WEB PACIENTE (Estilos)
+   ========================================= */
+.web-shell { min-height: 100vh; width: 100%; background: #fff; display: flex; flex-direction: column; align-items: center; padding: 40px; }
+.cisd-logo-web { width: 140px; margin-bottom: 30px; }
+.web-card { width: 100%; max-width: 450px; }
+.cisd-input, .cisd-select {
+    width: 100%; padding: 12px; border: 1px solid #ddd; background: #f9f9f9;
+    border-radius: 8px; font-size: 1rem; outline: none; margin-top: 5px;
+    appearance: none;
+}
+.web-btn-black {
+    width: 100%; background: #000; color: #fff; padding: 14px; border: none;
+    border-radius: 30px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 15px;
+}
+.web-btn-white { background: transparent; border: none; color: #666; cursor: pointer; font-size: 0.9rem; text-decoration: underline; }
+.web-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+
+/* Tabs RedSalud */
+.rs-date-tabs { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 10px; margin-bottom: 20px; }
+.rs-date-tab {
+    min-width: 70px; height: 70px; border: 1px solid #eee; border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; background: #fff;
+}
+.rs-date-tab.selected { background: #000; color: #fff; border-color: #000; }
+.rs-pro-card { border: 1px solid #eee; border-radius: 10px; padding: 15px; margin-bottom: 10px; }
+.rs-pro-info { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+.rs-avatar { width: 36px; height: 36px; background: #eee; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem; }
+.rs-slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; }
+.rs-slot-btn { background: #fff; border: 1px solid #ddd; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; text-align: center; }
+.rs-slot-btn:hover { border-color: #000; background: #f5f5f5; }
