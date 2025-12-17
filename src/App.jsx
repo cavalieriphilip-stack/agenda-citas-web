@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import './App.css'; 
 import {
@@ -8,7 +8,7 @@ import {
     buscarPacientePorRut, updateProfesional, deleteProfesional
 } from './api';
 
-// --- DATA MAESTRA ---
+// --- DATA MAESTRA (Tratamientos) ---
 const TRATAMIENTOS = [
     { id: 1, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto online', valor: 20000 },
     { id: 2, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto presencial', valor: 35000 },
@@ -49,24 +49,91 @@ const TRATAMIENTOS = [
 
 const STEPS = [ {n:1, t:'Datos'}, {n:2, t:'Servicio'}, {n:3, t:'Agenda'}, {n:4, t:'Confirmar'} ];
 
-// Utils
+// --- UTILS ---
 const fmtMoney = (v) => `$${v.toLocaleString('es-CL')}`;
 const fmtDate = (iso) => iso ? new Date(iso).toLocaleString('es-CL', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
-const toDateKey = (iso) => { 
-    if(!iso) return '';
-    return iso.split('T')[0]; 
-};
-const formatRut = (rut) => rut.replace(/[^0-9kK]/g, '').toUpperCase();
+const toDateKey = (iso) => iso ? iso.split('T')[0] : '';
 const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
 
+// [MEJORA 3] Formateador de RUT automático (XX.XXX.XXX-X)
+const formatRut = (rut) => {
+    if (!rut) return '';
+    let value = rut.replace(/[^0-9kK]/g, '').toUpperCase();
+    if (value.length < 2) return value;
+    const body = value.slice(0, -1);
+    const dv = value.slice(-1);
+    const bodyDots = body.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return `${bodyDots}-${dv}`;
+};
+
+// --- NUEVOS COMPONENTES UI ---
+
+// [MEJORA 2] Dropdown Multi-Select con Checkboxes
+function MultiSelectDropdown({ options, selectedValues, onChange, label }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const wrapperRef = useRef(null);
+
+    // Click outside handler
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [wrapperRef]);
+
+    const toggleOption = (value) => {
+        if (selectedValues.includes(value)) {
+            onChange(selectedValues.filter(v => v !== value));
+        } else {
+            onChange([...selectedValues, value]);
+        }
+    };
+
+    return (
+        <div className="dropdown-wrapper" ref={wrapperRef}>
+            <label className="form-label">{label}</label>
+            <div className="dropdown-header" onClick={() => setIsOpen(!isOpen)}>
+                <span>{selectedValues.length > 0 ? `${selectedValues.length} seleccionados` : 'Seleccionar...'}</span>
+                <span>{isOpen ? '▲' : '▼'}</span>
+            </div>
+            {isOpen && (
+                <div className="dropdown-list">
+                    {options.map(opt => (
+                        <div key={opt} className="dropdown-item" onClick={() => toggleOption(opt)}>
+                            <input type="checkbox" checked={selectedValues.includes(opt)} readOnly />
+                            <span>{opt}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// [MEJORA 1] Modal (Pop-up) para Horarios
+function Modal({ title, children, onClose }) {
+    return createPortal(
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <button className="modal-close" onClick={onClose}>×</button>
+                <h2 style={{marginTop:0, marginBottom:20}}>{title}</h2>
+                {children}
+            </div>
+        </div>,
+        document.body
+    );
+}
+
+// --- APP PRINCIPAL ---
 function App() {
     if (window.location.pathname.startsWith('/centro')) return <AdminLayout />;
     return <WebPaciente />;
 }
 
-// =========================================================
-// PANEL ADMIN
-// =========================================================
+// ================= PANEL ADMIN =================
 function AdminLayout() {
     const [activeModule, setActiveModule] = useState('agenda');
     const [activeView, setActiveView] = useState('resumen');
@@ -81,7 +148,6 @@ function AdminLayout() {
         <div className="dashboard-layout">
             <nav className="top-nav">
                 <div className="brand-area">
-                    {/* Botón Hamburguesa */}
                     <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>☰</button>
                     <img src={LOGO_URL} alt="CISD Logo" className="cisd-logo-admin" />
                     <span className="admin-title-text">CISD Admin</span>
@@ -94,9 +160,7 @@ function AdminLayout() {
             </nav>
 
             <div className="workspace">
-                {/* Overlay oscuro (solo móvil) */}
                 {mobileMenuOpen && <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)}></div>}
-
                 <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
                     <div className="sidebar-header">MENÚ {activeModule === 'agenda' ? 'AGENDA' : 'FINANZAS'}</div>
                     {activeModule === 'agenda' && (
@@ -140,6 +204,7 @@ function DashboardContent({ module, view }) {
 // ---------------------- SUBVISTAS ----------------------
 
 function AgendaNuevaReserva({ reload, reservas }) {
+    // Lógica original de nueva reserva
     const [pacientes, setPacientes] = useState([]);
     const [pros, setPros] = useState([]);
     const [horarios, setHorarios] = useState([]);
@@ -200,7 +265,7 @@ function AgendaNuevaReserva({ reload, reservas }) {
                         <div>
                             <label className="form-label">Paciente</label>
                             <select className="form-control" onChange={e => setForm({ ...form, pacienteId: e.target.value })}>
-                                <option value="">Seleccionar...</option>{pacientes.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto} ({p.rut})</option>)}
+                                <option value="">Seleccionar...</option>{pacientes.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto} ({formatRut(p.rut)})</option>)}
                             </select>
                         </div>
                         <div>
@@ -222,46 +287,88 @@ function AgendaNuevaReserva({ reload, reservas }) {
             </div>
             <h3 style={{ marginTop: 40 }}>Reservas Recientes</h3>
             <div className="pro-card" style={{ padding: 0 }}>
-                <table className="data-table">
-                    <thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th></tr></thead>
-                    <tbody>
-                        {reservas.slice(0, 5).map(r => (<tr key={r.id}><td>{fmtDate(r.fecha)}</td><td>{r.pacienteNombre}</td><td>{r.profesionalNombre}</td></tr>))}
-                    </tbody>
-                </table>
+                <div className="data-table-container">
+                    <table className="data-table">
+                        <thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th></tr></thead>
+                        <tbody>
+                            {reservas.slice(0, 5).map(r => (<tr key={r.id}><td>{fmtDate(r.fecha)}</td><td>{r.pacienteNombre}</td><td>{r.profesionalNombre}</td></tr>))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     )
 }
 
+// [MEJORA 4] Edición en Cascada
 function AgendaResumen({reservas, reload}){
     const [editId,setEditId]=useState(null);
-    const [editPro,setEditPro]=useState('');
-    const [editHorario,setEditHorario]=useState('');
-    const [editTratamiento, setEditTratamiento] = useState('');
     const [pros,setPros]=useState([]);
-    const [horarios,setHorarios]=useState([]);
+    
+    // Estados para cascada
+    const [editProId, setEditProId] = useState('');
+    const [editEspecialidad, setEditEspecialidad] = useState('');
+    const [editTratamiento, setEditTratamiento] = useState('');
+    const [editHorarioId, setEditHorarioId] = useState('');
+    const [horariosDisponibles, setHorariosDisponibles] = useState([]);
 
     useEffect(()=>{getProfesionales().then(setPros)},[]);
 
+    // 1. Iniciar Edición
     const startEdit=async(r)=>{
         setEditId(r.id);
-        setEditPro(r.profesionalId);
+        setEditProId(r.profesionalId.toString());
+        
+        // Tratar de deducir la especialidad
+        const matchTratamiento = TRATAMIENTOS.find(t => r.motivo.includes(t.tratamiento));
+        const especialidadInicial = matchTratamiento ? matchTratamiento.especialidad : '';
+        
+        setEditEspecialidad(especialidadInicial);
         setEditTratamiento(r.motivo);
-        const h=await getHorariosByProfesional(r.profesionalId);
-        setHorarios(Array.isArray(h) ? h : []);
+        
+        // Cargar horarios del profesional
+        const h = await getHorariosByProfesional(r.profesionalId);
+        setHorariosDisponibles(Array.isArray(h) ? h : []);
     };
 
-    const handleProChange=async(pid)=>{
-        setEditPro(pid);
-        setEditTratamiento(''); 
-        const h=await getHorariosByProfesional(pid);
-        setHorarios(Array.isArray(h) ? h : []);
+    // 2. Cambio de Profesional -> Resetear cadena
+    const handleProChange = async(pid) => {
+        setEditProId(pid);
+        setEditEspecialidad('');
+        setEditTratamiento('');
+        setEditHorarioId('');
+        
+        if (pid) {
+            const h = await getHorariosByProfesional(pid);
+            setHorariosDisponibles(Array.isArray(h) ? h : []);
+        } else {
+            setHorariosDisponibles([]);
+        }
+    };
+
+    // 3. Filtrar Especialidades del Pro
+    const getEspecialidadesPro = () => {
+        const p = pros.find(x => x.id === parseInt(editProId));
+        if (!p || !p.especialidad) return [];
+        return p.especialidad.split(',');
+    };
+
+    // 4. Filtrar Tratamientos del Pro y Especialidad
+    const getTratamientosFiltrados = () => {
+        const p = pros.find(x => x.id === parseInt(editProId));
+        if (!p || !editEspecialidad) return [];
+        
+        const teoricos = TRATAMIENTOS.filter(t => t.especialidad === editEspecialidad);
+        if (!p.tratamientos) return [];
+        const proTrats = p.tratamientos.split(',');
+        
+        return teoricos.filter(t => proTrats.includes(t.tratamiento));
     };
 
     const saveEdit=async(id)=>{
-        if(!editHorario) return alert('Selecciona hora');
+        if(!editHorarioId) return alert('Selecciona hora');
         try{
-            await reagendarReserva(id, editHorario, editPro, editTratamiento);
+            await reagendarReserva(id, editHorarioId, editProId, editTratamiento);
             alert('Modificado con éxito');
             setEditId(null);
             reload();
@@ -271,42 +378,79 @@ function AgendaResumen({reservas, reload}){
     return (
         <div>
             <div className="page-header"><div className="page-title"><h1>Resumen de Agendamientos</h1></div></div>
-            <div className="pro-card" style={{padding:0, overflowX:'auto'}}>
-                <table className="data-table">
-                    <thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th><th>Tratamiento</th><th>Valor</th><th>Acciones</th></tr></thead>
-                    <tbody>{reservas.map(r=>{
-                        const match=TRATAMIENTOS.find(t=>r.motivo.includes(t.tratamiento));
-                        const valor = match ? match.valor : 0;
+            <div className="pro-card">
+                <div className="data-table-container">
+                    <table className="data-table">
+                        <thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th><th>Tratamiento</th><th>Valor</th><th>Acciones</th></tr></thead>
+                        <tbody>{reservas.map(r=>{
+                            const match=TRATAMIENTOS.find(t=>r.motivo.includes(t.tratamiento));
+                            const valor = match ? match.valor : 0;
 
-                        if(editId===r.id) return (
-                            <tr key={r.id} style={{background:'#fdf2f8'}}>
-                                <td colSpan={5}>
-                                    <div style={{display:'flex', flexDirection:'column', gap:10}}>
-                                        <div style={{display:'flex', gap:10}}>
-                                            <select className="form-control" value={editPro} onChange={e=>handleProChange(e.target.value)}>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select>
-                                            <select className="form-control" value={editHorario} onChange={e=>setEditHorario(e.target.value)}><option value="">Selecciona hora...</option>{horarios.map(h=><option key={h.id} value={h.id}>{fmtDate(h.fecha)}</option>)}</select>
+                            if(editId===r.id) return (
+                                <tr key={r.id} style={{background:'#fff9c4'}}>
+                                    <td colSpan={6}>
+                                        <div style={{padding:15, display:'flex', flexDirection:'column', gap:10}}>
+                                            <strong>Reprogramar Cita</strong>
+                                            <div className="input-row">
+                                                {/* 1. Pro */}
+                                                <div>
+                                                    <label className="form-label">Profesional</label>
+                                                    <select className="form-control" value={editProId} onChange={e=>handleProChange(e.target.value)}>
+                                                        {pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}
+                                                    </select>
+                                                </div>
+                                                {/* 2. Esp */}
+                                                <div>
+                                                    <label className="form-label">Especialidad</label>
+                                                    <select className="form-control" value={editEspecialidad} onChange={e=>setEditEspecialidad(e.target.value)} disabled={!editProId}>
+                                                        <option value="">Seleccionar...</option>
+                                                        {getEspecialidadesPro().map(e=><option key={e} value={e}>{e}</option>)}
+                                                    </select>
+                                                </div>
+                                                {/* 3. Trat */}
+                                                <div>
+                                                    <label className="form-label">Tratamiento</label>
+                                                    <select className="form-control" value={editTratamiento} onChange={e=>setEditTratamiento(e.target.value)} disabled={!editEspecialidad}>
+                                                        <option value="">Seleccionar...</option>
+                                                        {getTratamientosFiltrados().map(t=><option key={t.id} value={t.tratamiento}>{t.tratamiento}</option>)}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div className="input-row">
+                                                {/* 4. Hora */}
+                                                <div style={{maxWidth:300}}>
+                                                    <label className="form-label">Nuevo Horario</label>
+                                                    <select className="form-control" value={editHorarioId} onChange={e=>setEditHorarioId(e.target.value)} disabled={!editTratamiento}>
+                                                        <option value="">Selecciona hora...</option>
+                                                        {horariosDisponibles.map(h=><option key={h.id} value={h.id}>{fmtDate(h.fecha)}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div style={{display:'flex', alignItems:'flex-end', gap:10}}>
+                                                    <button className="btn-primary" onClick={()=>saveEdit(r.id)}>Guardar</button>
+                                                    <button className="btn-edit" onClick={()=>setEditId(null)}>Cancelar</button>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </td>
-                                <td><button className="btn-primary" onClick={()=>saveEdit(r.id)}>Guardar</button><button className="btn-edit" onClick={()=>setEditId(null)}>X</button></td>
-                            </tr>
-                        );
+                                    </td>
+                                </tr>
+                            );
 
-                        return(
-                            <tr key={r.id}>
-                                <td>{fmtDate(r.fecha)}</td>
-                                <td><strong>{r.pacienteNombre}</strong><br/><small>{r.pacienteEmail}</small></td>
-                                <td>{r.profesionalNombre}</td>
-                                <td>{r.motivo}</td>
-                                <td>{fmtMoney(valor)}</td>
-                                <td>
-                                    <button className="btn-edit" onClick={()=>startEdit(r)} style={{marginRight:5}}>Modificar</button>
-                                    <button className="btn-danger" onClick={async()=>{if(confirm('¿Eliminar?')){await cancelarReserva(r.id);reload()}}}>Eliminar</button>
-                                </td>
-                            </tr>
-                        )
-                    })}</tbody>
-                </table>
+                            return(
+                                <tr key={r.id}>
+                                    <td>{fmtDate(r.fecha)}</td>
+                                    <td><strong>{r.pacienteNombre}</strong><br/><small>{r.pacienteEmail}</small></td>
+                                    <td>{r.profesionalNombre}</td>
+                                    <td>{r.motivo}</td>
+                                    <td>{fmtMoney(valor)}</td>
+                                    <td>
+                                        <button className="btn-edit" onClick={()=>startEdit(r)}>Modificar</button>
+                                        <button className="btn-danger" onClick={async()=>{if(confirm('¿Eliminar?')){await cancelarReserva(r.id);reload()}}}>Eliminar</button>
+                                    </td>
+                                </tr>
+                            )
+                        })}</tbody>
+                    </table>
+                </div>
             </div>
         </div>
     )
@@ -319,6 +463,13 @@ function AgendaPacientes(){
     
     const load=()=>getPacientes().then(setPacientes);
     useEffect(()=>{load()},[]);
+
+    // [MEJORA 3] Auto-formato
+    const handleRutChange = (e) => {
+        const raw = e.target.value;
+        const formatted = formatRut(raw);
+        setForm({...form, rut: formatted});
+    }
 
     const save=async(e)=>{
         e.preventDefault();
@@ -337,22 +488,14 @@ function AgendaPacientes(){
     };
 
     const handleEdit = (p) => {
-        setForm({ nombreCompleto: p.nombreCompleto, email: p.email, telefono: p.telefono, rut: p.rut || '' });
+        setForm({ nombreCompleto: p.nombreCompleto, email: p.email, telefono: p.telefono, rut: formatRut(p.rut||'') });
         setEditingId(p.id);
         window.scrollTo(0, 0);
     };
 
     const handleDelete = async (id) => {
-        if(confirm('¿Seguro que deseas eliminar este paciente?')) {
-            await deletePaciente(id);
-            load();
-        }
+        if(confirm('¿Seguro?')) { await deletePaciente(id); load(); }
     };
-
-    const cancelEdit = () => {
-        setEditingId(null);
-        setForm({nombreCompleto:'',email:'',telefono:'', rut:''});
-    }
 
     return(
         <div>
@@ -361,7 +504,10 @@ function AgendaPacientes(){
                 <h3 style={{marginTop:0}}>{editingId ? 'Editar Paciente' : 'Crear Nuevo Paciente'}</h3>
                 <form onSubmit={save}>
                     <div className="input-row">
-                        <div><label className="form-label">RUT (Identificador)</label><input className="form-control" value={form.rut} onChange={e=>setForm({...form,rut:formatRut(e.target.value)})}/></div>
+                        <div>
+                            <label className="form-label">RUT (Ej: 12.345.678-9)</label>
+                            <input className="form-control" value={form.rut} onChange={handleRutChange} maxLength={12} placeholder="12.345.678-9"/>
+                        </div>
                         <div><label className="form-label">Nombre Completo</label><input className="form-control" value={form.nombreCompleto} onChange={e=>setForm({...form,nombreCompleto:e.target.value})}/></div>
                     </div>
                     <div className="input-row">
@@ -369,26 +515,23 @@ function AgendaPacientes(){
                         <div><label className="form-label">Teléfono</label><input className="form-control" value={form.telefono} onChange={e=>setForm({...form,telefono:e.target.value})}/></div>
                     </div>
                     <button className="btn-primary">{editingId ? 'Guardar Cambios' : 'Crear Paciente'}</button>
-                    {editingId && <button type="button" className="btn-edit" onClick={cancelEdit} style={{marginLeft:10}}>Cancelar Edición</button>}
+                    {editingId && <button type="button" className="btn-edit" onClick={()=>{setEditingId(null); setForm({nombreCompleto:'',email:'',telefono:'', rut:''})}} style={{marginLeft:10}}>Cancelar</button>}
                 </form>
             </div>
-            <h3>Directorio de Pacientes</h3>
-            <div className="pro-card" style={{padding:0}}>
-                <table className="data-table">
-                    <thead><tr><th>RUT</th><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Acciones</th></tr></thead>
-                    <tbody>{pacientes.map(p=>(
-                        <tr key={p.id}>
-                            <td>{p.rut || '-'}</td>
-                            <td>{p.nombreCompleto}</td>
-                            <td>{p.email}</td>
-                            <td>{p.telefono}</td>
-                            <td>
-                                <button className="btn-edit" onClick={()=>handleEdit(p)} style={{marginRight:5}}>Modificar</button>
-                                <button className="btn-danger" onClick={()=>handleDelete(p.id)}>Eliminar</button>
-                            </td>
-                        </tr>
-                    ))}</tbody>
-                </table>
+            <div className="pro-card">
+                <div className="data-table-container">
+                    <table className="data-table">
+                        <thead><tr><th>RUT</th><th>Nombre</th><th>Email</th><th>Acciones</th></tr></thead>
+                        <tbody>{pacientes.map(p=>(
+                            <tr key={p.id}>
+                                <td>{formatRut(p.rut)}</td>
+                                <td>{p.nombreCompleto}</td>
+                                <td>{p.email}</td>
+                                <td><button className="btn-edit" onClick={()=>handleEdit(p)}>Editar</button><button className="btn-danger" onClick={()=>handleDelete(p.id)}>Borrar</button></td>
+                            </tr>
+                        ))}</tbody>
+                    </table>
+                </div>
             </div>
         </div>
     )
@@ -396,51 +539,23 @@ function AgendaPacientes(){
 
 function AgendaProfesionales() {
     const [pros, setPros] = useState([]);
-    // Formulario ahora maneja Arrays para especialidades y tratamientos
     const [form, setForm] = useState({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] });
     const [isEditing, setIsEditing] = useState(false);
 
     const especialidadesUnicas = [...new Set(TRATAMIENTOS.map(t => t.especialidad))];
-    
-    // Filtrar tratamientos basado en TODAS las especialidades seleccionadas
-    const tratamientosDisponibles = TRATAMIENTOS.filter(t => 
-        form.especialidades.includes(t.especialidad)
-    );
+    const tratamientosDisponibles = TRATAMIENTOS.filter(t => form.especialidades.includes(t.especialidad)).map(t=>t.tratamiento);
 
     const load = () => getProfesionales().then(setPros);
     useEffect(() => { load(); }, []);
 
-    // Manejo de Checkbox Especialidades
-    const handleSpecCheck = (esp) => {
-        if (form.especialidades.includes(esp)) {
-            // Si ya está, lo quitamos y también limpiamos los tratamientos de esa especialidad
-            const nuevasEsp = form.especialidades.filter(e => e !== esp);
-            const tratamientosMantener = form.tratamientos.filter(t => {
-                const match = TRATAMIENTOS.find(tr => tr.tratamiento === t);
-                return match && nuevasEsp.includes(match.especialidad);
-            });
-            setForm({ ...form, especialidades: nuevasEsp, tratamientos: tratamientosMantener });
-        } else {
-            // Si no está, lo agregamos
-            setForm({ ...form, especialidades: [...form.especialidades, esp] });
-        }
-    };
+    // [MEJORA 2] Handlers para Dropdowns
+    const handleSpecChange = (newSpecs) => setForm({ ...form, especialidades: newSpecs });
+    const handleTratChange = (newTrats) => setForm({ ...form, tratamientos: newTrats });
 
-    // Manejo de Checkbox Tratamientos
-    const handleTratCheck = (trat) => {
-        if (form.tratamientos.includes(trat)) {
-            setForm({ ...form, tratamientos: form.tratamientos.filter(t => t !== trat) });
-        } else {
-            setForm({ ...form, tratamientos: [...form.tratamientos, trat] });
-        }
-    };
-
-    // Cargar datos para editar
     const handleEdit = (p) => {
         setForm({
             id: p.id,
             nombreCompleto: p.nombreCompleto,
-            // Convertimos los strings guardados "A,B" en arrays ["A","B"]
             especialidades: p.especialidad ? p.especialidad.split(',') : [],
             tratamientos: p.tratamientos ? p.tratamientos.split(',') : []
         });
@@ -448,48 +563,19 @@ function AgendaProfesionales() {
         window.scrollTo(0,0);
     };
 
-    const handleDelete = async (id) => {
-        if(confirm('¿Eliminar este profesional? Se borrarán sus configuraciones de horario.')) {
-            await deleteProfesional(id);
-            load();
-        }
-    };
-
-    const cancelEdit = () => {
-        setForm({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] });
-        setIsEditing(false);
-    };
-
     const save = async (e) => {
         e.preventDefault();
-        if (form.especialidades.length === 0) return alert("Selecciona al menos una especialidad");
-
+        if (form.especialidades.length === 0) return alert("Selecciona especialidad");
         const payload = {
             nombreCompleto: form.nombreCompleto,
-            // Guardamos como String separado por comas
             especialidad: form.especialidades.join(','), 
             tratamientos: form.tratamientos.join(',')
         };
-
         try {
-            if (isEditing) {
-                await updateProfesional(form.id, payload);
-                alert('Profesional Actualizado Correctamente');
-            } else {
-                const res = await fetch(`${API_BASE_URL}/profesionales`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                if (res.status === 409) return alert("Error: El profesional ya existe.");
-                if (!res.ok) throw new Error();
-                alert('Profesional Creado');
-            }
-            cancelEdit();
-            load();
-        } catch (e) {
-            alert("Error al guardar");
-        }
+            if (isEditing) await updateProfesional(form.id, payload);
+            else await fetch(`${API_BASE_URL}/profesionales`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            alert('Guardado'); setIsEditing(false); setForm({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] }); load();
+        } catch (e) { alert("Error"); }
     }
 
     return (
@@ -504,82 +590,37 @@ function AgendaProfesionales() {
                             <input className="form-control" value={form.nombreCompleto} onChange={e => setForm({ ...form, nombreCompleto: e.target.value })} />
                         </div>
                     </div>
-
-                    <div style={{ marginBottom: 20 }}>
-                        <label className="form-label">Especialidades (Puedes marcar varias)</label>
-                        <div className="multicheck-container" style={{ maxHeight: '150px' }}>
-                            {especialidadesUnicas.map(esp => (
-                                <label key={esp} className="check-item">
-                                    <input
-                                        type="checkbox"
-                                        checked={form.especialidades.includes(esp)}
-                                        onChange={() => handleSpecCheck(esp)}
-                                    />
-                                    <strong>{esp}</strong>
-                                </label>
-                            ))}
+                    {/* [MEJORA 2] Dropdowns */}
+                    <div className="input-row">
+                        <div>
+                            <MultiSelectDropdown label="Especialidades" options={especialidadesUnicas} selectedValues={form.especialidades} onChange={handleSpecChange} />
+                        </div>
+                        <div>
+                            <MultiSelectDropdown label="Tratamientos Habilitados" options={tratamientosDisponibles} selectedValues={form.tratamientos} onChange={handleTratChange} />
                         </div>
                     </div>
-
-                    <div style={{ marginBottom: 20 }}>
-                        <label className="form-label">Tratamientos Disponibles (Según especialidades)</label>
-                        {form.especialidades.length > 0 ? (
-                            <div className="multicheck-container">
-                                {tratamientosDisponibles.map(t => (
-                                    <label key={t.id} className="check-item">
-                                        <input
-                                            type="checkbox"
-                                            checked={form.tratamientos.includes(t.tratamiento)}
-                                            onChange={() => handleTratCheck(t.tratamiento)}
-                                        />
-                                        {t.tratamiento} <small style={{color:'#888'}}>({t.especialidad})</small>
-                                    </label>
-                                ))}
-                            </div>
-                        ) : (
-                            <div style={{ color: '#666', fontStyle: 'italic', padding: 10, background: '#f9f9f9', borderRadius: 8 }}>
-                                Selecciona una especialidad arriba para ver los tratamientos...
-                            </div>
-                        )}
-                    </div>
-
                     <div style={{display:'flex', gap:10}}>
-                        <button className="btn-primary">{isEditing ? 'Guardar Cambios' : 'Crear Profesional'}</button>
-                        {isEditing && <button type="button" className="btn-edit" onClick={cancelEdit}>Cancelar</button>}
+                        <button className="btn-primary">{isEditing ? 'Guardar' : 'Crear'}</button>
+                        {isEditing && <button type="button" className="btn-edit" onClick={()=>{setIsEditing(false); setForm({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] })}}>Cancelar</button>}
                     </div>
                 </form>
             </div>
-
-            <h3>Staff Médico</h3>
-            <div className="pro-card" style={{ padding: 0 }}>
-                <table className="data-table">
-                    <thead><tr><th>Nombre</th><th>Especialidades</th><th>Tratamientos</th><th>Acciones</th></tr></thead>
-                    <tbody>
-                        {pros.map(p => (
+            <div className="pro-card">
+                <div className="data-table-container">
+                    <table className="data-table">
+                        <thead><tr><th>Nombre</th><th>Especialidades</th><th>Acciones</th></tr></thead>
+                        <tbody>{pros.map(p => (
                             <tr key={p.id}>
                                 <td><strong>{p.nombreCompleto}</strong></td>
+                                <td>{p.especialidad ? p.especialidad.split(',').join(', ') : '-'}</td>
                                 <td>
-                                    {p.especialidad ? p.especialidad.split(',').map((e, i) => (
-                                        <span key={i} style={{display:'block', fontSize:'0.85rem', marginBottom:2}}>• {e}</span>
-                                    )) : '-'}
-                                </td>
-                                <td>
-                                    <ul style={{ margin: 0, paddingLeft: 20, fontSize: '0.8rem', color: '#666' }}>
-                                        {p.tratamientos && p.tratamientos.length > 0 ? p.tratamientos.split(',').map((t, idx) => (
-                                            <li key={idx}>{t}</li>
-                                        )) : <li>Sin tratamientos</li>}
-                                    </ul>
-                                </td>
-                                <td>
-                                    <div style={{display:'flex', gap:5}}>
-                                        <button className="btn-edit" onClick={() => handleEdit(p)}>Editar</button>
-                                        <button className="btn-danger" onClick={() => handleDelete(p.id)}>X</button>
-                                    </div>
+                                    <button className="btn-edit" onClick={() => handleEdit(p)}>Editar</button>
+                                    <button className="btn-danger" onClick={async()=>{if(confirm('¿Eliminar?')){await deleteProfesional(p.id);load()}}}>X</button>
                                 </td>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        ))}</tbody>
+                    </table>
+                </div>
             </div>
         </div>
     )
@@ -589,59 +630,30 @@ function AgendaHorarios(){
     const [pros,setPros]=useState([]);
     const [configs, setConfigs] = useState([]);
     const [fechaSel, setFechaSel] = useState('');
-    const [diaNombre, setDiaNombre] = useState('');
     const [form,setForm]=useState({profesionalId:'',diaSemana:'',horaInicio:'09:00',horaFin:'18:00', duracionSlot: 30, intervalo: 0});
-    const [modalOpen, setModalOpen] = useState(false);
-    const [horariosVisual, setHorariosVisual] = useState([]);
-    const [proVisual, setProVisual] = useState('');
+    
+    // [MEJORA 1] Modal
+    const [showModal, setShowModal] = useState(false);
+    const [modalData, setModalData] = useState({ proName: '', slots: {} });
 
-    useEffect(()=>{
-        getProfesionales().then(setPros);
-        loadConfigs();
-    },[]);
+    useEffect(()=>{ getProfesionales().then(setPros); loadConfigs(); },[]);
 
     const loadConfigs = async () => {
-        try {
-            const data = await getConfiguraciones();
-            setConfigs(Array.isArray(data) ? data : []);
-        } catch (e) {
-            console.error("Error cargando configs", e);
-            setConfigs([]);
-        }
+        try { const data = await getConfiguraciones(); setConfigs(Array.isArray(data) ? data : []); } catch (e) { setConfigs([]); }
     };
     
-    const handleFechaChange = (e) => {
-        const fecha = e.target.value; setFechaSel(fecha);
-        if (fecha) {
-            const parts = fecha.split('-'); 
-            const dateObj = new Date(parts[0], parts[1]-1, parts[2]);
-            const diaIndex = dateObj.getDay(); 
-            const nombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-            setDiaNombre(nombres[diaIndex]);
-            setForm({ ...form, diaSemana: diaIndex });
-        } else { setDiaNombre(''); setForm({ ...form, diaSemana: '' }); }
-    };
-
     const save=async(e)=>{
         e.preventDefault();
-        if(!form.profesionalId || !fechaSel) return alert("Selecciona profesional y fecha"); 
-        
         const payload = { ...form, fecha: fechaSel }; 
         await fetch(`${API_BASE_URL}/configuracion`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-        
-        alert(`Horario guardado para: ${fechaSel}`);
-        await loadConfigs();
+        alert(`Horario guardado`); await loadConfigs();
     };
 
     const borrarConfig = async (id) => {
-        if(confirm("¿Eliminar esta regla de horario?")) {
-            await deleteConfiguracion(id);
-            loadConfigs();
-        }
+        if(confirm("¿Eliminar?")) { await deleteConfiguracion(id); loadConfigs(); }
     }
     
-    const abrirModal = async (p) => {
-        setProVisual(p.nombreCompleto);
+    const verCalendario = async (p) => {
         try {
             const h = await getHorariosByProfesional(p.id);
             if(Array.isArray(h)) {
@@ -651,9 +663,9 @@ function AgendaHorarios(){
                     acc[f].push(curr);
                     return acc;
                 }, {});
-                setHorariosVisual(agrupados);
-            } else { setHorariosVisual([]); }
-            setModalOpen(true);
+                setModalData({ proName: p.nombreCompleto, slots: agrupados });
+                setShowModal(true);
+            }
         } catch(e) { alert("Error cargando horarios"); }
     };
 
@@ -664,87 +676,49 @@ function AgendaHorarios(){
                 <form onSubmit={save}>
                     <div className="input-row">
                         <div><label className="form-label">Profesional</label><select className="form-control" onChange={e=>setForm({...form,profesionalId:e.target.value})}><option>Seleccionar...</option>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div>
-                        <div><label className="form-label">Fecha del Bloque {diaNombre && <span>({diaNombre})</span>}</label><input type="date" className="form-control" value={fechaSel} onChange={handleFechaChange} /></div>
+                        <div><label className="form-label">Fecha</label><input type="date" className="form-control" onChange={e=>setFechaSel(e.target.value)} /></div>
                     </div>
                     <div className="input-row">
                         <div><label className="form-label">Inicio</label><input type="time" className="form-control" value={form.horaInicio} onChange={e=>setForm({...form,horaInicio:e.target.value})}/></div>
                         <div><label className="form-label">Fin</label><input type="time" className="form-control" value={form.horaFin} onChange={e=>setForm({...form,horaFin:e.target.value})}/></div>
                     </div>
-                    <div className="input-row">
-                        <div>
-                            <label className="form-label">Duración del Bloque (Minutos)</label>
-                            <select className="form-control" value={form.duracionSlot} onChange={e=>setForm({...form, duracionSlot: e.target.value})}>
-                                <option value="30">30 Minutos</option>
-                                <option value="45">45 Minutos</option>
-                                <option value="60">60 Minutos</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="form-label">Tiempo de descanso / Intervalo (Minutos)</label>
-                            <input type="number" className="form-control" value={form.intervalo} onChange={e=>setForm({...form, intervalo: e.target.value})} placeholder="Ej: 10"/>
-                        </div>
-                    </div>
-                    <button className="btn-primary">Guardar Disponibilidad (Solo esta fecha)</button>
+                    <button className="btn-primary">Guardar Disponibilidad</button>
                 </form>
             </div>
 
-            <h3>Bloques de Atención Configurados (Por Fecha)</h3>
-            <div className="pro-card" style={{padding:0}}>
-                <table className="data-table">
-                    <thead><tr><th>Profesional</th><th>Fecha</th><th>Horario</th><th>Duración / Intervalo</th><th>Acción</th></tr></thead>
-                    <tbody>
-                        {configs.map(c => (
-                            <tr key={c.id}>
-                                <td>{c.profesional?.nombreCompleto}</td>
-                                <td>{c.fecha || 'Día genérico'}</td>
-                                <td>{c.horaInicio} - {c.horaFin}</td>
-                                <td>{c.duracionSlot}m / {c.intervalo}m gap</td>
-                                <td><button className="btn-danger" onClick={()=>borrarConfig(c.id)}>Eliminar</button></td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-            
-            <h3 style={{marginTop:40}}>Ver Calendario Visual</h3>
-            <div className="pro-card" style={{padding:0}}>
-                <table className="data-table">
-                    <thead><tr><th>Profesional</th><th>Acción</th></tr></thead>
-                    <tbody>
-                        {pros.map(p=>(
+            <div className="pro-card">
+                <h3>Ver Calendario Visual</h3>
+                <div className="data-table-container">
+                    <table className="data-table">
+                        <thead><tr><th>Profesional</th><th>Acción</th></tr></thead>
+                        <tbody>{pros.map(p=>(
                             <tr key={p.id}>
                                 <td>{p.nombreCompleto}</td>
-                                <td><button className="btn-edit" onClick={()=>abrirModal(p)}>Ver Horarios</button></td>
+                                <td><button className="btn-edit" onClick={()=>verCalendario(p)}>Ver Horarios</button></td>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        ))}</tbody>
+                    </table>
+                </div>
             </div>
 
-            {modalOpen && createPortal(
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <button className="modal-close" onClick={()=>setModalOpen(false)}>×</button>
-                        <h2>Horarios: {proVisual}</h2>
-                        <div style={{marginTop:20}}>
-                            {Object.keys(horariosVisual).length === 0 ? <p>No hay horarios cargados.</p> : 
-                                Object.entries(horariosVisual).sort().map(([fecha, slots]) => (
-                                    <div key={fecha} style={{marginBottom:15, borderBottom:'1px solid #eee', paddingBottom:10}}>
-                                        <strong style={{display:'block', marginBottom:5}}>{new Date(fecha + 'T00:00:00').toLocaleDateString('es-CL', {weekday:'long', day:'numeric', month:'long'})}</strong>
-                                        <div style={{display:'flex', gap:5, flexWrap:'wrap'}}>
-                                            {slots.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).map(s => (
-                                                <span key={s.id} style={{background:'#f3f4f6', padding:'4px 8px', borderRadius:4, fontSize:'0.8rem'}}>
-                                                    {new Date(s.fecha).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))
-                            }
-                        </div>
-                    </div>
-                </div>,
-                document.body
+            {/* [MEJORA 1] Render Modal */}
+            {showModal && (
+                <Modal title={`Horarios: ${modalData.proName}`} onClose={()=>setShowModal(false)}>
+                    {Object.keys(modalData.slots).length === 0 ? <p>No hay horarios.</p> : 
+                        Object.entries(modalData.slots).sort().map(([fecha, slots]) => (
+                            <div key={fecha} style={{marginBottom:15, borderBottom:'1px solid #eee', paddingBottom:10}}>
+                                <strong>{new Date(fecha + 'T00:00:00').toLocaleDateString('es-CL', {weekday:'long', day:'numeric', month:'long'})}</strong>
+                                <div style={{display:'flex', gap:5, flexWrap:'wrap', marginTop:5}}>
+                                    {slots.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).map(s => (
+                                        <span key={s.id} style={{background:'#f3f4f6', padding:'4px 8px', borderRadius:4, fontSize:'0.85rem'}}>
+                                            {new Date(s.fecha).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        ))
+                    }
+                </Modal>
             )}
         </div>
     )
@@ -755,32 +729,8 @@ function FinanzasReporte({total,count,reservas}){
         <div>
             <div className="page-header"><div className="page-title"><h1>Reporte Financiero</h1></div></div>
             <div className="kpi-grid">
-                <div className="kpi-box">
-                    <div className="kpi-label">Ingresos Totales</div>
-                    <div className="kpi-value">{fmtMoney(total)}</div>
-                </div>
-                <div className="kpi-box">
-                    <div className="kpi-label">Citas Agendadas</div>
-                    <div className="kpi-value">{count}</div>
-                </div>
-            </div>
-            <div className="pro-card" style={{padding:0}}>
-                <table className="data-table">
-                    <thead><tr><th>Fecha</th><th>Paciente</th><th>Tratamiento</th><th>Valor</th></tr></thead>
-                    <tbody>
-                        {reservas.map(r=>{
-                            const match=TRATAMIENTOS.find(t=>r.motivo.includes(t.tratamiento));
-                            return(
-                                <tr key={r.id}>
-                                    <td>{fmtDate(r.fecha)}</td>
-                                    <td>{r.pacienteNombre}</td>
-                                    <td>{r.motivo}</td>
-                                    <td><b>{match?fmtMoney(match.valor):'-'}</b></td>
-                                </tr>
-                            )
-                        })}
-                    </tbody>
-                </table>
+                <div className="kpi-box"><div className="kpi-label">Ingresos Totales</div><div className="kpi-value">{fmtMoney(total)}</div></div>
+                <div className="kpi-box"><div className="kpi-label">Citas Agendadas</div><div className="kpi-value">{count}</div></div>
             </div>
         </div>
     )
@@ -793,7 +743,6 @@ function WebPaciente() {
     const [loading, setLoading] = useState(false);
     const [bookingSuccess, setBookingSuccess] = useState(false);
     const [pacienteId, setPacienteId] = useState(null);
-    
     const [multiAgenda, setMultiAgenda] = useState({}); 
     const [selectedDateKey, setSelectedDateKey] = useState(null); 
     const [availableDates, setAvailableDates] = useState([]); 
@@ -804,23 +753,15 @@ function WebPaciente() {
     const prestaciones = TRATAMIENTOS.filter(t => t.especialidad === form.especialidad);
     const tratamientoSel = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId));
     
-    // BUSQUEDA INTELIGENTE DE DISPONIBILIDAD
     const handleTreatmentConfirm = async () => {
         setLoading(true);
         const prosAptos = profesionales.filter(p => p.tratamientos && p.tratamientos.includes(tratamientoSel.tratamiento));
         
-        if (prosAptos.length === 0) {
-            alert("No hay profesionales asignados a este tratamiento.");
-            setLoading(false);
-            return;
-        }
+        if (prosAptos.length === 0) { alert("No hay profesionales."); setLoading(false); return; }
 
         const promises = prosAptos.map(async p => {
             const horarios = await getHorariosByProfesional(p.id);
-            return { 
-                profesional: p, 
-                slots: Array.isArray(horarios) ? horarios.filter(x => new Date(x.fecha) > new Date()) : [] 
-            };
+            return { profesional: p, slots: Array.isArray(horarios) ? horarios.filter(x => new Date(x.fecha) > new Date()) : [] };
         });
 
         const results = await Promise.all(promises);
@@ -833,10 +774,7 @@ function WebPaciente() {
                 datesSet.add(dateKey);
                 if (!agendaMap[dateKey]) agendaMap[dateKey] = [];
                 let proEntry = agendaMap[dateKey].find(entry => entry.profesional.id === profesional.id);
-                if (!proEntry) {
-                    proEntry = { profesional, slots: [] };
-                    agendaMap[dateKey].push(proEntry);
-                }
+                if (!proEntry) { proEntry = { profesional, slots: [] }; agendaMap[dateKey].push(proEntry); }
                 proEntry.slots.push(slot);
             });
         });
@@ -845,9 +783,7 @@ function WebPaciente() {
         setMultiAgenda(agendaMap);
         setAvailableDates(sortedDates);
         if (sortedDates.length > 0) setSelectedDateKey(sortedDates[0]);
-        
-        setLoading(false);
-        setStep(3); 
+        setLoading(false); setStep(3); 
     };
 
     const handleRutSearch = async () => {
@@ -865,10 +801,7 @@ function WebPaciente() {
         setLoading(false);
     };
 
-    const selectSlot = (pid, hid) => {
-        setForm(prev => ({ ...prev, profesionalId: pid, horarioId: hid }));
-        setStep(4);
-    };
+    const selectSlot = (pid, hid) => { setForm(prev => ({ ...prev, profesionalId: pid, horarioId: hid })); setStep(4); };
 
     const confirmar = async () => {
         setLoading(true);
@@ -909,7 +842,10 @@ function WebPaciente() {
                 {step===0 && (
                     <div className="fade-in">
                         <h2 style={{marginTop:0}}>Bienvenido</h2>
-                        <div className="input-group" style={{marginBottom:20}}><label className="form-label">RUT</label><input className="cisd-input" placeholder="Ej: 12345678-9" value={form.rut} onChange={e=>setForm({...form, rut:formatRut(e.target.value)})}/></div>
+                        <div className="input-group" style={{marginBottom:20}}>
+                            <label className="form-label">RUT</label>
+                            <input className="cisd-input" placeholder="Ej: 12.345.678-9" value={form.rut} onChange={e=>setForm({...form, rut:formatRut(e.target.value)})}/>
+                        </div>
                         <button className="web-btn-black" style={{width:'100%'}} disabled={!form.rut || loading} onClick={handleRutSearch}>{loading ? '...' : 'Comenzar'}</button>
                     </div>
                 )}
@@ -939,9 +875,7 @@ function WebPaciente() {
                         </div>
                         <div className="web-actions">
                             <button className="web-btn-white" onClick={()=>setStep(0)}>Volver</button>
-                            <button className="web-btn-black" disabled={!form.tratamientoId || loading} onClick={handleTreatmentConfirm}>
-                                {loading ? 'Buscando horas...' : 'Ver Disponibilidad'}
-                            </button>
+                            <button className="web-btn-black" disabled={!form.tratamientoId || loading} onClick={handleTreatmentConfirm}>{loading ? 'Buscando horas...' : 'Ver Disponibilidad'}</button>
                         </div>
                     </div>
                 )}
