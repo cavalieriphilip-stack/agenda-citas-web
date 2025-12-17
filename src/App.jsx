@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import './App.css';
+import './App.css'; // Asegúrate de actualizar el CSS también
 import {
     API_BASE_URL, getPacientes, getProfesionales, getHorariosByProfesional,
     getReservasDetalle, crearReserva, crearPaciente, cancelarReserva, reagendarReserva,
@@ -70,34 +70,45 @@ function App() {
 function AdminLayout() {
     const [activeModule, setActiveModule] = useState('agenda');
     const [activeView, setActiveView] = useState('resumen');
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Estado para menú móvil
+
+    const handleNavClick = (view) => {
+        setActiveView(view);
+        setMobileMenuOpen(false); // Cerrar menú al hacer clic
+    }
     
     return (
         <div className="dashboard-layout">
             <nav className="top-nav">
                 <div className="brand-area">
+                    {/* Botón Hamburguesa (Solo visible en móvil por CSS) */}
+                    <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>☰</button>
                     <img src={LOGO_URL} alt="CISD Logo" className="cisd-logo-admin" />
-                    <span>CISD Admin</span>
+                    <span className="admin-title-text">CISD Admin</span>
                 </div>
                 <div className="module-switcher">
                     <button className={`module-tab ${activeModule === 'agenda' ? 'active' : ''}`} onClick={() => {setActiveModule('agenda'); setActiveView('resumen');}}>Gestión Clínica</button>
                     <button className={`module-tab ${activeModule === 'finanzas' ? 'active' : ''}`} onClick={() => {setActiveModule('finanzas'); setActiveView('reporte');}}>Finanzas</button>
                 </div>
-                <div className="nav-actions"><a href="/" className="btn-top-action">Ver Web Paciente</a></div>
+                <div className="nav-actions"><a href="/" className="btn-top-action">Web Paciente</a></div>
             </nav>
 
             <div className="workspace">
-                <aside className="sidebar">
-                    <div className="sidebar-header">MENÚ {activeModule}</div>
+                {/* Overlay oscuro para cerrar menú al hacer click fuera */}
+                {mobileMenuOpen && <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)}></div>}
+
+                <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
+                    <div className="sidebar-header">MENÚ {activeModule === 'agenda' ? 'AGENDA' : 'FINANZAS'}</div>
                     {activeModule === 'agenda' && (
                         <>
-                            <div className={`nav-item ${activeView==='resumen'?'active':''}`} onClick={()=>setActiveView('resumen')}>Resumen Agendamientos</div>
-                            <div className={`nav-item ${activeView==='reservas'?'active':''}`} onClick={()=>setActiveView('reservas')}>Nueva Reserva</div>
-                            <div className={`nav-item ${activeView==='pacientes'?'active':''}`} onClick={()=>setActiveView('pacientes')}>Administrar Pacientes</div>
-                            <div className={`nav-item ${activeView==='profesionales'?'active':''}`} onClick={()=>setActiveView('profesionales')}>Administrar Profesionales</div>
-                            <div className={`nav-item ${activeView==='horarios'?'active':''}`} onClick={()=>setActiveView('horarios')}>Administrar Horarios</div>
+                            <div className={`nav-item ${activeView==='resumen'?'active':''}`} onClick={()=>handleNavClick('resumen')}>Resumen Agendamientos</div>
+                            <div className={`nav-item ${activeView==='reservas'?'active':''}`} onClick={()=>handleNavClick('reservas')}>Nueva Reserva</div>
+                            <div className={`nav-item ${activeView==='pacientes'?'active':''}`} onClick={()=>handleNavClick('pacientes')}>Administrar Pacientes</div>
+                            <div className={`nav-item ${activeView==='profesionales'?'active':''}`} onClick={()=>handleNavClick('profesionales')}>Administrar Profesionales</div>
+                            <div className={`nav-item ${activeView==='horarios'?'active':''}`} onClick={()=>handleNavClick('horarios')}>Administrar Horarios</div>
                         </>
                     )}
-                    {activeModule === 'finanzas' && <div className={`nav-item ${activeView==='reporte'?'active':''}`} onClick={()=>setActiveView('reporte')}>Dashboard Financiero</div>}
+                    {activeModule === 'finanzas' && <div className={`nav-item ${activeView==='reporte'?'active':''}`} onClick={()=>handleNavClick('reporte')}>Dashboard Financiero</div>}
                 </aside>
                 <main className="main-stage">
                     <DashboardContent module={activeModule} view={activeView} />
@@ -125,6 +136,10 @@ function DashboardContent({ module, view }) {
     }
     return <div>Cargando...</div>;
 }
+
+// ... (Resto de los componentes: AgendaNuevaReserva, AgendaResumen, etc. IGUAL QUE ANTES)
+// Copia y pega el resto de las funciones (AgendaNuevaReserva, AgendaPacientes, etc.) del código anterior aquí abajo.
+// Para no hacer el mensaje eterno, asumo que mantienes esas funciones igual. Si las necesitas dime.
 
 // ---------------------- SUBVISTAS ADMIN ----------------------
 
@@ -775,9 +790,6 @@ function FinanzasReporte({total,count,reservas}){
     )
 }
 
-// =========================================================
-// WEB PACIENTE (ESTILO REDSALUD)
-// =========================================================
 function WebPaciente() {
     const [step, setStep] = useState(0); 
     const [profesionales, setProfesionales] = useState([]);
