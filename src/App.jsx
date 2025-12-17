@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import './App.css'; // Asegúrate de actualizar el CSS también
+import './App.css'; 
 import {
     API_BASE_URL, getPacientes, getProfesionales, getHorariosByProfesional,
     getReservasDetalle, crearReserva, crearPaciente, cancelarReserva, reagendarReserva,
@@ -70,18 +70,18 @@ function App() {
 function AdminLayout() {
     const [activeModule, setActiveModule] = useState('agenda');
     const [activeView, setActiveView] = useState('resumen');
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Estado para menú móvil
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const handleNavClick = (view) => {
         setActiveView(view);
-        setMobileMenuOpen(false); // Cerrar menú al hacer clic
+        setMobileMenuOpen(false); 
     }
     
     return (
         <div className="dashboard-layout">
             <nav className="top-nav">
                 <div className="brand-area">
-                    {/* Botón Hamburguesa (Solo visible en móvil por CSS) */}
+                    {/* Botón Hamburguesa */}
                     <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>☰</button>
                     <img src={LOGO_URL} alt="CISD Logo" className="cisd-logo-admin" />
                     <span className="admin-title-text">CISD Admin</span>
@@ -94,7 +94,7 @@ function AdminLayout() {
             </nav>
 
             <div className="workspace">
-                {/* Overlay oscuro para cerrar menú al hacer click fuera */}
+                {/* Overlay oscuro (solo móvil) */}
                 {mobileMenuOpen && <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)}></div>}
 
                 <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
@@ -137,11 +137,7 @@ function DashboardContent({ module, view }) {
     return <div>Cargando...</div>;
 }
 
-// ... (Resto de los componentes: AgendaNuevaReserva, AgendaResumen, etc. IGUAL QUE ANTES)
-// Copia y pega el resto de las funciones (AgendaNuevaReserva, AgendaPacientes, etc.) del código anterior aquí abajo.
-// Para no hacer el mensaje eterno, asumo que mantienes esas funciones igual. Si las necesitas dime.
-
-// ---------------------- SUBVISTAS ADMIN ----------------------
+// ---------------------- SUBVISTAS ----------------------
 
 function AgendaNuevaReserva({ reload, reservas }) {
     const [pacientes, setPacientes] = useState([]);

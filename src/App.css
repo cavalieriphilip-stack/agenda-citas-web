@@ -1,56 +1,119 @@
-/* RESET BÁSICO */
+/* =========================================
+   1. RESET Y BASE (GLOBAL)
+   ========================================= */
 * { box-sizing: border-box; }
-body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background-color: #f4f7f6; color: #333; }
 
-/* LAYOUT PRINCIPAL */
-.dashboard-layout { display: flex; flex-direction: column; min-height: 100vh; }
-
-/* BARRA SUPERIOR */
-.top-nav {
-    display: flex; justify-content: space-between; align-items: center;
-    background: #fff; padding: 0 20px; height: 64px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 1000;
+body { 
+    margin: 0; 
+    font-family: 'Segoe UI', system-ui, sans-serif; 
+    background-color: #f4f7f6; 
+    color: #333;
+    overflow-x: hidden; /* Evita scroll horizontal indeseado */
 }
-.brand-area { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 1.2rem; }
-.cisd-logo-admin { height: 40px; }
-.mobile-menu-btn { display: none; background: none; border: none; font-size: 24px; cursor: pointer; }
 
-.module-switcher { display: flex; gap: 5px; }
+/* =========================================
+   2. LAYOUT PRINCIPAL (DESKTOP POR DEFECTO)
+   ========================================= */
+.dashboard-layout { 
+    display: flex; 
+    flex-direction: column; 
+    height: 100vh; /* Ocupa toda la altura */
+}
+
+/* Barra Superior */
+.top-nav {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    background: #fff; 
+    padding: 0 20px; 
+    height: 64px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+    position: relative; 
+    z-index: 20;
+    flex-shrink: 0; /* No encoger */
+}
+
+.brand-area { 
+    display: flex; 
+    align-items: center; 
+    gap: 15px; 
+    font-weight: bold; 
+    font-size: 1.2rem; 
+}
+
+.cisd-logo-admin { height: 40px; }
+
+/* Botón Hamburguesa (OCULTO EN DESKTOP) */
+.mobile-menu-btn { 
+    display: none; 
+}
+
+.module-switcher { display: flex; gap: 10px; }
 .module-tab {
     background: #f0f0f0; border: none; padding: 8px 16px; border-radius: 6px;
     cursor: pointer; font-weight: 500; color: #666; transition: 0.2s;
 }
 .module-tab.active { background: #000; color: #fff; }
+
 .btn-top-action {
     background: #000; color: #fff; padding: 8px 15px; text-decoration: none;
     border-radius: 6px; font-size: 0.9rem;
 }
 
-/* ÁREA DE TRABAJO */
-.workspace { display: flex; flex: 1; overflow: hidden; position: relative; }
-
-/* BARRA LATERAL (SIDEBAR) */
-.sidebar {
-    width: 260px; background: #fff; border-right: 1px solid #eee;
-    padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px;
+/* Área de Trabajo (Sidebar + Main) */
+.workspace { 
+    display: flex; 
+    flex: 1; 
+    overflow: hidden; /* Para que el scroll sea interno */
+    position: relative; 
 }
+
+/* Sidebar (Visible y Fija en Desktop) */
+.sidebar {
+    width: 260px; 
+    background: #fff; 
+    border-right: 1px solid #eee;
+    padding: 20px; 
+    overflow-y: auto; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 5px;
+    flex-shrink: 0; /* Evita que se aplaste */
+    position: relative; /* Normal en desktop */
+    left: 0 !important; /* Forzar visible en desktop */
+    height: auto !important;
+    box-shadow: none !important;
+}
+
+.sidebar-overlay { display: none; } /* No necesario en desktop */
+
 .sidebar-header {
     font-size: 0.75rem; color: #888; font-weight: bold; text-transform: uppercase;
-    margin-bottom: 10px; letter-spacing: 1px;
+    margin-bottom: 10px; letter-spacing: 1px; margin-top: 10px;
 }
+
 .nav-item {
     padding: 10px 15px; border-radius: 8px; cursor: pointer; color: #555;
-    transition: 0.2s; font-size: 0.95rem;
+    transition: 0.2s; font-size: 0.95rem; display: block;
 }
 .nav-item:hover { background: #f9f9f9; color: #000; }
 .nav-item.active { background: #f0f0f0; color: #000; font-weight: 600; border-left: 3px solid #000; }
 
-/* CONTENIDO PRINCIPAL */
-.main-stage { flex: 1; padding: 30px; overflow-y: auto; background: #f8fafc; }
+/* Contenido Principal */
+.main-stage { 
+    flex: 1; 
+    padding: 30px; 
+    overflow-y: auto; 
+    background: #f8fafc; 
+}
 
-/* COMPONENTES UI */
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+/* =========================================
+   3. COMPONENTES UI (Inputs, Cards, Tablas)
+   ========================================= */
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
 .page-title h1 { margin: 0; font-size: 1.5rem; color: #111; }
+
 .pro-card { background: #fff; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 20px; }
 
 .form-label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.9rem; color: #444; }
@@ -70,31 +133,42 @@ body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background-col
 .btn-edit { background: #e0e0e0; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-right: 5px; }
 .btn-danger { background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
 
-/* TABLAS */
+/* Tablas */
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .data-table th { text-align: left; padding: 12px 15px; background: #f8f9fa; color: #666; font-weight: 600; border-bottom: 1px solid #eee; }
 .data-table td { padding: 12px 15px; border-bottom: 1px solid #f0f0f0; color: #333; }
-.data-table tr:last-child td { border-bottom: none; }
 
-/* WEB PACIENTE */
-.web-shell { min-height: 100vh; background: #fff; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-.cisd-logo-web { width: 120px; margin-bottom: 30px; }
+.multicheck-container { display: flex; flex-direction: column; gap: 5px; max-height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 8px; }
+.check-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; }
+
+/* =========================================
+   4. WEB PACIENTE (Corrección de Layout)
+   ========================================= */
+.web-shell { 
+    min-height: 100vh; 
+    width: 100%; /* Asegura ancho completo */
+    background: #fff; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    padding: 40px 20px; 
+}
+.cisd-logo-web { width: 150px; margin-bottom: 30px; }
 .web-card { width: 100%; max-width: 450px; }
 .cisd-input, .cisd-select {
     width: 100%; padding: 12px; border: 1px solid #eee; background: #f9f9f9;
-    border-radius: 10px; font-size: 1rem; outline: none;
+    border-radius: 10px; font-size: 1rem; outline: none; margin-top: 5px;
 }
-.cisd-input:focus { background: #fff; border-color: #000; }
 .web-btn-black {
     width: 100%; background: #000; color: #fff; padding: 14px; border: none;
-    border-radius: 30px; font-size: 1rem; cursor: pointer; margin-top: 10px;
+    border-radius: 30px; font-size: 1rem; cursor: pointer; margin-top: 15px;
 }
 .web-btn-white {
     background: transparent; border: none; color: #666; cursor: pointer; font-size: 0.9rem; text-decoration: underline;
 }
 .web-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
 
-/* REDSALUD STYLE TABS */
+/* RedSalud Tabs Style */
 .rs-date-tabs { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; margin-bottom: 20px; }
 .rs-date-tab {
     min-width: 70px; height: 70px; border: 1px solid #eee; border-radius: 10px;
@@ -102,14 +176,9 @@ body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background-col
     cursor: pointer; transition: 0.2s;
 }
 .rs-date-tab.selected { background: #000; color: #fff; border-color: #000; }
-.rs-day-name { font-size: 0.8rem; text-transform: uppercase; }
-.rs-day-number { font-size: 1.2rem; font-weight: bold; }
-
 .rs-pro-card { border: 1px solid #eee; border-radius: 12px; padding: 15px; margin-bottom: 15px; }
 .rs-pro-info { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; }
 .rs-avatar { width: 40px; height: 40px; background: #eee; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-.rs-pro-name { font-weight: bold; }
-.rs-pro-spec { font-size: 0.85rem; color: #666; }
 .rs-slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
 .rs-slot-btn {
     background: #fff; border: 1px solid #ddd; padding: 8px; border-radius: 6px;
@@ -117,33 +186,55 @@ body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background-col
 }
 .rs-slot-btn:hover { border-color: #000; background: #f9f9f9; }
 
-/* --- RESPONSIVE MOBILE (La magia está aquí) --- */
+/* =========================================
+   5. MÓVIL (SOLO SE ACTIVA EN PANTALLAS PEQUEÑAS)
+   ========================================= */
 @media (max-width: 768px) {
-    /* 1. Header más compacto */
+    /* Header compacto */
     .top-nav { padding: 0 15px; height: 60px; }
-    .mobile-menu-btn { display: block; } /* Mostrar hamburguesa */
-    .admin-title-text { display: none; } /* Ocultar texto "CISD Admin" para ahorrar espacio */
-    .module-switcher { display: none; } /* Ocultar tabs superiores si molestan, o hacerlas scroll */
     
-    /* 2. Sidebar oculto por defecto */
-    .sidebar {
-        position: fixed; top: 60px; left: -100%; /* Escondido a la izquierda */
-        width: 80%; max-width: 300px; height: calc(100vh - 60px);
-        z-index: 2000; transition: left 0.3s ease; box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-    }
-    .sidebar.open { left: 0; } /* Se muestra al abrir */
+    /* Mostrar botón hamburguesa */
+    .mobile-menu-btn { display: block; background: none; border: none; font-size: 24px; cursor: pointer; color: #000; margin-right: 10px; }
+    
+    /* Título más pequeño */
+    .admin-title-text { display: none; } 
+    
+    /* Esconder pestañas superiores si molestan, o hacerlas pequeñas */
+    .module-switcher { display: none; } 
 
-    /* 3. Overlay para oscurecer el fondo */
+    /* Sidebar: Se convierte en menú deslizante */
+    .sidebar {
+        position: fixed; 
+        top: 60px; /* Debajo del nav */
+        left: -100% !important; /* Escondido a la izquierda */
+        width: 80%; 
+        max-width: 300px; 
+        height: calc(100vh - 60px) !important;
+        z-index: 2000; 
+        transition: left 0.3s ease; 
+        box-shadow: 2px 0 10px rgba(0,0,0,0.1) !important;
+        border-right: none;
+    }
+    
+    /* Clase para abrir el menú */
+    .sidebar.open { left: 0 !important; }
+
+    /* Fondo oscuro al abrir menú */
     .sidebar-overlay {
+        display: block;
         position: fixed; top: 60px; left: 0; right: 0; bottom: 0;
         background: rgba(0,0,0,0.5); z-index: 1500;
     }
 
-    /* 4. Ajustes de contenido */
+    /* Ajustes generales de contenido */
     .main-stage { padding: 15px; }
-    .input-row { flex-direction: column; gap: 10px; }
-    .kpi-grid { grid-template-columns: 1fr; }
     
-    /* Tablas con scroll horizontal */
+    /* Inputs en columna */
+    .input-row { flex-direction: column; gap: 10px; }
+    
+    /* Tablas con scroll horizontal para que no rompan el diseño */
     .pro-card { overflow-x: auto; }
+    
+    /* Web Paciente padding */
+    .web-shell { padding: 20px; }
 }
