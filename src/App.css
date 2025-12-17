@@ -251,7 +251,7 @@ html, body, #root {
   .main-stage {
     padding: 15px;
     /* Agregamos espacio extra abajo para que nada quede tapado por el navegador */
-    padding-bottom: 100px; 
+    padding-bottom: 120px; 
   }
   
   /* Inputs: Forzar columna */
