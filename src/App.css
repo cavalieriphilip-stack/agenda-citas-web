@@ -1,8 +1,8 @@
-/* =========================================
-   1. RESET BÁSICO (Para asegurar inputs blancos)
-   ========================================= */
+/* ============================================================
+   1. RESET Y BASE (ESTABILIDAD)
+   ============================================================ */
 :root {
-  color-scheme: light; /* Fuerza modo claro en el navegador */
+  color-scheme: light; /* OBLIGATORIO: Fuerza inputs blancos en iPhone/Android */
 }
 
 * { box-sizing: border-box; }
@@ -12,185 +12,207 @@ body {
     font-family: 'Segoe UI', system-ui, sans-serif; 
     background-color: #f4f7f6; 
     color: #333;
-    height: 100vh;
-    overflow: hidden; /* Evita scroll en el body, lo manejamos dentro */
+    height: 100vh;       /* Altura fija de ventana */
+    overflow: hidden;    /* Evita scroll doble (el scroll va dentro de los paneles) */
 }
 
-/* =========================================
-   2. LAYOUT ESCRITORIO (La base sólida)
-   ========================================= */
+/* ============================================================
+   2. LAYOUT PRINCIPAL (ESCRITORIO SÓLIDO)
+   ============================================================ */
 .dashboard-layout { 
     display: flex; 
     flex-direction: column; 
-    height: 100vh; 
+    height: 100%; 
 }
 
-/* Header Fijo Arriba */
+/* Barra Superior Fija */
 .top-nav {
     display: flex; justify-content: space-between; align-items: center;
-    background: #fff; padding: 0 20px; height: 60px;
+    background: #fff; padding: 0 25px; height: 60px;
     border-bottom: 1px solid #e0e0e0;
-    flex-shrink: 0; z-index: 20;
+    flex-shrink: 0; /* No se aplasta nunca */
+    z-index: 20;
 }
 
-.brand-area { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 1.1rem; }
-.cisd-logo-admin { height: 35px; }
-.mobile-menu-btn { display: none; } /* Oculto en PC por defecto */
+.brand-area { display: flex; align-items: center; gap: 12px; font-weight: bold; font-size: 1.1rem; }
+.cisd-logo-admin { height: 32px; }
+.mobile-menu-btn { display: none; } /* Oculto en PC */
 
 .module-switcher { display: flex; gap: 5px; }
 .module-tab {
-    background: transparent; border: 1px solid transparent; padding: 6px 12px; border-radius: 6px;
-    cursor: pointer; font-weight: 500; color: #666; transition: 0.2s;
+    background: transparent; border: 1px solid transparent; padding: 8px 16px; border-radius: 6px;
+    cursor: pointer; font-weight: 500; color: #666; transition: 0.2s; font-size: 0.9rem;
 }
 .module-tab:hover { background: #f5f5f5; }
 .module-tab.active { background: #000; color: #fff; }
 
 .btn-top-action {
-    background: #000; color: #fff; padding: 8px 15px; text-decoration: none;
+    background: #000; color: #fff; padding: 8px 16px; text-decoration: none;
     border-radius: 6px; font-size: 0.85rem; font-weight: 600;
 }
 
-/* Contenedor Inferior (Sidebar + Main) */
+/* Área de Trabajo Dividida */
 .workspace { 
     display: flex; 
     flex: 1; 
-    overflow: hidden; /* El scroll va dentro de main-stage */
+    height: calc(100% - 60px); /* Resto de la altura */
+    overflow: hidden; 
     position: relative;
 }
 
-/* Sidebar PC (Siempre visible) */
+/* Sidebar PC: Fijo y Robusto */
 .sidebar {
     width: 250px; 
+    min-width: 250px; /* IMPORTANTE: No dejar que flex lo aplaste */
     background: #fff; 
     border-right: 1px solid #e0e0e0;
     display: flex; flex-direction: column; 
     padding: 20px; 
     overflow-y: auto;
-    flex-shrink: 0; /* NO permitimos que se encoja */
 }
 
 .sidebar-header {
-    font-size: 0.7rem; color: #999; font-weight: bold; text-transform: uppercase;
-    margin-bottom: 10px; letter-spacing: 0.5px;
+    font-size: 0.75rem; color: #9ca3af; font-weight: 800; text-transform: uppercase;
+    margin-bottom: 12px; letter-spacing: 0.5px;
 }
 .nav-item {
-    padding: 10px 12px; border-radius: 6px; cursor: pointer; color: #444;
-    transition: 0.1s; font-size: 0.9rem; margin-bottom: 2px;
+    padding: 10px 15px; border-radius: 6px; cursor: pointer; color: #4b5563;
+    transition: 0.1s; font-size: 0.95rem; margin-bottom: 4px; display: block;
 }
-.nav-item:hover { background: #f5f5f5; color: #000; }
-.nav-item.active { background: #f0f0f0; color: #000; font-weight: 600; }
+.nav-item:hover { background: #f3f4f6; color: #111; }
+.nav-item.active { background: #f3f4f6; color: #000; font-weight: 600; border-left: 3px solid #000; }
 
-/* Contenido Principal PC */
+/* Contenido Principal con Scroll Propio */
 .main-stage { 
     flex: 1; 
     padding: 30px; 
-    overflow-y: auto; /* Scroll vertical */
+    overflow-y: auto; /* Aquí ocurre el scroll vertical */
     background: #f8fafc; 
 }
 
-/* =========================================
-   3. ESTILOS DE COMPONENTES (Inputs y Tablas)
-   ========================================= */
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.page-title h1 { margin: 0; font-size: 1.5rem; color: #111; }
+/* ============================================================
+   3. ESTILOS DE COMPONENTES (INPUTS Y TABLAS)
+   ============================================================ */
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+.page-title h1 { margin: 0; font-size: 1.6rem; color: #111; letter-spacing: -0.5px; }
 
+/* Tarjetas */
 .pro-card { 
-    background: #fff; border-radius: 10px; padding: 25px; 
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #eee;
+    background: #fff; border-radius: 12px; padding: 25px; 
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid #e5e7eb;
     margin-bottom: 20px; 
 }
 
-/* INPUTS BLANCOS Y LIMPIOS */
-.form-label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.85rem; color: #444; }
+/* INPUTS: Corrección de Gris a Blanco */
+.form-label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.9rem; color: #374151; }
 .form-control {
-    width: 100%; padding: 10px; 
-    border: 1px solid #ddd; border-radius: 6px;
+    width: 100%; padding: 10px 12px; 
+    border: 1px solid #d1d5db; border-radius: 8px;
     font-size: 0.95rem; outline: none; 
-    background-color: #ffffff !important; /* Forza blanco */
-    color: #000000 !important; /* Forza negro */
+    background-color: #ffffff !important; /* BLANCO FORZADO */
+    color: #111827 !important;            /* NEGRO FORZADO */
+    -webkit-appearance: none;             /* Quita estilos iOS */
 }
-.form-control:focus { border-color: #000; }
+.form-control:focus { border-color: #000; ring: 2px solid #eee; }
 
-.input-row { display: flex; gap: 15px; margin-bottom: 15px; }
+.input-row { display: flex; gap: 20px; margin-bottom: 15px; }
 .input-row > div { flex: 1; }
 
+/* Botones */
 .btn-primary {
-    background: #000; color: #fff; border: none; padding: 10px 20px;
-    border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600;
+    background: #000; color: #fff; border: none; padding: 12px 20px;
+    border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 600;
 }
-.btn-edit, .btn-danger { padding: 6px 10px; border-radius: 4px; border: 1px solid #ddd; background: #fff; cursor: pointer; font-size: 0.8rem; margin-right: 5px; }
-.btn-danger { color: #d32f2f; border-color: #ffcdd2; background: #ffebee; }
+.btn-edit, .btn-danger { padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; margin-right: 5px; border: 1px solid transparent; }
+.btn-edit { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
+.btn-danger { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
 
-/* Tablas Desktop */
+/* TABLAS ESCRITORIO (Normales) */
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-.data-table th { text-align: left; padding: 12px; border-bottom: 2px solid #eee; color: #666; font-size: 0.8rem; text-transform: uppercase; }
-.data-table td { padding: 12px; border-bottom: 1px solid #eee; }
+.data-table th { text-align: left; padding: 12px 15px; background: #f9fafb; color: #6b7280; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #e5e7eb; }
+.data-table td { padding: 12px 15px; border-bottom: 1px solid #f3f4f6; color: #374151; }
 
-/* =========================================
+/* ============================================================
    4. WEB PACIENTE
-   ========================================= */
+   ============================================================ */
 .web-shell { min-height: 100vh; width: 100%; background: #fff; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; overflow-y: auto; }
 .cisd-logo-web { width: 140px; margin-bottom: 30px; }
-.web-card { width: 100%; max-width: 420px; }
+.web-card { width: 100%; max-width: 440px; }
 .cisd-input, .cisd-select {
-    width: 100%; padding: 12px; border: 1px solid #ddd; background: #f9f9f9;
-    border-radius: 8px; margin-top: 5px; font-size: 1rem; outline: none;
+    width: 100%; padding: 12px; border: 1px solid #e5e7eb; background: #f9fafb;
+    border-radius: 10px; margin-top: 5px; font-size: 1rem; outline: none;
 }
 .web-btn-black {
     width: 100%; background: #000; color: #fff; padding: 14px; border: none;
     border-radius: 30px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 20px;
 }
 .web-btn-white { background: transparent; border: none; color: #666; margin-top: 15px; cursor: pointer; text-decoration: underline; }
-.web-actions { display: flex; justify-content: space-between; align-items: center; }
+.web-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
 
-/* RedSalud Tabs */
-.rs-date-tabs { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 10px; margin-bottom: 15px; }
+/* Tabs RedSalud */
+.rs-date-tabs { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; margin-bottom: 20px; }
 .rs-date-tab {
-    min-width: 60px; height: 60px; border: 1px solid #eee; border-radius: 8px;
+    min-width: 70px; height: 70px; border: 1px solid #e5e7eb; border-radius: 10px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    cursor: pointer; background: #fff;
+    cursor: pointer; background: #fff; transition: 0.2s;
 }
 .rs-date-tab.selected { background: #000; color: #fff; border-color: #000; }
+.rs-pro-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 15px; margin-bottom: 10px; }
+.rs-pro-info { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; }
+.rs-avatar { width: 40px; height: 40px; background: #f3f4f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #666; }
+.rs-slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 8px; }
+.rs-slot-btn { background: #fff; border: 1px solid #d1d5db; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; text-align: center; transition: 0.1s; }
+.rs-slot-btn:hover { border-color: #000; background: #f9fafb; }
 
-/* =========================================
-   5. RESPONSIVE MÓVIL (QUIRÚRGICO)
-   ========================================= */
+
+/* ============================================================
+   5. RESPONSIVE MÓVIL (EL PARCHE MÁGICO)
+   ============================================================ */
 @media (max-width: 768px) {
     /* Header Móvil */
     .top-nav { padding: 0 15px; height: 56px; }
     .brand-area { font-size: 1rem; }
-    .mobile-menu-btn { display: block; background: none; border: none; font-size: 24px; cursor: pointer; margin-right: 5px; color: #000; }
+    .cisd-logo-admin { height: 28px; }
+    .mobile-menu-btn { display: block; background: none; border: none; font-size: 24px; cursor: pointer; margin-right: 8px; color: #000; }
     
-    /* Ocultar elementos de escritorio que sobran */
+    /* Ocultar elementos sobrantes del escritorio */
     .admin-title-text, .module-switcher { display: none; } 
 
-    /* Sidebar Flotante (Fuera de pantalla por defecto) */
+    /* Sidebar Flotante (Overlay) */
     .sidebar {
-        position: fixed; top: 56px; left: -100%; 
+        position: fixed; 
+        top: 56px; left: -100%; /* Escondido a la izquierda */
         width: 80%; max-width: 280px; height: calc(100vh - 56px);
         z-index: 1000; transition: left 0.3s ease;
-        box-shadow: 2px 0 10px rgba(0,0,0,0.1); border-right: none;
+        box-shadow: 4px 0 15px rgba(0,0,0,0.1); border-right: none;
     }
-    .sidebar.open { left: 0; }
+    .sidebar.open { left: 0; } /* Se muestra al abrir */
+    
     .sidebar-overlay {
         display: block; position: fixed; top: 56px; left: 0; right: 0; bottom: 0;
         background: rgba(0,0,0,0.5); z-index: 900;
     }
 
-    /* Ajustes Contenido Móvil */
+    /* Contenido Principal Móvil */
     .main-stage { padding: 15px; }
     .page-title h1 { font-size: 1.3rem; }
     
-    /* Inputs uno debajo del otro */
-    .input-row { flex-direction: column; gap: 10px; }
+    /* Inputs Apilados */
+    .input-row { flex-direction: column; gap: 12px; }
     
-    /* --- ARREGLO DE TABLAS MÓVIL (Scroll) --- */
+    /* --- LA SOLUCIÓN DE LAS TABLAS ---
+       Si la tabla es muy ancha, la tarjeta (.pro-card) permitirá hacer scroll lateral
+       sin romper el resto de la página.
+    */
     .pro-card { 
         padding: 15px; 
-        overflow-x: auto; /* Barra de desplazamiento si la tabla es ancha */
+        overflow-x: auto; /* Scroll horizontal automático */
     }
-    .data-table { min-width: 500px; /* Fuerza ancho mínimo para evitar quiebres feos */ }
+    .data-table { 
+        min-width: 600px; /* Fuerza un ancho mínimo para activar el scroll */
+    }
 
-    /* Web Paciente padding */
+    /* Ajustes Web Paciente */
     .web-shell { padding: 20px 15px; }
+    .rs-date-tabs { justify-content: flex-start; } /* Alinea izq para scroll */
 }
