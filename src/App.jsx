@@ -8,43 +8,43 @@ import {
     buscarPacientePorRut, updateProfesional, deleteProfesional
 } from './api';
 
-// --- DATA MAESTRA (Tratamientos) ---
+// --- DATA MAESTRA ACTUALIZADA (Con Códigos y Descripción) ---
 const TRATAMIENTOS = [
-    { id: 1, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto online', valor: 20000 },
-    { id: 2, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto presencial', valor: 35000 },
-    { id: 3, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto domicilio - RM', valor: 30000 },
-    { id: 4, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto domicilio - Alrededor RM', valor: 50000 },
-    { id: 5, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Consulta fonoaudiológica adulto online', valor: 20000 },
-    { id: 6, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Consulta fonoaudiológica adulto presencial', valor: 35000 },
-    { id: 7, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Consulta fonoaudiológica adulto domicilio - RM', valor: 30000 },
-    { id: 8, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Consulta fonoaudiológica adulto domicilio - Alrededor RM', valor: 50000 },
-    { id: 9, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Otoscopía + Lavado de oídos', valor: 20000 },
-    { id: 10, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Evaluación fonoaudiológica infanto-juvenil online', valor: 20000 },
-    { id: 11, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Evaluación fonoaudiológica presencial', valor: 35000 },
-    { id: 12, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Evaluación fonoaudiológica domicilio - RM', valor: 30000 },
-    { id: 13, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Evaluación fonoaudiológica domicilio - Alrededor RM', valor: 50000 },
-    { id: 14, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Consulta fonoaudiológica online', valor: 20000 },
-    { id: 15, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Consulta fonoaudiológica presencial', valor: 35000 },
-    { id: 16, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Consulta fonoaudiológica domicilio - RM', valor: 30000 },
-    { id: 17, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Consulta fonoaudiológica domicilio - Alrededor RM', valor: 50000 },
-    { id: 18, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Otoscopía + Lavado de oídos', valor: 20000 },
-    { id: 19, especialidad: 'Psicología Adulto', tratamiento: 'Evaluación Psicología Adulto Online', valor: 25000 },
-    { id: 20, especialidad: 'Psicología Adulto', tratamiento: 'Evaluación Psicología Adulto Presencial - Stgo Centro', valor: 35000 },
-    { id: 21, especialidad: 'Psicología Adulto', tratamiento: 'Evaluación Psicología Adulto Presencial - Providencia', valor: 35000 },
-    { id: 24, especialidad: 'Psicología Adulto', tratamiento: 'Consulta Psicología Adulto online', valor: 25000 },
-    { id: 25, especialidad: 'Psicología Adulto', tratamiento: 'Consulta Psicología Adulto Presencial - Stgo Centro', valor: 35000 },
-    { id: 26, especialidad: 'Psicología Adulto', tratamiento: 'Consulta Psicología Adulto Presencial - Providencia', valor: 35000 },
-    { id: 29, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Evaluación Psicología infanto-juvenil online', valor: 25000 },
-    { id: 30, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Evaluación Psicología infanto-juvenil Presencial - Stgo Centro', valor: 35000 },
-    { id: 31, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Evaluación Psicología infanto-juvenil Presencial - Providencia', valor: 35000 },
-    { id: 34, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Consulta Psicología infanto-juvenil online', valor: 25000 },
-    { id: 35, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Consulta Psicología infanto-juvenil Presencial - Stgo Centro', valor: 35000 },
-    { id: 36, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Consulta Psicología infanto-juvenil Presencial - Providencia', valor: 35000 },
-    { id: 39, especialidad: 'Matrona', tratamiento: 'Ginecología Infanto-Juvenil', valor: 16000 },
-    { id: 41, especialidad: 'Matrona', tratamiento: 'Ginecología General', valor: 16000 },
-    { id: 45, especialidad: 'Matrona', tratamiento: 'Asesoría de Lactancia', valor: 16000 },
-    { id: 54, especialidad: 'Psicopedagogía', tratamiento: 'Evaluación Psicopedagógica Online', valor: 20000 },
-    { id: 55, especialidad: 'Psicopedagogía', tratamiento: 'Sesión Psicopedagogía Online', valor: 20000 },
+    { id: 1, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto online', valor: 20000, codigo: '1203001', descripcion: 'Evaluación completa por videollamada.' },
+    { id: 2, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto presencial', valor: 35000, codigo: '1203002', descripcion: 'Evaluación presencial en consulta.' },
+    { id: 3, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto domicilio - RM', valor: 30000, codigo: '1203003', descripcion: 'Visita domiciliaria en Región Metropolitana.' },
+    { id: 4, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto domicilio - Alrededor RM', valor: 50000, codigo: '1203004', descripcion: 'Visita en alrededores RM.' },
+    { id: 5, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Consulta fonoaudiológica adulto online', valor: 20000, codigo: '1203005', descripcion: 'Sesión de terapia online.' },
+    { id: 6, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Consulta fonoaudiológica adulto presencial', valor: 35000, codigo: '1203006', descripcion: 'Sesión presencial.' },
+    { id: 7, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Consulta fonoaudiológica adulto domicilio - RM', valor: 30000, codigo: '1203007', descripcion: 'Sesión a domicilio RM.' },
+    { id: 8, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Consulta fonoaudiológica adulto domicilio - Alrededor RM', valor: 50000, codigo: '1203008', descripcion: 'Sesión a domicilio alrededores.' },
+    { id: 9, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Otoscopía + Lavado de oídos', valor: 20000, codigo: '1203009', descripcion: 'Procedimiento clínico.' },
+    { id: 10, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Evaluación fonoaudiológica infanto-juvenil online', valor: 20000, codigo: '1203010', descripcion: 'Evaluación online niños.' },
+    { id: 11, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Evaluación fonoaudiológica presencial', valor: 35000, codigo: '1203011', descripcion: 'Evaluación presencial niños.' },
+    { id: 12, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Evaluación fonoaudiológica domicilio - RM', valor: 30000, codigo: '1203012', descripcion: 'Domicilio niños RM.' },
+    { id: 13, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Evaluación fonoaudiológica domicilio - Alrededor RM', valor: 50000, codigo: '1203013', descripcion: 'Domicilio niños alrededores.' },
+    { id: 14, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Consulta fonoaudiológica online', valor: 20000, codigo: '1203014', descripcion: 'Terapia online niños.' },
+    { id: 15, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Consulta fonoaudiológica presencial', valor: 35000, codigo: '1203015', descripcion: 'Terapia presencial niños.' },
+    { id: 16, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Consulta fonoaudiológica domicilio - RM', valor: 30000, codigo: '1203016', descripcion: 'Terapia domicilio RM.' },
+    { id: 17, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Consulta fonoaudiológica domicilio - Alrededor RM', valor: 50000, codigo: '1203017', descripcion: 'Terapia domicilio alrededores.' },
+    { id: 18, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Otoscopía + Lavado de oídos', valor: 20000, codigo: '1203018', descripcion: 'Procedimiento niños.' },
+    { id: 19, especialidad: 'Psicología Adulto', tratamiento: 'Evaluación Psicología Adulto Online', valor: 25000, codigo: '1204001', descripcion: 'Evaluación inicial online.' },
+    { id: 20, especialidad: 'Psicología Adulto', tratamiento: 'Evaluación Psicología Adulto Presencial - Stgo Centro', valor: 35000, codigo: '1204002', descripcion: 'Evaluación Stgo Centro.' },
+    { id: 21, especialidad: 'Psicología Adulto', tratamiento: 'Evaluación Psicología Adulto Presencial - Providencia', valor: 35000, codigo: '1204003', descripcion: 'Evaluación Providencia.' },
+    { id: 24, especialidad: 'Psicología Adulto', tratamiento: 'Consulta Psicología Adulto online', valor: 25000, codigo: '1204004', descripcion: 'Sesión psicoterapia online.' },
+    { id: 25, especialidad: 'Psicología Adulto', tratamiento: 'Consulta Psicología Adulto Presencial - Stgo Centro', valor: 35000, codigo: '1204005', descripcion: 'Sesión Stgo Centro.' },
+    { id: 26, especialidad: 'Psicología Adulto', tratamiento: 'Consulta Psicología Adulto Presencial - Providencia', valor: 35000, codigo: '1204006', descripcion: 'Sesión Providencia.' },
+    { id: 29, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Evaluación Psicología infanto-juvenil online', valor: 25000, codigo: '1204009', descripcion: 'Evaluación niños online.' },
+    { id: 30, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Evaluación Psicología infanto-juvenil Presencial - Stgo Centro', valor: 35000, codigo: '1204010', descripcion: 'Evaluación niños Stgo Centro.' },
+    { id: 31, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Evaluación Psicología infanto-juvenil Presencial - Providencia', valor: 35000, codigo: '1204011', descripcion: 'Evaluación niños Providencia.' },
+    { id: 34, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Consulta Psicología infanto-juvenil online', valor: 25000, codigo: '1204014', descripcion: 'Terapia niños online.' },
+    { id: 35, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Consulta Psicología infanto-juvenil Presencial - Stgo Centro', valor: 35000, codigo: '1204015', descripcion: 'Terapia niños Stgo Centro.' },
+    { id: 36, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Consulta Psicología infanto-juvenil Presencial - Providencia', valor: 35000, codigo: '1204016', descripcion: 'Terapia niños Providencia.' },
+    { id: 39, especialidad: 'Matrona', tratamiento: 'Ginecología Infanto-Juvenil', valor: 16000, codigo: '1205001', descripcion: 'Atención especializada.' },
+    { id: 41, especialidad: 'Matrona', tratamiento: 'Ginecología General', valor: 16000, codigo: '1205002', descripcion: 'Consulta general matrona.' },
+    { id: 45, especialidad: 'Matrona', tratamiento: 'Asesoría de Lactancia', valor: 16000, codigo: '1205003', descripcion: 'Apoyo lactancia materna.' },
+    { id: 54, especialidad: 'Psicopedagogía', tratamiento: 'Evaluación Psicopedagógica Online', valor: 20000, codigo: '1206001', descripcion: 'Evaluación aprendizaje.' },
+    { id: 55, especialidad: 'Psicopedagogía', tratamiento: 'Sesión Psicopedagogía Online', valor: 20000, codigo: '1206002', descripcion: 'Sesión de apoyo.' },
 ];
 
 const STEPS = [ {n:1, t:'Datos'}, {n:2, t:'Servicio'}, {n:3, t:'Agenda'}, {n:4, t:'Confirmar'} ];
@@ -55,7 +55,6 @@ const fmtDate = (iso) => iso ? new Date(iso).toLocaleString('es-CL', {day:'2-dig
 const toDateKey = (iso) => iso ? iso.split('T')[0] : '';
 const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
 
-// [MEJORA 3] Formateador de RUT automático (XX.XXX.XXX-X)
 const formatRut = (rut) => {
     if (!rut) return '';
     let value = rut.replace(/[^0-9kK]/g, '').toUpperCase();
@@ -68,7 +67,6 @@ const formatRut = (rut) => {
 
 // --- NUEVOS COMPONENTES UI ---
 
-// Componente para Acordeón Móvil (Desplegable)
 function MobileAccordion({ title, subtitle, children }) {
     const [isOpen, setIsOpen] = useState(false);
     return (
@@ -85,56 +83,26 @@ function MobileAccordion({ title, subtitle, children }) {
     );
 }
 
-// [MEJORA 2] Dropdown Multi-Select con Checkboxes
 function MultiSelectDropdown({ options, selectedValues, onChange, label }) {
     const [isOpen, setIsOpen] = useState(false);
     const wrapperRef = useRef(null);
-
-    // Click outside handler
     useEffect(() => {
-        function handleClickOutside(event) {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        }
+        function handleClickOutside(event) { if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setIsOpen(false); }
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [wrapperRef]);
-
-    const toggleOption = (value) => {
-        if (selectedValues.includes(value)) {
-            onChange(selectedValues.filter(v => v !== value));
-        } else {
-            onChange([...selectedValues, value]);
-        }
-    };
-
+    const toggleOption = (value) => { if (selectedValues.includes(value)) onChange(selectedValues.filter(v => v !== value)); else onChange([...selectedValues, value]); };
     return (
         <div className="dropdown-wrapper" ref={wrapperRef}>
             <label className="form-label">{label}</label>
             <div className="dropdown-header" onClick={() => setIsOpen(!isOpen)}>
-                <span>{selectedValues.length > 0 ? `${selectedValues.length} seleccionados` : 'Seleccionar...'}</span>
-                <span>{isOpen ? '▲' : '▼'}</span>
+                <span>{selectedValues.length > 0 ? `${selectedValues.length} seleccionados` : 'Seleccionar...'}</span><span>{isOpen ? '▲' : '▼'}</span>
             </div>
-            {isOpen && (
-                <div className="dropdown-list">
-                    {options.map(opt => (
-                        <div key={opt} className="dropdown-item" onClick={() => toggleOption(opt)}>
-                            <input 
-                                type="checkbox" 
-                                checked={selectedValues.includes(opt)} 
-                                readOnly 
-                            />
-                            <span>{opt}</span>
-                        </div>
-                    ))}
-                </div>
-            )}
+            {isOpen && <div className="dropdown-list">{options.map(opt => (<div key={opt} className="dropdown-item" onClick={() => toggleOption(opt)}><input type="checkbox" checked={selectedValues.includes(opt)} readOnly /><span>{opt}</span></div>))}</div>}
         </div>
     );
 }
 
-// [MEJORA 1] Modal (Pop-up) para Horarios
 function Modal({ title, children, onClose }) {
     return createPortal(
         <div className="modal-overlay" onClick={onClose}>
@@ -143,8 +111,7 @@ function Modal({ title, children, onClose }) {
                 <h2 style={{marginTop:0, marginBottom:20}}>{title}</h2>
                 {children}
             </div>
-        </div>,
-        document.body
+        </div>, document.body
     );
 }
 
@@ -154,17 +121,11 @@ function App() {
     return <WebPaciente />;
 }
 
-// ================= PANEL ADMIN =================
 function AdminLayout() {
     const [activeModule, setActiveModule] = useState('agenda');
     const [activeView, setActiveView] = useState('resumen');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-    const handleNavClick = (view) => {
-        setActiveView(view);
-        setMobileMenuOpen(false); 
-    }
-    
+    const handleNavClick = (view) => { setActiveView(view); setMobileMenuOpen(false); }
     return (
         <div className="dashboard-layout">
             <nav className="top-nav">
@@ -179,26 +140,20 @@ function AdminLayout() {
                 </div>
                 <div className="nav-actions"><a href="/" className="btn-top-action">Web Paciente</a></div>
             </nav>
-
             <div className="workspace">
                 {mobileMenuOpen && <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)}></div>}
-
                 <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
                     <div className="sidebar-header">MENÚ {activeModule === 'agenda' ? 'AGENDA' : 'FINANZAS'}</div>
-                    {activeModule === 'agenda' && (
-                        <>
-                            <div className={`nav-item ${activeView==='resumen'?'active':''}`} onClick={()=>handleNavClick('resumen')}>Resumen Agendamientos</div>
-                            <div className={`nav-item ${activeView==='reservas'?'active':''}`} onClick={()=>handleNavClick('reservas')}>Nueva Reserva</div>
-                            <div className={`nav-item ${activeView==='pacientes'?'active':''}`} onClick={()=>handleNavClick('pacientes')}>Administrar Pacientes</div>
-                            <div className={`nav-item ${activeView==='profesionales'?'active':''}`} onClick={()=>handleNavClick('profesionales')}>Administrar Profesionales</div>
-                            <div className={`nav-item ${activeView==='horarios'?'active':''}`} onClick={()=>handleNavClick('horarios')}>Administrar Horarios</div>
-                        </>
-                    )}
+                    {activeModule === 'agenda' && ( <>
+                        <div className={`nav-item ${activeView==='resumen'?'active':''}`} onClick={()=>handleNavClick('resumen')}>Resumen Agendamientos</div>
+                        <div className={`nav-item ${activeView==='reservas'?'active':''}`} onClick={()=>handleNavClick('reservas')}>Nueva Reserva</div>
+                        <div className={`nav-item ${activeView==='pacientes'?'active':''}`} onClick={()=>handleNavClick('pacientes')}>Administrar Pacientes</div>
+                        <div className={`nav-item ${activeView==='profesionales'?'active':''}`} onClick={()=>handleNavClick('profesionales')}>Administrar Profesionales</div>
+                        <div className={`nav-item ${activeView==='horarios'?'active':''}`} onClick={()=>handleNavClick('horarios')}>Administrar Horarios</div>
+                    </> )}
                     {activeModule === 'finanzas' && <div className={`nav-item ${activeView==='reporte'?'active':''}`} onClick={()=>handleNavClick('reporte')}>Dashboard Financiero</div>}
                 </aside>
-                <main className="main-stage">
-                    <DashboardContent module={activeModule} view={activeView} />
-                </main>
+                <main className="main-stage"><DashboardContent module={activeModule} view={activeView} /></main>
             </div>
         </div>
     );
@@ -208,7 +163,6 @@ function DashboardContent({ module, view }) {
     const [reservas, setReservas] = useState([]);
     const refreshData = async () => { try { const data = await getReservasDetalle(); setReservas(data); } catch(e) { console.error(e); } };
     useEffect(() => { refreshData(); }, []);
-
     if (module === 'agenda') {
         if (view === 'resumen') return <AgendaResumen reservas={reservas} reload={refreshData} />;
         if (view === 'reservas') return <AgendaNuevaReserva reload={refreshData} reservas={reservas} />;
@@ -223,87 +177,41 @@ function DashboardContent({ module, view }) {
     return <div>Cargando...</div>;
 }
 
-// ---------------------- SUBVISTAS ----------------------
-
 function AgendaNuevaReserva({ reload, reservas }) {
-    // Lógica original de nueva reserva
     const [pacientes, setPacientes] = useState([]);
     const [pros, setPros] = useState([]);
     const [horarios, setHorarios] = useState([]);
     const [form, setForm] = useState({ pacienteId: '', profesionalId: '', horarioId: '', motivo: '', especialidad: '', tratamientoId: '' });
-
     useEffect(() => { getPacientes().then(setPacientes); getProfesionales().then(setPros); }, []);
-
     const especialidades = [...new Set(TRATAMIENTOS.map(t => t.especialidad))];
     const prestaciones = TRATAMIENTOS.filter(t => t.especialidad === form.especialidad);
-
-    const prosFiltrados = form.tratamientoId
-        ? pros.filter(p => {
-            const trat = TRATAMIENTOS.find(x => x.id === parseInt(form.tratamientoId));
-            return trat && p.tratamientos && p.tratamientos.includes(trat.tratamiento);
-        })
-        : [];
-
+    const prosFiltrados = form.tratamientoId ? pros.filter(p => { const trat = TRATAMIENTOS.find(x => x.id === parseInt(form.tratamientoId)); return trat && p.tratamientos && p.tratamientos.includes(trat.tratamiento); }) : [];
     const handlePro = async (pid) => {
         setForm({ ...form, profesionalId: pid });
         setHorarios([]);
         if (!pid || pid === "") return; 
-        try {
-            const h = await getHorariosByProfesional(pid);
-            if (Array.isArray(h)) { setHorarios(h); } else { setHorarios([]); }
-        } catch(e) { setHorarios([]); }
+        try { const h = await getHorariosByProfesional(pid); if (Array.isArray(h)) { setHorarios(h); } else { setHorarios([]); } } catch(e) { setHorarios([]); }
     }
-
     const save = async (e) => {
         e.preventDefault();
         if (!form.tratamientoId) return alert("Tratamiento obligatorio");
         const trat = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId));
-        try {
-            await crearReserva({ pacienteId: parseInt(form.pacienteId), profesionalId: parseInt(form.profesionalId), horarioDisponibleId: form.horarioId, motivo: trat.tratamiento });
-            alert('Creada con éxito'); reload();
-        } catch (e) { alert('Error al crear reserva'); }
+        try { await crearReserva({ pacienteId: parseInt(form.pacienteId), profesionalId: parseInt(form.profesionalId), horarioDisponibleId: form.horarioId, motivo: trat.tratamiento }); alert('Creada con éxito'); reload(); } catch (e) { alert('Error al crear reserva'); }
     };
-
     return (
         <div>
             <div className="page-header"><div className="page-title"><h1>Nueva Reserva Manual</h1></div></div>
             <div className="pro-card">
                 <form onSubmit={save}>
                     <div className="input-row">
-                        <div>
-                            <label className="form-label">Especialidad</label>
-                            <select className="form-control" value={form.especialidad} onChange={e => setForm({ ...form, especialidad: e.target.value, tratamientoId: '' })}>
-                                <option value="">Seleccionar...</option>{especialidades.map(e => <option key={e} value={e}>{e}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="form-label">Tratamiento</label>
-                            <select className="form-control" disabled={!form.especialidad} onChange={e => setForm({ ...form, tratamientoId: e.target.value })}>
-                                <option value="">Seleccionar...</option>{prestaciones.map(t => <option key={t.id} value={t.id}>{t.tratamiento}</option>)}
-                            </select>
-                        </div>
+                        <div><label className="form-label">Especialidad</label><select className="form-control" value={form.especialidad} onChange={e => setForm({ ...form, especialidad: e.target.value, tratamientoId: '' })}><option value="">Seleccionar...</option>{especialidades.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
+                        <div><label className="form-label">Tratamiento</label><select className="form-control" disabled={!form.especialidad} onChange={e => setForm({ ...form, tratamientoId: e.target.value })}><option value="">Seleccionar...</option>{prestaciones.map(t => <option key={t.id} value={t.id}>{t.tratamiento}</option>)}</select></div>
                     </div>
                     <div className="input-row">
-                        <div>
-                            <label className="form-label">Paciente</label>
-                            <select className="form-control" onChange={e => setForm({ ...form, pacienteId: e.target.value })}>
-                                <option value="">Seleccionar...</option>{pacientes.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto} ({formatRut(p.rut)})</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="form-label">Profesional</label>
-                            <select className="form-control" disabled={!form.tratamientoId} onChange={e => handlePro(e.target.value)}>
-                                <option value="">Seleccionar...</option>{prosFiltrados.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}
-                            </select>
-                        </div>
+                        <div><label className="form-label">Paciente</label><select className="form-control" onChange={e => setForm({ ...form, pacienteId: e.target.value })}><option value="">Seleccionar...</option>{pacientes.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto} ({formatRut(p.rut)})</option>)}</select></div>
+                        <div><label className="form-label">Profesional</label><select className="form-control" disabled={!form.tratamientoId} onChange={e => handlePro(e.target.value)}><option value="">Seleccionar...</option>{prosFiltrados.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div>
                     </div>
-                    <div style={{ marginBottom: 20 }}>
-                        <label className="form-label">Horario</label>
-                        <select className="form-control" onChange={e => setForm({ ...form, horarioId: e.target.value })}>
-                            <option value="">Seleccionar...</option>
-                            {Array.isArray(horarios) && horarios.map(h => <option key={h.id} value={h.id}>{fmtDate(h.fecha)}</option>)}
-                        </select>
-                    </div>
+                    <div style={{ marginBottom: 20 }}><label className="form-label">Horario</label><select className="form-control" onChange={e => setForm({ ...form, horarioId: e.target.value })}><option value="">Seleccionar...</option>{Array.isArray(horarios) && horarios.map(h => <option key={h.id} value={h.id}>{fmtDate(h.fecha)}</option>)}</select></div>
                     <button className="btn-primary">Crear Reserva</button>
                 </form>
             </div>
@@ -312,9 +220,7 @@ function AgendaNuevaReserva({ reload, reservas }) {
                 <div className="data-table-container">
                     <table className="data-table">
                         <thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th></tr></thead>
-                        <tbody>
-                            {reservas.slice(0, 5).map(r => (<tr key={r.id}><td>{fmtDate(r.fecha)}</td><td>{r.pacienteNombre}</td><td>{r.profesionalNombre}</td></tr>))}
-                        </tbody>
+                        <tbody>{reservas.slice(0, 5).map(r => (<tr key={r.id}><td>{fmtDate(r.fecha)}</td><td>{r.pacienteNombre}</td><td>{r.profesionalNombre}</td></tr>))}</tbody>
                     </table>
                 </div>
             </div>
@@ -322,12 +228,9 @@ function AgendaNuevaReserva({ reload, reservas }) {
     )
 }
 
-// [MEJORA 4] Edición en Cascada
 function AgendaResumen({reservas, reload}){
     const [editId,setEditId]=useState(null);
     const [pros,setPros]=useState([]);
-    
-    // Estados para cascada
     const [editProId, setEditProId] = useState('');
     const [editEspecialidad, setEditEspecialidad] = useState('');
     const [editTratamiento, setEditTratamiento] = useState('');
@@ -336,76 +239,48 @@ function AgendaResumen({reservas, reload}){
 
     useEffect(()=>{getProfesionales().then(setPros)},[]);
 
-    // 1. Iniciar Edición
     const startEdit=async(r)=>{
         setEditId(r.id);
         setEditProId(r.profesionalId.toString());
-        
-        // Tratar de deducir la especialidad
         const matchTratamiento = TRATAMIENTOS.find(t => r.motivo.includes(t.tratamiento));
         const especialidadInicial = matchTratamiento ? matchTratamiento.especialidad : '';
-        
         setEditEspecialidad(especialidadInicial);
         setEditTratamiento(r.motivo);
-        
-        // Cargar horarios del profesional
         const h = await getHorariosByProfesional(r.profesionalId);
         setHorariosDisponibles(Array.isArray(h) ? h : []);
     };
 
-    // 2. Cambio de Profesional -> Resetear cadena
     const handleProChange = async(pid) => {
-        setEditProId(pid);
-        setEditEspecialidad('');
-        setEditTratamiento('');
-        setEditHorarioId('');
-        
-        if (pid) {
-            const h = await getHorariosByProfesional(pid);
-            setHorariosDisponibles(Array.isArray(h) ? h : []);
-        } else {
-            setHorariosDisponibles([]);
-        }
+        setEditProId(pid); setEditEspecialidad(''); setEditTratamiento(''); setEditHorarioId('');
+        if (pid) { const h = await getHorariosByProfesional(pid); setHorariosDisponibles(Array.isArray(h) ? h : []); } else { setHorariosDisponibles([]); }
     };
 
-    // 3. Filtrar Especialidades del Pro
     const getEspecialidadesPro = () => {
         const p = pros.find(x => x.id === parseInt(editProId));
         if (!p || !p.especialidad) return [];
         return p.especialidad.split(',');
     };
 
-    // 4. Filtrar Tratamientos del Pro y Especialidad
     const getTratamientosFiltrados = () => {
         const p = pros.find(x => x.id === parseInt(editProId));
         if (!p || !editEspecialidad) return [];
-        
         const teoricos = TRATAMIENTOS.filter(t => t.especialidad === editEspecialidad);
         if (!p.tratamientos) return [];
         const proTrats = p.tratamientos.split(',');
-        
         return teoricos.filter(t => proTrats.includes(t.tratamiento));
     };
 
     const saveEdit=async(id)=>{
         if(!editHorarioId) return alert('Selecciona hora');
-        try{
-            await reagendarReserva(id, editHorarioId, editProId, editTratamiento);
-            alert('Modificado con éxito');
-            setEditId(null);
-            reload();
-        }catch(e){alert('Error al modificar')}
+        try{ await reagendarReserva(id, editHorarioId, editProId, editTratamiento); alert('Modificado'); setEditId(null); reload(); }catch(e){alert('Error')}
     };
 
-    const deleteReserva = async(id) => {
-        if(confirm('¿Eliminar?')){await cancelarReserva(id);reload()}
-    };
+    const deleteReserva = async(id) => { if(confirm('¿Eliminar?')){await cancelarReserva(id);reload()} };
 
     return (
         <div>
             <div className="page-header"><div className="page-title"><h1>Resumen de Agendamientos</h1></div></div>
             <div className="pro-card">
-                
                 {/* VISTA ESCRITORIO (TABLA) */}
                 <div className="data-table-container desktop-view-only">
                     <table className="data-table">
@@ -413,56 +288,24 @@ function AgendaResumen({reservas, reload}){
                         <tbody>{reservas.map(r=>{
                             const match=TRATAMIENTOS.find(t=>r.motivo.includes(t.tratamiento));
                             const valor = match ? match.valor : 0;
-
                             if(editId===r.id) return (
                                 <tr key={r.id} style={{background:'#fff9c4'}}>
                                     <td colSpan={6}>
                                         <div style={{padding:15, display:'flex', flexDirection:'column', gap:10}}>
                                             <strong>Reprogramar Cita</strong>
                                             <div className="input-row">
-                                                {/* 1. Pro */}
-                                                <div>
-                                                    <label className="form-label">Profesional</label>
-                                                    <select className="form-control" value={editProId} onChange={e=>handleProChange(e.target.value)}>
-                                                        {pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}
-                                                    </select>
-                                                </div>
-                                                {/* 2. Esp */}
-                                                <div>
-                                                    <label className="form-label">Especialidad</label>
-                                                    <select className="form-control" value={editEspecialidad} onChange={e=>setEditEspecialidad(e.target.value)} disabled={!editProId}>
-                                                        <option value="">Seleccionar...</option>
-                                                        {getEspecialidadesPro().map(e=><option key={e} value={e}>{e}</option>)}
-                                                    </select>
-                                                </div>
-                                                {/* 3. Trat */}
-                                                <div>
-                                                    <label className="form-label">Tratamiento</label>
-                                                    <select className="form-control" value={editTratamiento} onChange={e=>setEditTratamiento(e.target.value)} disabled={!editEspecialidad}>
-                                                        <option value="">Seleccionar...</option>
-                                                        {getTratamientosFiltrados().map(t=><option key={t.id} value={t.tratamiento}>{t.tratamiento}</option>)}
-                                                    </select>
-                                                </div>
+                                                <div><label className="form-label">Profesional</label><select className="form-control" value={editProId} onChange={e=>handleProChange(e.target.value)}>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div>
+                                                <div><label className="form-label">Especialidad</label><select className="form-control" value={editEspecialidad} onChange={e=>setEditEspecialidad(e.target.value)} disabled={!editProId}><option value="">Seleccionar...</option>{getEspecialidadesPro().map(e=><option key={e} value={e}>{e}</option>)}</select></div>
+                                                <div><label className="form-label">Tratamiento</label><select className="form-control" value={editTratamiento} onChange={e=>setEditTratamiento(e.target.value)} disabled={!editEspecialidad}><option value="">Seleccionar...</option>{getTratamientosFiltrados().map(t=><option key={t.id} value={t.tratamiento}>{t.tratamiento}</option>)}</select></div>
                                             </div>
                                             <div className="input-row">
-                                                {/* 4. Hora */}
-                                                <div style={{maxWidth:300}}>
-                                                    <label className="form-label">Nuevo Horario</label>
-                                                    <select className="form-control" value={editHorarioId} onChange={e=>setEditHorarioId(e.target.value)} disabled={!editTratamiento}>
-                                                        <option value="">Selecciona hora...</option>
-                                                        {horariosDisponibles.map(h=><option key={h.id} value={h.id}>{fmtDate(h.fecha)}</option>)}
-                                                    </select>
-                                                </div>
-                                                <div style={{display:'flex', alignItems:'flex-end', gap:10}}>
-                                                    <button className="btn-primary" onClick={()=>saveEdit(r.id)}>Guardar</button>
-                                                    <button className="btn-edit" onClick={()=>setEditId(null)}>Cancelar</button>
-                                                </div>
+                                                <div style={{maxWidth:300}}><label className="form-label">Nuevo Horario</label><select className="form-control" value={editHorarioId} onChange={e=>setEditHorarioId(e.target.value)} disabled={!editTratamiento}><option value="">Selecciona hora...</option>{horariosDisponibles.map(h=><option key={h.id} value={h.id}>{fmtDate(h.fecha)}</option>)}</select></div>
+                                                <div style={{display:'flex', alignItems:'flex-end', gap:10}}><button className="btn-primary" onClick={()=>saveEdit(r.id)}>Guardar</button><button className="btn-edit" onClick={()=>setEditId(null)}>Cancelar</button></div>
                                             </div>
                                         </div>
                                     </td>
                                 </tr>
                             );
-
                             return(
                                 <tr key={r.id}>
                                     <td>{fmtDate(r.fecha)}</td>
@@ -470,10 +313,7 @@ function AgendaResumen({reservas, reload}){
                                     <td>{r.profesionalNombre}</td>
                                     <td>{r.motivo}</td>
                                     <td>{fmtMoney(valor)}</td>
-                                    <td>
-                                        <button className="btn-edit" onClick={()=>startEdit(r)}>Modificar</button>
-                                        <button className="btn-danger" onClick={()=>deleteReserva(r.id)}>Eliminar</button>
-                                    </td>
+                                    <td><button className="btn-edit" onClick={()=>startEdit(r)}>Modificar</button><button className="btn-danger" onClick={()=>deleteReserva(r.id)}>Eliminar</button></td>
                                 </tr>
                             )
                         })}</tbody>
@@ -501,7 +341,6 @@ function AgendaResumen({reservas, reload}){
                         )
                     })}
                 </div>
-
             </div>
         </div>
     )
@@ -511,42 +350,19 @@ function AgendaPacientes(){
     const [pacientes,setPacientes]=useState([]);
     const [form,setForm]=useState({nombreCompleto:'',email:'',telefono:'', rut:''});
     const [editingId, setEditingId] = useState(null);
-    
     const load=()=>getPacientes().then(setPacientes);
     useEffect(()=>{load()},[]);
-
-    // [MEJORA 3] Auto-formato
-    const handleRutChange = (e) => {
-        const raw = e.target.value;
-        const formatted = formatRut(raw);
-        setForm({...form, rut: formatted});
-    }
-
+    const handleRutChange = (e) => { const raw = e.target.value; const formatted = formatRut(raw); setForm({...form, rut: formatted}); }
     const save=async(e)=>{
         e.preventDefault();
         try {
-            if(editingId) {
-                await updatePaciente(editingId, form);
-                alert('Paciente Actualizado');
-                setEditingId(null);
-            } else {
-                await crearPaciente(form);
-                alert('Paciente Creado');
-            }
-            setForm({nombreCompleto:'',email:'',telefono:'', rut:''});
-            load();
+            if(editingId) { await updatePaciente(editingId, form); alert('Paciente Actualizado'); setEditingId(null); } 
+            else { await crearPaciente(form); alert('Paciente Creado'); }
+            setForm({nombreCompleto:'',email:'',telefono:'', rut:''}); load();
         } catch(e) { alert("Error al guardar paciente"); }
     };
-
-    const handleEdit = (p) => {
-        setForm({ nombreCompleto: p.nombreCompleto, email: p.email, telefono: p.telefono, rut: formatRut(p.rut||'') });
-        setEditingId(p.id);
-        window.scrollTo(0, 0);
-    };
-
-    const handleDelete = async (id) => {
-        if(confirm('¿Seguro?')) { await deletePaciente(id); load(); }
-    };
+    const handleEdit = (p) => { setForm({ nombreCompleto: p.nombreCompleto, email: p.email, telefono: p.telefono, rut: formatRut(p.rut||'') }); setEditingId(p.id); window.scrollTo(0, 0); };
+    const handleDelete = async (id) => { if(confirm('¿Seguro?')) { await deletePaciente(id); load(); } };
 
     return(
         <div>
@@ -555,10 +371,7 @@ function AgendaPacientes(){
                 <h3 style={{marginTop:0}}>{editingId ? 'Editar Paciente' : 'Crear Nuevo Paciente'}</h3>
                 <form onSubmit={save}>
                     <div className="input-row">
-                        <div>
-                            <label className="form-label">RUT (Ej: 12.345.678-9)</label>
-                            <input className="form-control" value={form.rut} onChange={handleRutChange} maxLength={12} placeholder="12.345.678-9"/>
-                        </div>
+                        <div><label className="form-label">RUT (Ej: 12.345.678-9)</label><input className="form-control" value={form.rut} onChange={handleRutChange} maxLength={12} placeholder="12.345.678-9"/></div>
                         <div><label className="form-label">Nombre Completo</label><input className="form-control" value={form.nombreCompleto} onChange={e=>setForm({...form,nombreCompleto:e.target.value})}/></div>
                     </div>
                     <div className="input-row">
@@ -569,7 +382,6 @@ function AgendaPacientes(){
                     {editingId && <button type="button" className="btn-edit" onClick={()=>{setEditingId(null); setForm({nombreCompleto:'',email:'',telefono:'', rut:''})}} style={{marginLeft:10}}>Cancelar</button>}
                 </form>
             </div>
-            
             <div className="pro-card">
                 {/* VISTA ESCRITORIO */}
                 <div className="data-table-container desktop-view-only">
@@ -577,18 +389,12 @@ function AgendaPacientes(){
                         <thead><tr><th>RUT</th><th>Nombre</th><th>Email</th><th>Acciones</th></tr></thead>
                         <tbody>{pacientes.map(p=>(
                             <tr key={p.id}>
-                                <td>{formatRut(p.rut)}</td>
-                                <td>{p.nombreCompleto}</td>
-                                <td>{p.email}</td>
-                                <td>
-                                    <button className="btn-edit" onClick={()=>handleEdit(p)}>Editar</button>
-                                    <button className="btn-danger" onClick={()=>handleDelete(p.id)}>Borrar</button>
-                                </td>
+                                <td>{formatRut(p.rut)}</td><td>{p.nombreCompleto}</td><td>{p.email}</td>
+                                <td><button className="btn-edit" onClick={()=>handleEdit(p)}>Editar</button><button className="btn-danger" onClick={()=>handleDelete(p.id)}>Borrar</button></td>
                             </tr>
                         ))}</tbody>
                     </table>
                 </div>
-
                 {/* VISTA MÓVIL */}
                 <div className="mobile-view-only">
                     {pacientes.map(p => (
@@ -612,55 +418,22 @@ function AgendaProfesionales() {
     const [pros, setPros] = useState([]);
     const [form, setForm] = useState({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] });
     const [isEditing, setIsEditing] = useState(false);
-
     const especialidadesUnicas = [...new Set(TRATAMIENTOS.map(t => t.especialidad))];
-    
-    // Tratamientos filtrados para el segundo dropdown
-    const tratamientosDisponibles = TRATAMIENTOS.filter(t => 
-        form.especialidades.includes(t.especialidad)
-    ).map(t => t.tratamiento); // Solo pasamos nombres al dropdown
-
+    const tratamientosDisponibles = TRATAMIENTOS.filter(t => form.especialidades.includes(t.especialidad)).map(t=>t.tratamiento);
     const load = () => getProfesionales().then(setPros);
     useEffect(() => { load(); }, []);
-
-    // [MEJORA 2] Handlers para Dropdowns
-    const handleSpecChange = (newSpecs) => {
-        setForm({ ...form, especialidades: newSpecs });
-    };
-
-    const handleTratChange = (newTrats) => {
-        setForm({ ...form, tratamientos: newTrats });
-    };
-
+    const handleSpecChange = (newSpecs) => setForm({ ...form, especialidades: newSpecs });
+    const handleTratChange = (newTrats) => setForm({ ...form, tratamientos: newTrats });
     const handleEdit = (p) => {
-        setForm({
-            id: p.id,
-            nombreCompleto: p.nombreCompleto,
-            especialidades: p.especialidad ? p.especialidad.split(',') : [],
-            tratamientos: p.tratamientos ? p.tratamientos.split(',') : []
-        });
-        setIsEditing(true);
-        window.scrollTo(0,0);
+        setForm({ id: p.id, nombreCompleto: p.nombreCompleto, especialidades: p.especialidad ? p.especialidad.split(',') : [], tratamientos: p.tratamientos ? p.tratamientos.split(',') : [] });
+        setIsEditing(true); window.scrollTo(0,0);
     };
-
-    const handleDelete = async (id) => {
-        if(confirm('¿Eliminar este profesional?')) { await deleteProfesional(id); load(); }
-    };
-
     const save = async (e) => {
-        e.preventDefault();
-        if (form.especialidades.length === 0) return alert("Selecciona especialidad");
-        const payload = {
-            nombreCompleto: form.nombreCompleto,
-            especialidad: form.especialidades.join(','), 
-            tratamientos: form.tratamientos.join(',')
-        };
-        try {
-            if (isEditing) await updateProfesional(form.id, payload);
-            else await fetch(`${API_BASE_URL}/profesionales`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            alert('Guardado'); setIsEditing(false); setForm({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] }); load();
-        } catch (e) { alert("Error"); }
+        e.preventDefault(); if (form.especialidades.length === 0) return alert("Selecciona especialidad");
+        const payload = { nombreCompleto: form.nombreCompleto, especialidad: form.especialidades.join(','), tratamientos: form.tratamientos.join(',') };
+        try { if (isEditing) await updateProfesional(form.id, payload); else await fetch(`${API_BASE_URL}/profesionales`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); alert('Guardado'); setIsEditing(false); setForm({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] }); load(); } catch (e) { alert("Error"); }
     }
+    const handleDelete = async (id) => { if(confirm('¿Eliminar?')) { await deleteProfesional(id); load(); } };
 
     return (
         <div>
@@ -669,19 +442,11 @@ function AgendaProfesionales() {
                 <h3 style={{marginTop:0}}>{isEditing ? 'Editar Profesional' : 'Nuevo Profesional'}</h3>
                 <form onSubmit={save}>
                     <div className="input-row" style={{marginBottom:15}}>
-                        <div style={{width:'100%'}}>
-                            <label className="form-label">Nombre Completo</label>
-                            <input className="form-control" value={form.nombreCompleto} onChange={e => setForm({ ...form, nombreCompleto: e.target.value })} />
-                        </div>
+                        <div style={{width:'100%'}}><label className="form-label">Nombre Completo</label><input className="form-control" value={form.nombreCompleto} onChange={e => setForm({ ...form, nombreCompleto: e.target.value })} /></div>
                     </div>
-                    {/* [MEJORA 2] Dropdowns */}
                     <div className="input-row">
-                        <div>
-                            <MultiSelectDropdown label="Especialidades" options={especialidadesUnicas} selectedValues={form.especialidades} onChange={handleSpecChange} />
-                        </div>
-                        <div>
-                            <MultiSelectDropdown label="Tratamientos Habilitados" options={tratamientosDisponibles} selectedValues={form.tratamientos} onChange={handleTratChange} />
-                        </div>
+                        <div><MultiSelectDropdown label="Especialidades" options={especialidadesUnicas} selectedValues={form.especialidades} onChange={handleSpecChange} /></div>
+                        <div><MultiSelectDropdown label="Tratamientos Habilitados" options={tratamientosDisponibles} selectedValues={form.tratamientos} onChange={handleTratChange} /></div>
                     </div>
                     <div style={{display:'flex', gap:10}}>
                         <button className="btn-primary">{isEditing ? 'Guardar' : 'Crear'}</button>
@@ -699,15 +464,11 @@ function AgendaProfesionales() {
                             <tr key={p.id}>
                                 <td><strong>{p.nombreCompleto}</strong></td>
                                 <td>{p.especialidad ? p.especialidad.split(',').join(', ') : '-'}</td>
-                                <td>
-                                    <button className="btn-edit" onClick={() => handleEdit(p)}>Editar</button>
-                                    <button className="btn-danger" onClick={() => handleDelete(p.id)}>X</button>
-                                </td>
+                                <td><button className="btn-edit" onClick={() => handleEdit(p)}>Editar</button><button className="btn-danger" onClick={() => handleDelete(p.id)}>X</button></td>
                             </tr>
                         ))}</tbody>
                     </table>
                 </div>
-
                 {/* VISTA MÓVIL */}
                 <div className="mobile-view-only">
                     {pros.map(p => (
@@ -731,38 +492,23 @@ function AgendaHorarios(){
     const [configs, setConfigs] = useState([]);
     const [fechaSel, setFechaSel] = useState('');
     const [form,setForm]=useState({profesionalId:'',diaSemana:'',horaInicio:'09:00',horaFin:'18:00', duracionSlot: 30, intervalo: 0});
-    
-    // [MEJORA 1] Modal
     const [showModal, setShowModal] = useState(false);
     const [modalData, setModalData] = useState({ proName: '', slots: {} });
 
     useEffect(()=>{ getProfesionales().then(setPros); loadConfigs(); },[]);
-
-    const loadConfigs = async () => {
-        try { const data = await getConfiguraciones(); setConfigs(Array.isArray(data) ? data : []); } catch (e) { setConfigs([]); }
-    };
-    
+    const loadConfigs = async () => { try { const data = await getConfiguraciones(); setConfigs(Array.isArray(data) ? data : []); } catch (e) { setConfigs([]); } };
     const save=async(e)=>{
-        e.preventDefault();
-        const payload = { ...form, fecha: fechaSel }; 
+        e.preventDefault(); const payload = { ...form, fecha: fechaSel }; 
         await fetch(`${API_BASE_URL}/configuracion`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
         alert(`Horario guardado`); await loadConfigs();
     };
-
-    const borrarConfig = async (id) => {
-        if(confirm("¿Eliminar?")) { await deleteConfiguracion(id); loadConfigs(); }
-    }
+    const borrarConfig = async (id) => { if(confirm("¿Eliminar?")) { await deleteConfiguracion(id); loadConfigs(); } }
     
     const verCalendario = async (p) => {
         try {
             const h = await getHorariosByProfesional(p.id);
             if(Array.isArray(h)) {
-                const agrupados = h.reduce((acc, curr) => {
-                    const f = curr.fecha.split('T')[0];
-                    if(!acc[f]) acc[f] = [];
-                    acc[f].push(curr);
-                    return acc;
-                }, {});
+                const agrupados = h.reduce((acc, curr) => { const f = curr.fecha.split('T')[0]; if(!acc[f]) acc[f] = []; acc[f].push(curr); return acc; }, {});
                 setModalData({ proName: p.nombreCompleto, slots: agrupados });
                 setShowModal(true);
             }
@@ -776,7 +522,7 @@ function AgendaHorarios(){
                 <form onSubmit={save}>
                     <div className="input-row">
                         <div><label className="form-label">Profesional</label><select className="form-control" onChange={e=>setForm({...form,profesionalId:e.target.value})}><option>Seleccionar...</option>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div>
-                        <div><label className="form-label">Fecha del Bloque</label><input type="date" className="form-control" onChange={e=>setFechaSel(e.target.value)} /></div>
+                        <div><label className="form-label">Fecha</label><input type="date" className="form-control" onChange={e=>setFechaSel(e.target.value)} /></div>
                     </div>
                     <div className="input-row">
                         <div><label className="form-label">Inicio</label><input type="time" className="form-control" value={form.horaInicio} onChange={e=>setForm({...form,horaInicio:e.target.value})}/></div>
@@ -788,7 +534,6 @@ function AgendaHorarios(){
 
             <div className="pro-card">
                 <h3>Ver Calendario Visual</h3>
-                
                 {/* VISTA ESCRITORIO */}
                 <div className="data-table-container desktop-view-only">
                     <table className="data-table">
@@ -801,8 +546,7 @@ function AgendaHorarios(){
                         ))}</tbody>
                     </table>
                 </div>
-
-                {/* VISTA MÓVIL (PUNTO 4: LISTA SIMPLE, BOTÓN AL LADO) */}
+                {/* VISTA MÓVIL */}
                 <div className="mobile-view-only">
                     {pros.map(p => (
                         <div key={p.id} className="mobile-simple-list-item">
@@ -813,7 +557,6 @@ function AgendaHorarios(){
                 </div>
             </div>
 
-            {/* [MEJORA 1] Render Modal */}
             {showModal && (
                 <Modal title={`Horarios: ${modalData.proName}`} onClose={()=>setShowModal(false)}>
                     {Object.keys(modalData.slots).length === 0 ? <p>No hay horarios.</p> : 
@@ -945,12 +688,64 @@ function WebPaciente() {
         setLoading(false);
     }
 
+    // Navegación hacia atrás
     const goBack = () => {
         if(step === 0) return;
-        if(step === 2 && pacienteId) setStep(0); 
+        if(step === 2 && pacienteId) setStep(0); // Si ya existía, volver al inicio
         else setStep(step - 1);
     };
 
+    // Componente de Detalle de Reserva
+    const ReservaDetalleCard = ({ title, showTotal }) => {
+        // Encontrar datos para mostrar
+        const slotDate = new Date(form.horarioId || new Date());
+        const fechaStr = slotDate.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        const horaStr = slotDate.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+        
+        // Buscar profesional en la agenda cargada
+        let proName = "Profesional asignado";
+        if (multiAgenda[selectedDateKey]) {
+            const foundEntry = multiAgenda[selectedDateKey].find(e => e.profesional.id === form.profesionalId);
+            if (foundEntry) proName = foundEntry.profesional.nombreCompleto;
+        }
+
+        return (
+            <div className="conf-card">
+                <div className="conf-section">
+                    <div className="conf-title">Paciente</div>
+                    <div className="conf-row"><span className="conf-label">Nombre</span><span className="conf-value">{form.nombre}</span></div>
+                    <div className="conf-row"><span className="conf-label">RUT</span><span className="conf-value">{form.rut}</span></div>
+                    <div className="conf-row"><span className="conf-label">Email</span><span className="conf-value">{form.email}</span></div>
+                </div>
+                
+                <div className="conf-section">
+                    <div className="conf-title">Servicio</div>
+                    <div className="conf-row"><span className="conf-label">Especialidad</span><span className="conf-value">{tratamientoSel?.especialidad}</span></div>
+                    <div className="conf-row"><span className="conf-label">Tratamiento</span><span className="conf-value">{tratamientoSel?.tratamiento}</span></div>
+                    {tratamientoSel?.codigo && <div className="conf-row"><span className="conf-label">Cód. Fonasa</span><span className="conf-value">{tratamientoSel.codigo}</span></div>}
+                    <div className="conf-row"><span className="conf-label" style={{fontStyle:'italic', fontSize:'0.85rem', marginTop:5}}>{tratamientoSel?.descripcion}</span></div>
+                </div>
+
+                <div className="conf-section">
+                    <div className="conf-title">Cita</div>
+                    <div className="conf-row"><span className="conf-label">Profesional</span><span className="conf-value">{proName}</span></div>
+                    <div className="conf-row"><span className="conf-label">Fecha</span><span className="conf-value">{fechaStr}</span></div>
+                    <div className="conf-row"><span className="conf-label">Hora</span><span className="conf-value">{horaStr}</span></div>
+                </div>
+
+                {showTotal && (
+                    <div className="conf-section" style={{background:'#fafafa'}}>
+                        <div className="conf-total">
+                            <span className="conf-total-label">Total a Pagar</span>
+                            <span className="conf-total-value">{fmtMoney(tratamientoSel?.valor || 0)}</span>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    // VISTA DE ÉXITO
     if(bookingSuccess) {
         return (
             <div className="web-shell">
@@ -959,13 +754,7 @@ function WebPaciente() {
                     <h1 className="web-title">¡Reserva Exitosa!</h1>
                     <p className="web-subtitle">Hemos enviado el comprobante a<br/><strong>{form.email}</strong></p>
                     
-                    <div style={{background:'#f9fafb', border:'1px solid #e5e7eb', padding:20, borderRadius:16, width:'100%', marginBottom:40}}>
-                        <div style={{fontSize:'0.9rem', color:'#888', textTransform:'uppercase', letterSpacing:1, marginBottom:5}}>Tratamiento</div>
-                        <h3 style={{margin:0, fontSize:'1.1rem', color:'#111'}}>{tratamientoSel?.tratamiento}</h3>
-                        <div style={{width:'100%', height:1, background:'#e5e7eb', margin:'15px 0'}}></div>
-                        <div style={{fontSize:'0.9rem', color:'#888', textTransform:'uppercase', letterSpacing:1, marginBottom:5}}>Paciente</div>
-                        <div style={{fontSize:'1rem', color:'#111', fontWeight:600}}>{form.nombre}</div>
-                    </div>
+                    <ReservaDetalleCard title="Comprobante" showTotal={true} />
                     
                     <button className="btn-block-action" onClick={()=>window.location.reload()}>Volver al Inicio</button>
                 </div>
@@ -973,13 +762,16 @@ function WebPaciente() {
         )
     }
 
+    // RENDER PRINCIPAL
     return (
         <div className="web-shell">
+            {/* Header Fijo con Flecha Atrás */}
             <header className="web-header">
                 {step > 0 && <button className="web-back-btn" onClick={goBack}>‹</button>}
                 <img src={LOGO_URL} alt="Logo" className="cisd-logo-web" />
             </header>
 
+            {/* Stepper Visual */}
             <div className="stepper-container">
                 <div className="stepper">
                     <div className={`step-dot ${step >= 0 ? 'active' : ''}`}></div>
@@ -994,6 +786,7 @@ function WebPaciente() {
 
             <div className="web-content">
                 
+                {/* PASO 0: RUT */}
                 {step === 0 && (
                     <>
                         <div>
@@ -1019,6 +812,7 @@ function WebPaciente() {
                     </>
                 )}
 
+                {/* PASO 1: REGISTRO */}
                 {step === 1 && (
                     <>
                         <h2 className="web-title">Datos Personales</h2>
@@ -1045,6 +839,7 @@ function WebPaciente() {
                     </>
                 )}
 
+                {/* PASO 2: SERVICIO */}
                 {step === 2 && (
                     <>
                         <h2 className="web-title">¿Qué necesitas?</h2>
@@ -1074,6 +869,7 @@ function WebPaciente() {
                     </>
                 )}
 
+                {/* PASO 3: AGENDA */}
                 {step === 3 && (
                     <>
                         <h2 className="web-title">Elige tu Hora</h2>
@@ -1115,25 +911,13 @@ function WebPaciente() {
                     </>
                 )}
 
+                {/* PASO 4: CONFIRMAR DETALLADO */}
                 {step === 4 && (
                     <>
                         <h2 className="web-title">Confirmar Reserva</h2>
                         <p className="web-subtitle">Revisa los detalles antes de finalizar.</p>
 
-                        <div style={{width:'100%', background:'#fff', border:'1px solid #e5e7eb', borderRadius:16, padding:25, boxShadow:'0 4px 20px rgba(0,0,0,0.03)'}}>
-                            <div style={{marginBottom:20}}>
-                                <label className="web-label" style={{color:'#999', fontSize:'0.8rem', textTransform:'uppercase', letterSpacing:1}}>Paciente</label>
-                                <div style={{fontSize:'1.1rem', fontWeight:500}}>{form.nombre}</div>
-                            </div>
-                            <div style={{marginBottom:20}}>
-                                <label className="web-label" style={{color:'#999', fontSize:'0.8rem', textTransform:'uppercase', letterSpacing:1}}>Tratamiento</label>
-                                <div style={{fontSize:'1.1rem', fontWeight:500}}>{tratamientoSel?.tratamiento}</div>
-                            </div>
-                            <div style={{borderTop:'1px solid #eee', paddingTop:20, marginTop:10, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                                <span style={{fontSize:'1.1rem', fontWeight:600}}>Total a Pagar</span>
-                                <span style={{fontSize:'1.4rem', fontWeight:800, color:'#000'}}>{tratamientoSel ? fmtMoney(tratamientoSel.valor) : ''}</span>
-                            </div>
-                        </div>
+                        <ReservaDetalleCard title="Resumen" showTotal={true} />
 
                         <div className="bottom-bar">
                             <button className="btn-block-action" disabled={loading} onClick={confirmar}>

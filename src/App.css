@@ -313,9 +313,48 @@ html, body, #root {
 .btn-block-action:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
 .btn-block-action:active { transform: scale(0.98); }
 
+/* --- TARJETA DE CONFIRMACIÓN DETALLADA (NUEVO) --- */
+.conf-card {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+  margin-bottom: 20px;
+}
+
+.conf-section {
+  padding: 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.conf-section:last-child { border-bottom: none; }
+
+.conf-title {
+  font-size: 0.8rem; font-weight: 700; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.conf-row {
+  display: flex; justify-content: space-between;
+  margin-bottom: 8px; font-size: 0.95rem;
+}
+.conf-row:last-child { margin-bottom: 0; }
+
+.conf-label { color: #666; }
+.conf-value { color: #111; font-weight: 500; text-align: right; }
+
+.conf-total {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 5px;
+}
+.conf-total-label { font-size: 1.1rem; font-weight: 700; color: #111; }
+.conf-total-value { font-size: 1.5rem; font-weight: 800; color: #000; }
+
 /* Pantalla Éxito */
-.success-card { text-align: center; padding-top: 60px; }
-.success-icon-big { font-size: 5rem; color: #10b981; margin-bottom: 25px; display: block; }
+.success-card { text-align: center; padding-top: 40px; }
+.success-icon-big { font-size: 5rem; color: #10b981; margin-bottom: 20px; display: block; }
 
 /* ============================================================
    5. MÓVIL ADMIN (Modo App)
