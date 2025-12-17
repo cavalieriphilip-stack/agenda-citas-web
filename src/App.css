@@ -8,16 +8,17 @@ body {
     font-family: 'Segoe UI', system-ui, sans-serif; 
     background-color: #f4f7f6; 
     color: #333;
-    overflow-x: hidden; /* Evita scroll horizontal indeseado */
+    -webkit-font-smoothing: antialiased;
 }
 
 /* =========================================
-   2. LAYOUT PRINCIPAL (DESKTOP POR DEFECTO)
+   2. LAYOUT PRINCIPAL (DESKTOP)
    ========================================= */
 .dashboard-layout { 
     display: flex; 
     flex-direction: column; 
-    height: 100vh; /* Ocupa toda la altura */
+    height: 100vh; /* Altura completa de la ventana */
+    overflow: hidden; /* Evita scroll doble en la ventana principal */
 }
 
 /* Barra Superior */
@@ -28,26 +29,18 @@ body {
     background: #fff; 
     padding: 0 20px; 
     height: 64px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
-    position: relative; 
-    z-index: 20;
-    flex-shrink: 0; /* No encoger */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+    z-index: 50;
+    flex-shrink: 0; 
 }
 
 .brand-area { 
-    display: flex; 
-    align-items: center; 
-    gap: 15px; 
-    font-weight: bold; 
-    font-size: 1.2rem; 
+    display: flex; align-items: center; gap: 15px; 
+    font-weight: bold; font-size: 1.2rem; 
 }
-
 .cisd-logo-admin { height: 40px; }
-
-/* Botón Hamburguesa (OCULTO EN DESKTOP) */
-.mobile-menu-btn { 
-    display: none; 
-}
+.admin-title-text { display: block; }
+.mobile-menu-btn { display: none; } /* Oculto en PC */
 
 .module-switcher { display: flex; gap: 10px; }
 .module-tab {
@@ -61,180 +54,200 @@ body {
     border-radius: 6px; font-size: 0.9rem;
 }
 
-/* Área de Trabajo (Sidebar + Main) */
+/* CONTENEDOR CENTRAL (Sidebar + Main) */
 .workspace { 
     display: flex; 
     flex: 1; 
-    overflow: hidden; /* Para que el scroll sea interno */
-    position: relative; 
+    overflow: hidden; /* Importante para que el scroll sea interno */
+    position: relative;
 }
 
-/* Sidebar (Visible y Fija en Desktop) */
+/* Sidebar PC */
 .sidebar {
-    width: 260px; 
+    width: 260px;
+    min-width: 260px; /* Evita que se aplaste */
     background: #fff; 
     border-right: 1px solid #eee;
-    padding: 20px; 
-    overflow-y: auto; 
-    display: flex; 
-    flex-direction: column; 
+    display: flex; flex-direction: column; 
+    overflow-y: auto;
+    padding: 20px;
     gap: 5px;
-    flex-shrink: 0; /* Evita que se aplaste */
-    position: relative; /* Normal en desktop */
-    left: 0 !important; /* Forzar visible en desktop */
-    height: auto !important;
-    box-shadow: none !important;
 }
-
-.sidebar-overlay { display: none; } /* No necesario en desktop */
 
 .sidebar-header {
-    font-size: 0.75rem; color: #888; font-weight: bold; text-transform: uppercase;
-    margin-bottom: 10px; letter-spacing: 1px; margin-top: 10px;
+    font-size: 0.75rem; color: #999; font-weight: bold; 
+    text-transform: uppercase; margin: 15px 0 10px 0; letter-spacing: 1px;
 }
-
 .nav-item {
-    padding: 10px 15px; border-radius: 8px; cursor: pointer; color: #555;
-    transition: 0.2s; font-size: 0.95rem; display: block;
+    padding: 12px 15px; border-radius: 8px; cursor: pointer; color: #555;
+    transition: 0.2s; font-size: 0.95rem; font-weight: 500;
 }
-.nav-item:hover { background: #f9f9f9; color: #000; }
-.nav-item.active { background: #f0f0f0; color: #000; font-weight: 600; border-left: 3px solid #000; }
+.nav-item:hover { background: #f8f9fa; color: #000; }
+.nav-item.active { background: #f0f0f0; color: #000; font-weight: 700; }
 
-/* Contenido Principal */
+/* Main Stage PC */
 .main-stage { 
     flex: 1; 
-    padding: 30px; 
-    overflow-y: auto; 
+    padding: 40px; 
+    overflow-y: auto; /* El scroll ocurre aquí, no en el body */
     background: #f8fafc; 
 }
 
 /* =========================================
-   3. COMPONENTES UI (Inputs, Cards, Tablas)
+   3. COMPONENTES UI (Inputs y Tablas)
    ========================================= */
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
-.page-title h1 { margin: 0; font-size: 1.5rem; color: #111; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 10px; }
+.page-title h1 { margin: 0; font-size: 1.8rem; color: #111; letter-spacing: -0.5px; }
 
-.pro-card { background: #fff; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 20px; }
-
-.form-label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.9rem; color: #444; }
-.form-control {
-    width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;
-    font-size: 0.95rem; outline: none; transition: 0.2s;
+.pro-card { 
+    background: #fff; border-radius: 12px; padding: 25px; 
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); 
+    border: 1px solid #f1f1f1;
+    margin-bottom: 25px; 
 }
-.form-control:focus { border-color: #000; }
 
-.input-row { display: flex; gap: 20px; margin-bottom: 15px; }
+/* --- FORMULARIOS (Corrección de color gris) --- */
+.form-label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; color: #374151; }
+.form-control {
+    width: 100%; 
+    padding: 12px; 
+    border: 1px solid #e5e7eb; 
+    border-radius: 8px;
+    font-size: 1rem; 
+    outline: none; 
+    transition: 0.2s;
+    background-color: #fff !important; /* FORZAR BLANCO */
+    color: #1f2937 !important;         /* FORZAR TEXTO OSCURO */
+}
+.form-control:focus { border-color: #000; ring: 2px solid #eee; }
+
+.input-row { display: flex; gap: 20px; margin-bottom: 20px; }
 .input-row > div { flex: 1; }
 
 .btn-primary {
-    background: #000; color: #fff; border: none; padding: 10px 20px;
-    border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 500;
+    background: #111; color: #fff; border: none; padding: 12px 24px;
+    border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 600;
+    transition: background 0.2s;
 }
-.btn-edit { background: #e0e0e0; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-right: 5px; }
-.btn-danger { background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+.btn-primary:hover { background: #333; }
 
-/* Tablas */
-.data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-.data-table th { text-align: left; padding: 12px 15px; background: #f8f9fa; color: #666; font-weight: 600; border-bottom: 1px solid #eee; }
-.data-table td { padding: 12px 15px; border-bottom: 1px solid #f0f0f0; color: #333; }
+.btn-edit { background: #f3f4f6; color:#1f2937; border: 1px solid #e5e7eb; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-right: 5px; font-weight: 500;}
+.btn-danger { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500;}
 
-.multicheck-container { display: flex; flex-direction: column; gap: 5px; max-height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 8px; }
-.check-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; }
+/* --- TABLAS (Desktop) --- */
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.data-table th { text-align: left; padding: 15px; background: #f9fafb; color: #6b7280; font-weight: 600; border-bottom: 1px solid #e5e7eb; font-size: 0.85rem; text-transform: uppercase;}
+.data-table td { padding: 15px; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: middle; }
+.data-table tr:last-child td { border-bottom: none; }
+
+/* Checkboxes */
+.multicheck-container { 
+    display: flex; flex-direction: column; gap: 8px; 
+    max-height: 200px; overflow-y: auto; 
+    border: 1px solid #e5e7eb; padding: 15px; border-radius: 8px; 
+    background: #fff;
+}
+.check-item { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; cursor: pointer; }
+.check-item input { accent-color: #000; width: 18px; height: 18px; }
+
+/* KPI Boxes */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+.kpi-box { background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #f1f1f1; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+.kpi-label { font-size: 0.9rem; color: #666; margin-bottom: 5px; }
+.kpi-value { font-size: 2rem; font-weight: 800; color: #111; }
 
 /* =========================================
-   4. WEB PACIENTE (Corrección de Layout)
+   4. WEB PACIENTE (Estilos Públicos)
    ========================================= */
 .web-shell { 
-    min-height: 100vh; 
-    width: 100%; /* Asegura ancho completo */
-    background: #fff; 
-    display: flex; 
-    flex-direction: column; 
-    align-items: center; 
-    padding: 40px 20px; 
+    min-height: 100vh; width: 100%; background: #fff; 
+    display: flex; flex-direction: column; align-items: center; padding: 40px 20px; 
 }
-.cisd-logo-web { width: 150px; margin-bottom: 30px; }
-.web-card { width: 100%; max-width: 450px; }
+.cisd-logo-web { width: 160px; margin-bottom: 40px; }
+.web-card { width: 100%; max-width: 480px; animation: fadeIn 0.4s ease; }
 .cisd-input, .cisd-select {
-    width: 100%; padding: 12px; border: 1px solid #eee; background: #f9f9f9;
-    border-radius: 10px; font-size: 1rem; outline: none; margin-top: 5px;
+    width: 100%; padding: 14px; border: 1px solid #e5e7eb; background: #f9fafb;
+    border-radius: 12px; font-size: 1rem; outline: none; margin-top: 5px;
 }
+.cisd-input:focus { background: #fff; border-color: #000; }
 .web-btn-black {
-    width: 100%; background: #000; color: #fff; padding: 14px; border: none;
-    border-radius: 30px; font-size: 1rem; cursor: pointer; margin-top: 15px;
+    width: 100%; background: #000; color: #fff; padding: 16px; border: none;
+    border-radius: 50px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 20px;
 }
-.web-btn-white {
-    background: transparent; border: none; color: #666; cursor: pointer; font-size: 0.9rem; text-decoration: underline;
-}
-.web-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+.web-btn-white { background: transparent; border: none; color: #666; cursor: pointer; font-size: 0.95rem; text-decoration: underline; margin-top: 20px;}
+.web-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
 
-/* RedSalud Tabs Style */
-.rs-date-tabs { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; margin-bottom: 20px; }
+/* RedSalud Tabs */
+.rs-date-tabs { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 15px; margin-bottom: 20px; scrollbar-width: none; }
 .rs-date-tab {
-    min-width: 70px; height: 70px; border: 1px solid #eee; border-radius: 10px;
+    min-width: 75px; height: 75px; border: 1px solid #e5e7eb; border-radius: 12px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    cursor: pointer; transition: 0.2s;
+    cursor: pointer; transition: 0.2s; background: #fff;
 }
 .rs-date-tab.selected { background: #000; color: #fff; border-color: #000; }
-.rs-pro-card { border: 1px solid #eee; border-radius: 12px; padding: 15px; margin-bottom: 15px; }
-.rs-pro-info { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; }
-.rs-avatar { width: 40px; height: 40px; background: #eee; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-.rs-slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
+.rs-day-name { font-size: 0.8rem; text-transform: uppercase; margin-bottom: 4px; }
+.rs-day-number { font-size: 1.4rem; font-weight: 700; }
+
+.rs-pro-list { display: flex; flex-direction: column; gap: 15px; }
+.rs-pro-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; }
+.rs-pro-info { display: flex; gap: 15px; align-items: center; margin-bottom: 15px; }
+.rs-avatar { width: 45px; height: 45px; background: #f3f4f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #555; }
+.rs-slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 10px; }
 .rs-slot-btn {
-    background: #fff; border: 1px solid #ddd; padding: 8px; border-radius: 6px;
-    cursor: pointer; font-size: 0.9rem; transition: 0.2s;
+    background: #fff; border: 1px solid #d1d5db; padding: 10px; border-radius: 8px;
+    cursor: pointer; font-size: 0.9rem; transition: 0.1s; text-align: center;
 }
-.rs-slot-btn:hover { border-color: #000; background: #f9f9f9; }
+.rs-slot-btn:hover { border-color: #000; background: #f9fafb; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
 
 /* =========================================
-   5. MÓVIL (SOLO SE ACTIVA EN PANTALLAS PEQUEÑAS)
+   5. RESPONSIVE MOBILE (LA MAGIA)
    ========================================= */
 @media (max-width: 768px) {
     /* Header compacto */
     .top-nav { padding: 0 15px; height: 60px; }
+    .brand-area { font-size: 1rem; }
+    .mobile-menu-btn { display: block; background: none; border: none; font-size: 26px; cursor: pointer; color: #000; margin-right: 5px; }
     
-    /* Mostrar botón hamburguesa */
-    .mobile-menu-btn { display: block; background: none; border: none; font-size: 24px; cursor: pointer; color: #000; margin-right: 10px; }
-    
-    /* Título más pequeño */
+    /* Ocultar elementos desktop */
     .admin-title-text { display: none; } 
-    
-    /* Esconder pestañas superiores si molestan, o hacerlas pequeñas */
     .module-switcher { display: none; } 
+    .nav-actions { display: none; } /* Ocultar botón web paciente en header móvil si molesta */
 
-    /* Sidebar: Se convierte en menú deslizante */
+    /* Sidebar Flotante */
     .sidebar {
         position: fixed; 
-        top: 60px; /* Debajo del nav */
-        left: -100% !important; /* Escondido a la izquierda */
+        top: 60px; 
+        left: -100%; /* Escondido */
         width: 80%; 
-        max-width: 300px; 
-        height: calc(100vh - 60px) !important;
+        max-width: 280px; 
+        height: calc(100vh - 60px); /* Altura restante */
         z-index: 2000; 
         transition: left 0.3s ease; 
-        box-shadow: 2px 0 10px rgba(0,0,0,0.1) !important;
+        box-shadow: 4px 0 15px rgba(0,0,0,0.1);
         border-right: none;
     }
-    
-    /* Clase para abrir el menú */
-    .sidebar.open { left: 0 !important; }
-
-    /* Fondo oscuro al abrir menú */
+    .sidebar.open { left: 0; }
     .sidebar-overlay {
-        display: block;
-        position: fixed; top: 60px; left: 0; right: 0; bottom: 0;
+        display: block; position: fixed; top: 60px; left: 0; right: 0; bottom: 0;
         background: rgba(0,0,0,0.5); z-index: 1500;
     }
 
-    /* Ajustes generales de contenido */
-    .main-stage { padding: 15px; }
+    /* Ajustes de Contenido Móvil */
+    .main-stage { padding: 15px 15px 80px 15px; } /* Más padding abajo */
+    .page-title h1 { font-size: 1.4rem; }
     
-    /* Inputs en columna */
-    .input-row { flex-direction: column; gap: 10px; }
+    .input-row { flex-direction: column; gap: 15px; }
     
-    /* Tablas con scroll horizontal para que no rompan el diseño */
-    .pro-card { overflow-x: auto; }
+    /* --- ARREGLO DE TABLAS MÓVIL --- */
+    /* El contenedor .pro-card ahora tendrá scroll si la tabla es grande */
+    .pro-card { 
+        padding: 15px; 
+        overflow-x: auto; /* PERMITE SCROLL HORIZONTAL */
+    }
+    .data-table { min-width: 600px; /* Fuerza ancho mínimo para activar el scroll */ }
     
-    /* Web Paciente padding */
-    .web-shell { padding: 20px; }
+    .web-shell { padding: 20px 15px; }
 }
