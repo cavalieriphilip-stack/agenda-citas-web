@@ -194,46 +194,21 @@ function AgendaResumen({reservas, reload}){
         setCurrentDate(d);
     };
 
-    // --- FIX CRÍTICO: CÁLCULO DE DÍAS SEGURO ---
+    // FIX PARA VISTA MENSUAL
     const getDays = () => {
-        const d = [];
-        const start = new Date(currentDate);
-        start.setHours(0,0,0,0);
-
-        if (view === 'day') {
-            d.push(new Date(start));
-        } else if (view === 'week') {
-            const day = start.getDay(); 
-            const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-            const monday = new Date(start);
-            monday.setDate(diff);
-            for (let i = 0; i < 7; i++) {
-                const next = new Date(monday);
-                next.setDate(monday.getDate() + i);
-                d.push(next);
-            }
+        const d = [], start = new Date(currentDate);
+        if(view==='day'){ d.push(new Date(start)); }
+        else if(view==='week'){ 
+            const day = start.getDay(), diff = start.getDate() - day + (day===0?-6:1);
+            const mon = new Date(start.setDate(diff));
+            for(let i=0;i<7;i++){ const x = new Date(mon); x.setDate(mon.getDate()+i); d.push(x); }
         } else {
-            // Lógica MES a prueba de balas:
-            const year = start.getFullYear();
-            const month = start.getMonth();
-            
-            // 1. Obtener primer día del mes
-            const firstDayOfMonth = new Date(year, month, 1);
-            
-            // 2. Determinar qué día de la semana cae (0=Dom, 1=Lun...)
-            let dayOfWeek = firstDayOfMonth.getDay();
-            if (dayOfWeek === 0) dayOfWeek = 7; // Convertir Domingo a 7 para que Lunes sea 1
-            
-            // 3. Retroceder hasta el Lunes de esa semana (inicio de la grilla)
-            const gridStartDate = new Date(firstDayOfMonth);
-            gridStartDate.setDate(firstDayOfMonth.getDate() - (dayOfWeek - 1));
-            
-            // 4. Generar exactamente 42 días (6 semanas)
-            for (let i = 0; i < 42; i++) {
-                const nextDay = new Date(gridStartDate);
-                nextDay.setDate(gridStartDate.getDate() + i);
-                d.push(nextDay);
-            }
+            // Mes completo + relleno
+            const y = start.getFullYear(), m = start.getMonth();
+            const first = new Date(y, m, 1);
+            let sDay = first.getDay(); if(sDay===0) sDay=7; // Lunes = 1
+            const run = new Date(first); run.setDate(run.getDate() - (sDay - 1));
+            for(let i=0;i<42;i++){ d.push(new Date(run)); run.setDate(run.getDate()+1); }
         }
         return d;
     };
@@ -278,12 +253,12 @@ function AgendaResumen({reservas, reload}){
                     <>
                         <div className="cal-header-row" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}>
                             <div className="cal-header-cell">Hora</div>
-                            {days.map((d, i)=><div key={i} className={`cal-header-cell ${d.toDateString()===new Date().toDateString()?'today':''}`}>{d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric'})}</div>)}
+                            {days.map(d=><div key={d.getTime()} className={`cal-header-cell ${d.toDateString()===new Date().toDateString()?'today':''}`}>{d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric'})}</div>)}
                         </div>
                         <div className="calendar-body" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}>
                             <div>{Array.from({length:13},(_,i)=>i+8).map(h=><div key={h} className="cal-time-label">{h}:00</div>)}</div>
-                            {days.map((d, i)=>(
-                                <div key={i} className="cal-day-col">
+                            {days.map(d=>(
+                                <div key={d.getTime()} className="cal-day-col">
                                     {filtered.filter(r=>{
                                         if(!r.fecha) return false;
                                         const rd=new Date(r.fecha); 
@@ -306,15 +281,16 @@ function AgendaResumen({reservas, reload}){
                     <>
                         <div className="cal-header-row" style={{gridTemplateColumns: 'repeat(7, 1fr)'}}>{['L','M','X','J','V','S','D'].map(d=><div key={d} className="cal-header-cell">{d}</div>)}</div>
                         <div className="month-grid">
-                            {days.map((d, i)=>(
-                                <div key={i} className="month-cell">
+                            {days.map(d=>(
+                                <div key={d.getTime()} className="month-cell">
                                     <div className="month-cell-header">{d.getDate()}</div>
+                                    {/* CORRECCIÓN: SE DECLARA LA VARIABLE ANTES DE USARLA */}
                                     {(() => {
                                         const dailyEvents = filtered.filter(r=>{
                                             if(!r.fecha) return false;
                                             const rd=new Date(r.fecha); return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth();
                                         });
-                                        constToShow = dailyEvents.slice(0, 3);
+                                        const constToShow = dailyEvents.slice(0, 3); // AÑADIDO 'const'
                                         const rest = dailyEvents.length - 3;
                                         return (
                                             <>
@@ -363,7 +339,7 @@ function AgendaNuevaReserva({ reload, reservas }) {
     const [pros, setPros] = useState([]);
     const [horarios, setHorarios] = useState([]);
     const [form, setForm] = useState({ pacienteId: '', profesionalId: '', horarioId: '', motivo: '', especialidad: '', tratamientoId: '' });
-    const [editingId, setEditingId] = useState(null); 
+    const [editingId, setEditingId] = useState(null); // Para saber si editamos
 
     useEffect(() => { getPacientes().then(setPacientes); getProfesionales().then(setPros); }, []);
     const especialidades = [...new Set(TRATAMIENTOS.map(t => t.especialidad))];
@@ -372,27 +348,43 @@ function AgendaNuevaReserva({ reload, reservas }) {
     
     const handlePro = async (pid) => { setForm({ ...form, profesionalId: pid }); setHorarios([]); if (!pid) return; try { const h = await getHorariosByProfesional(pid); if (Array.isArray(h)) setHorarios(h); } catch(e) { setHorarios([]); } }
     
+    // CARGAR DATOS PARA MODIFICAR
     const handleEditReserva = async (r) => {
         setEditingId(r.id);
         const matchTrat = TRATAMIENTOS.find(t => r.motivo.includes(t.tratamiento));
+        // Precargar estados (Nota: esto es simplificado, en app real requeriría más lógica de dependencias)
         setForm({
-            pacienteId: r.pacienteId, profesionalId: r.profesionalId, horarioId: '', motivo: r.motivo,
+            pacienteId: r.pacienteId, // Asumiendo que viene del back
+            profesionalId: r.profesionalId,
+            horarioId: '', // Hay que reseleccionar horario
+            motivo: r.motivo,
             especialidad: matchTrat ? matchTrat.especialidad : '',
             tratamientoId: matchTrat ? matchTrat.id : ''
         });
+        // Cargar horarios del profesional
         const h = await getHorariosByProfesional(r.profesionalId);
         setHorarios(Array.isArray(h) ? h : []);
         window.scrollTo(0,0);
     };
 
     const save = async (e) => { 
-        e.preventDefault(); if (!form.tratamientoId) return alert("Faltan datos"); const trat = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId)); 
+        e.preventDefault(); 
+        if (!form.tratamientoId) return alert("Faltan datos"); 
+        const trat = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId)); 
         try { 
-            if(editingId) { await reagendarReserva(editingId, form.horarioId, parseInt(form.profesionalId), trat.tratamiento); alert('Reserva Modificada'); setEditingId(null); } 
-            else { await crearReserva({ pacienteId: parseInt(form.pacienteId), profesionalId: parseInt(form.profesionalId), horarioDisponibleId: form.horarioId, motivo: trat.tratamiento }); alert('Creada'); }
+            if(editingId) {
+                // Lógica de modificación: Reagendar
+                await reagendarReserva(editingId, form.horarioId, parseInt(form.profesionalId), trat.tratamiento);
+                alert('Reserva Modificada');
+                setEditingId(null);
+            } else {
+                await crearReserva({ pacienteId: parseInt(form.pacienteId), profesionalId: parseInt(form.profesionalId), horarioDisponibleId: form.horarioId, motivo: trat.tratamiento }); 
+                alert('Creada'); 
+            }
             reload(); 
         } catch (e) { alert('Error'); } 
     };
+    
     const deleteReserva = async(id) => { if(confirm('¿Eliminar?')){await cancelarReserva(id);reload()} };
 
     return (
