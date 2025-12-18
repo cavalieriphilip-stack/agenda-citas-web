@@ -81,9 +81,15 @@ html, body, #root {
 .data-table th { text-align: left; padding: 12px; background: #f9f9f9; border-bottom: 2px solid #eee; font-size: 0.85rem; text-transform: uppercase; color: #666; }
 .data-table td { padding: 12px; border-bottom: 1px solid #eee; color: #333; }
 
+/* Dashboard Finanzas */
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
 .kpi-box { background: #fff; padding: 20px; border-radius: 10px; border: 1px solid #eee; }
 .kpi-value { font-size: 2rem; font-weight: bold; color: #000; }
+
+.finance-section { margin-top: 30px; }
+.finance-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.finance-table th { text-align: left; padding: 10px; background: #f1f1f1; border-bottom: 2px solid #ddd; font-size: 0.85rem; }
+.finance-table td { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
 
 /* ============================================================
    4. WEB PACIENTE
@@ -237,24 +243,23 @@ html, body, #root {
 .mobile-simple-list-item:last-child { border-bottom: none; }
 
 /* ============================================================
-   7. CALENDARIO VISUAL (Dashboard) - FIXED
+   7. CALENDARIO VISUAL (Dashboard)
    ============================================================ */
 .calendar-controls {
   display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;
-  flex-wrap: wrap; gap: 10px; /* Mejor espaciado */
+  margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #eee;
+  flex-wrap: wrap; gap: 20px; /* AUMENTADO ESPACIO */
 }
-.cal-filter-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cal-filter-group { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 .calendar-nav-btn {
-  background: #fff; border: 1px solid #ccc; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-weight: 600;
+  background: #fff; border: 1px solid #ccc; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;
 }
 .calendar-nav-btn:hover { background: #f0f0f0; }
 
 .calendar-grid-wrapper {
-  flex: 1; /* Ocupa el espacio restante */
-  overflow-y: auto; border: 1px solid #eee; border-radius: 8px; position: relative;
+  flex: 1; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; position: relative;
   display: flex; flex-direction: column; background: #fff;
-  min-height: 500px; /* Altura mínima segura */
+  min-height: 500px; 
 }
 
 /* IMPORTANTE: GRID PARA EL CALENDARIO */
@@ -294,13 +299,12 @@ html, body, #root {
 
 /* Colores de Eventos */
 .evt-blue { background: #eff6ff; border-left: 3px solid #3b82f6; color: #1e3a8a; }
-.evt-green { background: #f0fdf4; border-left: 3px solid #22c55e; color: #14532d; opacity: 0.7; pointer-events: none; } /* Bloques disponibilidad */
+.evt-green { background: #f0fdf4; border-left: 3px solid #22c55e; color: #14532d; opacity: 0.7; pointer-events: none; } 
 
 /* Vista Mes */
 .month-grid {
   display: grid; grid-template-columns: repeat(7, 1fr); 
-  height: 100%; min-height: 500px; /* Forzar altura */
-  min-width: 800px;
+  height: 100%; min-height: 600px; min-width: 800px;
 }
 .month-cell {
   border-right: 1px solid #eee; border-bottom: 1px solid #eee; padding: 5px;
@@ -346,6 +350,5 @@ html, body, #root {
   }
 
   .calendar-grid-wrapper { overflow-x: auto; }
-  /* Ajuste para que el mes no colapse en móvil */
   .month-grid { min-width: 600px; }
 }

@@ -175,22 +175,14 @@ function DashboardContent({ module, view }) {
 }
 
 // ------------------------------------------------------------------
-// AGENDA RESUMEN (CALENDARIO PRINCIPAL) - FIXED
+// AGENDA RESUMEN (CALENDARIO PRINCIPAL) - FIXED MONTH VIEW
 // ------------------------------------------------------------------
 function AgendaResumen({reservas, reload}){
     const [pros, setPros] = useState([]);
     const [filterPro, setFilterPro] = useState('');
     const [view, setView] = useState('week'); 
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [selectedEvent, setSelectedEvent] = useState(null); // Modal detalle
-
-    // Lógica antigua de edición
-    const [editId,setEditId]=useState(null);
-    const [editProId, setEditProId] = useState('');
-    const [editEspecialidad, setEditEspecialidad] = useState('');
-    const [editTratamiento, setEditTratamiento] = useState('');
-    const [editHorarioId, setEditHorarioId] = useState('');
-    const [horariosDisponibles, setHorariosDisponibles] = useState([]);
+    const [selectedEvent, setSelectedEvent] = useState(null); 
 
     useEffect(()=>{ getProfesionales().then(setPros) },[]);
 
@@ -202,6 +194,7 @@ function AgendaResumen({reservas, reload}){
         setCurrentDate(d);
     };
 
+    // FIX PARA VISTA MENSUAL
     const getDays = () => {
         const d = [], start = new Date(currentDate);
         if(view==='day'){ d.push(new Date(start)); }
@@ -210,9 +203,11 @@ function AgendaResumen({reservas, reload}){
             const mon = new Date(start.setDate(diff));
             for(let i=0;i<7;i++){ const x = new Date(mon); x.setDate(mon.getDate()+i); d.push(x); }
         } else {
-            const y = start.getFullYear(), m = start.getMonth(), first = new Date(y,m,1);
-            let sDay = first.getDay(); if(sDay===0) sDay=7;
-            const run = new Date(first); run.setDate(run.getDate() - (sDay-1));
+            // Mes completo + relleno
+            const y = start.getFullYear(), m = start.getMonth();
+            const first = new Date(y, m, 1);
+            let sDay = first.getDay(); if(sDay===0) sDay=7; // Lunes = 1
+            const run = new Date(first); run.setDate(run.getDate() - (sDay - 1));
             for(let i=0;i<42;i++){ d.push(new Date(run)); run.setDate(run.getDate()+1); }
         }
         return d;
@@ -221,17 +216,12 @@ function AgendaResumen({reservas, reload}){
     const days = getDays();
     const filtered = reservas.filter(r => filterPro ? r.profesionalId === parseInt(filterPro) : true);
 
-    // Abrir detalle
     const handleEventClick = (r) => {
         const match = TRATAMIENTOS.find(t => r.motivo.includes(t.tratamiento));
         setSelectedEvent({ ...r, fullTrat: match });
     };
 
-    // Funciones Edición (Reutilizadas)
-    const startEdit=async(r)=>{ setEditId(r.id); setEditProId(r.profesionalId.toString()); const h = await getHorariosByProfesional(r.profesionalId); setHorariosDisponibles(Array.isArray(h) ? h : []); };
-    const handleProChange = async(pid) => { setEditProId(pid); if (pid) { const h = await getHorariosByProfesional(pid); setHorariosDisponibles(Array.isArray(h) ? h : []); } else { setHorariosDisponibles([]); } };
-    const saveEdit=async(id)=>{ try{ await reagendarReserva(id, editHorarioId, editProId, editTratamiento); alert('Modificado'); setEditId(null); reload(); }catch(e){alert('Error')} };
-    const deleteReserva = async(id) => { if(confirm('¿Eliminar?')){await cancelarReserva(id);reload()} };
+    const deleteReserva = async(id) => { if(confirm('¿Eliminar?')){await cancelarReserva(id);reload(); setSelectedEvent(null);} };
 
     return (
         <div style={{height:'100%', display:'flex', flexDirection:'column'}}>
@@ -243,18 +233,18 @@ function AgendaResumen({reservas, reload}){
                         {pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}
                     </select>
                     <div style={{display:'flex', gap:5}}>
-                        <button className="btn-edit" onClick={()=>setView('day')}>Día</button>
-                        <button className="btn-edit" onClick={()=>setView('week')}>Semana</button>
-                        <button className="btn-edit" onClick={()=>setView('month')}>Mes</button>
+                        <button className={`calendar-nav-btn ${view==='day'?'active':''}`} onClick={()=>setView('day')}>Día</button>
+                        <button className={`calendar-nav-btn ${view==='week'?'active':''}`} onClick={()=>setView('week')}>Semana</button>
+                        <button className={`calendar-nav-btn ${view==='month'?'active':''}`} onClick={()=>setView('month')}>Mes</button>
                     </div>
                 </div>
                 <div className="cal-nav-group" style={{display:'flex', alignItems:'center', gap:10}}>
-                    <button className="btn-edit" onClick={()=>handleNav(-1)}>‹</button>
+                    <button className="calendar-nav-btn" onClick={()=>handleNav(-1)}>‹</button>
                     <span style={{fontWeight:'bold', textTransform:'capitalize'}}>
                         {view==='month' ? currentDate.toLocaleDateString('es-CL', {month:'long', year:'numeric'}) : `Semana del ${days[0]?.getDate()}`}
                     </span>
-                    <button className="btn-edit" onClick={()=>handleNav(1)}>›</button>
-                    <button className="btn-edit" onClick={()=>setCurrentDate(new Date())}>Hoy</button>
+                    <button className="calendar-nav-btn" onClick={()=>handleNav(1)}>›</button>
+                    <button className="calendar-nav-btn" onClick={()=>setCurrentDate(new Date())}>Hoy</button>
                 </div>
             </div>
 
@@ -269,7 +259,11 @@ function AgendaResumen({reservas, reload}){
                             <div>{Array.from({length:13},(_,i)=>i+8).map(h=><div key={h} className="cal-time-label">{h}:00</div>)}</div>
                             {days.map(d=>(
                                 <div key={d} className="cal-day-col">
-                                    {filtered.filter(r=>{const rd=new Date(r.fecha); return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth()}).map(r=>{
+                                    {filtered.filter(r=>{
+                                        if(!r.fecha) return false;
+                                        const rd=new Date(r.fecha); 
+                                        return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth();
+                                    }).map(r=>{
                                         const st = new Date(r.fecha), h=st.getHours(); if(h<8||h>20)return null;
                                         const top = ((h-8)*60)+st.getMinutes();
                                         return (
@@ -290,9 +284,11 @@ function AgendaResumen({reservas, reload}){
                             {days.map(d=>(
                                 <div key={d} className="month-cell">
                                     <div className="month-cell-header">{d.getDate()}</div>
-                                    {/* Lógica +X más */}
                                     {(() => {
-                                        const dailyEvents = filtered.filter(r=>{const rd=new Date(r.fecha); return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth()});
+                                        const dailyEvents = filtered.filter(r=>{
+                                            if(!r.fecha) return false;
+                                            const rd=new Date(r.fecha); return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth();
+                                        });
                                         constToShow = dailyEvents.slice(0, 3);
                                         const rest = dailyEvents.length - 3;
                                         return (
@@ -311,7 +307,7 @@ function AgendaResumen({reservas, reload}){
                 )}
             </div>
 
-            {/* MODAL DETALLE DE CITA */}
+            {/* MODAL DETALLE */}
             {selectedEvent && (
                 <Modal onClose={()=>setSelectedEvent(null)}>
                     <div className="detail-popup-header">
@@ -329,7 +325,7 @@ function AgendaResumen({reservas, reload}){
                     
                     <div className="detail-actions">
                         <button className="btn-edit" onClick={()=>setSelectedEvent(null)}>Cerrar</button>
-                        <button className="btn-danger" onClick={()=>{deleteReserva(selectedEvent.id); setSelectedEvent(null)}}>Eliminar Cita</button>
+                        <button className="btn-danger" onClick={()=>deleteReserva(selectedEvent.id)}>Eliminar Cita</button>
                     </div>
                 </Modal>
             )}
@@ -342,35 +338,81 @@ function AgendaNuevaReserva({ reload, reservas }) {
     const [pros, setPros] = useState([]);
     const [horarios, setHorarios] = useState([]);
     const [form, setForm] = useState({ pacienteId: '', profesionalId: '', horarioId: '', motivo: '', especialidad: '', tratamientoId: '' });
+    const [editingId, setEditingId] = useState(null); // Para saber si editamos
+
     useEffect(() => { getPacientes().then(setPacientes); getProfesionales().then(setPros); }, []);
     const especialidades = [...new Set(TRATAMIENTOS.map(t => t.especialidad))];
     const prestaciones = TRATAMIENTOS.filter(t => t.especialidad === form.especialidad);
     const prosFiltrados = form.tratamientoId ? pros.filter(p => { const trat = TRATAMIENTOS.find(x => x.id === parseInt(form.tratamientoId)); return trat && p.tratamientos && p.tratamientos.includes(trat.tratamiento); }) : [];
+    
     const handlePro = async (pid) => { setForm({ ...form, profesionalId: pid }); setHorarios([]); if (!pid) return; try { const h = await getHorariosByProfesional(pid); if (Array.isArray(h)) setHorarios(h); } catch(e) { setHorarios([]); } }
-    const save = async (e) => { e.preventDefault(); if (!form.tratamientoId) return alert("Faltan datos"); const trat = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId)); try { await crearReserva({ pacienteId: parseInt(form.pacienteId), profesionalId: parseInt(form.profesionalId), horarioDisponibleId: form.horarioId, motivo: trat.tratamiento }); alert('Creada'); reload(); } catch (e) { alert('Error'); } };
+    
+    // CARGAR DATOS PARA MODIFICAR
+    const handleEditReserva = async (r) => {
+        setEditingId(r.id);
+        const matchTrat = TRATAMIENTOS.find(t => r.motivo.includes(t.tratamiento));
+        // Precargar estados (Nota: esto es simplificado, en app real requeriría más lógica de dependencias)
+        setForm({
+            pacienteId: r.pacienteId, // Asumiendo que viene del back
+            profesionalId: r.profesionalId,
+            horarioId: '', // Hay que reseleccionar horario
+            motivo: r.motivo,
+            especialidad: matchTrat ? matchTrat.especialidad : '',
+            tratamientoId: matchTrat ? matchTrat.id : ''
+        });
+        // Cargar horarios del profesional
+        const h = await getHorariosByProfesional(r.profesionalId);
+        setHorarios(Array.isArray(h) ? h : []);
+        window.scrollTo(0,0);
+    };
+
+    const save = async (e) => { 
+        e.preventDefault(); 
+        if (!form.tratamientoId) return alert("Faltan datos"); 
+        const trat = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId)); 
+        try { 
+            if(editingId) {
+                // Lógica de modificación: Reagendar
+                await reagendarReserva(editingId, form.horarioId, parseInt(form.profesionalId), trat.tratamiento);
+                alert('Reserva Modificada');
+                setEditingId(null);
+            } else {
+                await crearReserva({ pacienteId: parseInt(form.pacienteId), profesionalId: parseInt(form.profesionalId), horarioDisponibleId: form.horarioId, motivo: trat.tratamiento }); 
+                alert('Creada'); 
+            }
+            reload(); 
+        } catch (e) { alert('Error'); } 
+    };
+    
     const deleteReserva = async(id) => { if(confirm('¿Eliminar?')){await cancelarReserva(id);reload()} };
 
     return (
         <div>
-            <div className="page-header"><div className="page-title"><h1>Nueva Reserva Manual</h1></div></div>
+            <div className="page-header"><div className="page-title"><h1>{editingId ? 'Modificar Reserva' : 'Nueva Reserva Manual'}</h1></div></div>
             <div className="pro-card">
                 <form onSubmit={save}>
-                    <div className="input-row"><div><label className="form-label">Especialidad</label><select className="form-control" value={form.especialidad} onChange={e => setForm({ ...form, especialidad: e.target.value, tratamientoId: '' })}><option value="">Seleccionar...</option>{especialidades.map(e => <option key={e} value={e}>{e}</option>)}</select></div><div><label className="form-label">Tratamiento</label><select className="form-control" disabled={!form.especialidad} onChange={e => setForm({ ...form, tratamientoId: e.target.value })}><option value="">Seleccionar...</option>{prestaciones.map(t => <option key={t.id} value={t.id}>{t.tratamiento}</option>)}</select></div></div>
-                    <div className="input-row"><div><label className="form-label">Paciente</label><select className="form-control" onChange={e => setForm({ ...form, pacienteId: e.target.value })}><option value="">Seleccionar...</option>{pacientes.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto} ({formatRut(p.rut)})</option>)}</select></div><div><label className="form-label">Profesional</label><select className="form-control" disabled={!form.tratamientoId} onChange={e => handlePro(e.target.value)}><option value="">Seleccionar...</option>{prosFiltrados.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div></div>
-                    <div style={{ marginBottom: 20 }}><label className="form-label">Horario</label><select className="form-control" onChange={e => setForm({ ...form, horarioId: e.target.value })}><option value="">Seleccionar...</option>{Array.isArray(horarios) && horarios.map(h => <option key={h.id} value={h.id}>{fmtDate(h.fecha)}</option>)}</select></div>
-                    <button className="btn-primary">Crear Reserva</button>
+                    <div className="input-row"><div><label className="form-label">Especialidad</label><select className="form-control" value={form.especialidad} onChange={e => setForm({ ...form, especialidad: e.target.value, tratamientoId: '' })}><option>Seleccionar...</option>{especialidades.map(e => <option key={e} value={e}>{e}</option>)}</select></div><div><label className="form-label">Tratamiento</label><select className="form-control" disabled={!form.especialidad} value={form.tratamientoId} onChange={e => setForm({ ...form, tratamientoId: e.target.value })}><option>Seleccionar...</option>{prestaciones.map(t => <option key={t.id} value={t.id}>{t.tratamiento}</option>)}</select></div></div>
+                    <div className="input-row"><div><label className="form-label">Paciente</label><select className="form-control" value={form.pacienteId} onChange={e => setForm({ ...form, pacienteId: e.target.value })}><option>Seleccionar...</option>{pacientes.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto} ({formatRut(p.rut)})</option>)}</select></div><div><label className="form-label">Profesional</label><select className="form-control" disabled={!form.tratamientoId} value={form.profesionalId} onChange={e => handlePro(e.target.value)}><option>Seleccionar...</option>{prosFiltrados.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div></div>
+                    <div style={{ marginBottom: 20 }}><label className="form-label">Horario</label><select className="form-control" onChange={e => setForm({ ...form, horarioId: e.target.value })}><option>Seleccionar...</option>{Array.isArray(horarios) && horarios.map(h => <option key={h.id} value={h.id}>{fmtDate(h.fecha)}</option>)}</select></div>
+                    <div style={{display:'flex', gap:10}}>
+                        <button className="btn-primary">{editingId ? 'Guardar Cambios' : 'Crear Reserva'}</button>
+                        {editingId && <button type="button" className="btn-edit" onClick={()=>{setEditingId(null); setForm({ pacienteId: '', profesionalId: '', horarioId: '', motivo: '', especialidad: '', tratamientoId: '' })}}>Cancelar</button>}
+                    </div>
                 </form>
             </div>
             <div className="pro-card">
                 <h3>Reservas Recientes</h3>
                 <div className="data-table-container desktop-view-only">
                     <table className="data-table"><thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th><th>Acción</th></tr></thead>
-                    <tbody>{reservas.slice(0, 5).map(r => (<tr key={r.id}><td>{fmtDate(r.fecha)}</td><td>{r.pacienteNombre}</td><td>{r.profesionalNombre}</td><td><button className="btn-danger" onClick={()=>deleteReserva(r.id)}>Eliminar</button></td></tr>))}</tbody></table>
+                    <tbody>{reservas.slice(0, 5).map(r => (<tr key={r.id}><td>{fmtDate(r.fecha)}</td><td>{r.pacienteNombre}</td><td>{r.profesionalNombre}</td><td><button className="btn-edit" onClick={()=>handleEditReserva(r)}>Modificar</button><button className="btn-danger" onClick={()=>deleteReserva(r.id)}>Eliminar</button></td></tr>))}</tbody></table>
                 </div>
                 <div className="mobile-view-only">{reservas.slice(0, 5).map(r => (
                     <MobileAccordion key={r.id} title={fmtDate(r.fecha)} subtitle={r.pacienteNombre}>
                         <div className="mobile-data-row"><span className="mobile-label">Profesional</span><span>{r.profesionalNombre}</span></div>
-                        <div style={{marginTop:10}}><button className="btn-danger" onClick={()=>deleteReserva(r.id)}>Eliminar</button></div>
+                        <div style={{marginTop:10, display:'flex', gap:10}}>
+                            <button className="btn-edit" onClick={()=>handleEditReserva(r)} style={{flex:1}}>Modificar</button>
+                            <button className="btn-danger" onClick={()=>deleteReserva(r.id)} style={{flex:1}}>Eliminar</button>
+                        </div>
                     </MobileAccordion>))}
                 </div>
             </div>
@@ -509,7 +551,6 @@ function AgendaHorarios(){
             {showModal && (
                 <Modal title={`Horarios: ${selectedProName}`} onClose={()=>setShowModal(false)}>
                     {events.length === 0 ? <p>No hay datos.</p> : 
-                        // Visualización simplificada de lista para el modal de config
                         events.sort((a,b)=>a.start-b.start).map((e, i) => (
                             <div key={i} style={{marginBottom:10, padding:10, borderRadius:6, background: e.type==='available'?'#f0fdf4':'#eff6ff', borderLeft: e.type==='available'?'3px solid #22c55e':'3px solid #3b82f6'}}>
                                 <strong>{e.start.toLocaleDateString()}</strong> - {e.start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
@@ -523,7 +564,47 @@ function AgendaHorarios(){
     )
 }
 
-function FinanzasReporte({total,count,reservas}){ return ( <div><div className="page-header"><div className="page-title"><h1>Reporte Financiero</h1></div></div><div className="kpi-grid"><div className="kpi-box"><div className="kpi-label">Ingresos</div><div className="kpi-value">{fmtMoney(total)}</div></div><div className="kpi-box"><div className="kpi-label">Citas</div><div className="kpi-value">{count}</div></div></div></div> ) }
+// [NUEVO] REPORTE FINANCIERO DETALLADO
+function FinanzasReporte({total,count,reservas}){ 
+    // Agrupar por Profesional
+    const statsPro = reservas.reduce((acc, curr) => {
+        acc[curr.profesionalNombre] = (acc[curr.profesionalNombre] || 0) + 1;
+        return acc;
+    }, {});
+
+    // Agrupar por Tratamiento
+    const statsTrat = reservas.reduce((acc, curr) => {
+        acc[curr.motivo] = (acc[curr.motivo] || 0) + 1;
+        return acc;
+    }, {});
+
+    return ( 
+        <div>
+            <div className="page-header"><div className="page-title"><h1>Reporte Financiero</h1></div></div>
+            <div className="kpi-grid">
+                <div className="kpi-box"><div className="kpi-label">Ingresos</div><div className="kpi-value">{fmtMoney(total)}</div></div>
+                <div className="kpi-box"><div className="kpi-label">Citas</div><div className="kpi-value">{count}</div></div>
+            </div>
+
+            <div className="input-row finance-section">
+                <div className="pro-card">
+                    <h3>Atenciones por Profesional</h3>
+                    <table className="finance-table">
+                        <thead><tr><th>Profesional</th><th>Citas</th></tr></thead>
+                        <tbody>{Object.entries(statsPro).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody>
+                    </table>
+                </div>
+                <div className="pro-card">
+                    <h3>Agendas por Tratamiento</h3>
+                    <table className="finance-table">
+                        <thead><tr><th>Tratamiento</th><th>Cantidad</th></tr></thead>
+                        <tbody>{Object.entries(statsTrat).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody>
+                    </table>
+                </div>
+            </div>
+        </div> 
+    ) 
+}
 
 function WebPaciente() {
     const [step, setStep] = useState(0); 
