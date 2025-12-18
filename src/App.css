@@ -42,13 +42,13 @@ html, body, #root {
 
 .main-stage {
   flex: 1; background: #f8fafc; padding: 30px;
-  overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%;
+  overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; display: flex; flex-direction: column;
 }
 
 /* ============================================================
    3. COMPONENTES ADMIN
    ============================================================ */
-.page-header { margin-bottom: 20px; }
+.page-header { margin-bottom: 20px; flex-shrink: 0; }
 .page-title h1 { margin: 0; font-size: 1.5rem; color: #111; }
 
 .pro-card {
@@ -189,12 +189,22 @@ html, body, #root {
 .success-icon-big { font-size: 5rem; color: #10b981; margin-bottom: 20px; display: block; }
 
 /* ============================================================
-   5. MODAL, DROPDOWN Y MÓVIL
+   5. MODAL, DROPDOWN Y POPUP DETALLE
    ============================================================ */
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 3000; display: flex; justify-content: center; align-items: center; padding: 20px; animation: fadeIn 0.2s ease-out; }
 .modal-content { background: #fff; padding: 25px; border-radius: 12px; width: 100%; max-width: 600px; max-height: 85vh; overflow-y: auto; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
 .modal-close { position: absolute; top: 15px; right: 15px; background: transparent; border: none; font-size: 1.8rem; cursor: pointer; color: #666; line-height: 1; }
 
+/* Popup de Detalle de Cita */
+.detail-popup-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+.detail-popup-title { font-size: 1.4rem; font-weight: 700; margin: 0; color: #111; }
+.detail-popup-subtitle { font-size: 0.9rem; color: #666; margin-top: 5px; }
+.detail-row { display: flex; margin-bottom: 12px; font-size: 0.95rem; }
+.detail-label { width: 120px; font-weight: 600; color: #555; }
+.detail-value { flex: 1; color: #000; }
+.detail-actions { display: flex; gap: 10px; margin-top: 25px; justify-content: flex-end; }
+
+/* Dropdowns */
 .dropdown-wrapper { position: relative; width: 100%; margin-bottom: 5px; }
 .dropdown-header { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; background: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 1rem; user-select: none; }
 .dropdown-list { position: absolute; top: 105%; left: 0; right: 0; background: #fff; border: 1px solid #ccc; border-radius: 8px; max-height: 250px; overflow-y: auto; z-index: 2000; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 5px; }
@@ -203,14 +213,15 @@ html, body, #root {
 .dropdown-item input { width: 18px; height: 18px; accent-color: #000; cursor: pointer; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* MÓVIL: CLASES DE VISIBILIDAD */
+/* ============================================================
+   6. VISUALIZACIÓN MÓVIL (ACORDEONES)
+   ============================================================ */
 .mobile-view-only { display: none; }
 .desktop-view-only { display: block; }
 
-/* TARJETAS ACORDEÓN */
 .mobile-card {
   background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 10px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05); position: relative; overflow: visible; /* Clave para dropdowns */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05); position: relative; overflow: visible; 
 }
 .mobile-card-header { padding: 15px; background: #fff; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 1px solid transparent; transition: background 0.2s; border-radius: 8px; }
 .mobile-card-header.open { background: #f9fafb; border-bottom: 1px solid #e5e7eb; border-radius: 8px 8px 0 0; }
@@ -226,25 +237,29 @@ html, body, #root {
 .mobile-simple-list-item:last-child { border-bottom: none; }
 
 /* ============================================================
-   6. CALENDARIO VISUAL (Dashboard) - CORREGIDO
+   7. CALENDARIO VISUAL (Dashboard) - FIXED
    ============================================================ */
 .calendar-controls {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;
+  flex-wrap: wrap; gap: 10px; /* Mejor espaciado */
 }
+.cal-filter-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .calendar-nav-btn {
   background: #fff; border: 1px solid #ccc; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-weight: 600;
 }
 .calendar-nav-btn:hover { background: #f0f0f0; }
 
 .calendar-grid-wrapper {
-  overflow-y: auto; max-height: 60vh; border: 1px solid #eee; border-radius: 8px; position: relative;
+  flex: 1; /* Ocupa el espacio restante */
+  overflow-y: auto; border: 1px solid #eee; border-radius: 8px; position: relative;
   display: flex; flex-direction: column; background: #fff;
+  min-height: 500px; /* Altura mínima segura */
 }
 
 /* IMPORTANTE: GRID PARA EL CALENDARIO */
 .calendar-grid, .cal-header-row, .calendar-body {
-  display: grid; min-width: 800px; /* Asegura ancho para scroll */
+  display: grid; min-width: 100%; /* Ajuste a contenedor */
 }
 
 .cal-header-row {
@@ -279,20 +294,25 @@ html, body, #root {
 
 /* Colores de Eventos */
 .evt-blue { background: #eff6ff; border-left: 3px solid #3b82f6; color: #1e3a8a; }
-.evt-green { background: #f0fdf4; border-left: 3px solid #22c55e; color: #14532d; }
+.evt-green { background: #f0fdf4; border-left: 3px solid #22c55e; color: #14532d; opacity: 0.7; pointer-events: none; } /* Bloques disponibilidad */
 
 /* Vista Mes */
 .month-grid {
   display: grid; grid-template-columns: repeat(7, 1fr); 
-  grid-auto-rows: minmax(100px, 1fr); min-width: 800px;
+  height: 100%; min-height: 500px; /* Forzar altura */
+  min-width: 800px;
 }
 .month-cell {
   border-right: 1px solid #eee; border-bottom: 1px solid #eee; padding: 5px;
+  display: flex; flex-direction: column;
 }
 .month-cell-header { text-align: right; font-weight: bold; font-size: 0.8rem; margin-bottom: 5px; }
 .month-dot {
   background: #e0f2fe; color: #0369a1; padding: 2px 4px; border-radius: 3px; 
-  font-size: 0.7rem; margin-bottom: 2px; white-space: nowrap; overflow: hidden;
+  font-size: 0.7rem; margin-bottom: 2px; white-space: nowrap; overflow: hidden; cursor: pointer;
+}
+.month-more {
+  font-size: 0.7rem; color: #666; text-align: center; margin-top: 2px; font-weight: 600; cursor: pointer;
 }
 
 /* ============================================================
@@ -321,10 +341,11 @@ html, body, #root {
   .pro-card { padding: 15px; overflow-x: auto; }
   .data-table-container { display: none; } 
   
-  /* Botones en acordeones */
   .mobile-card-body .btn-edit, .mobile-card-body .btn-danger {
     width: 100%; margin-bottom: 8px; text-align: center; display: block;
   }
 
   .calendar-grid-wrapper { overflow-x: auto; }
+  /* Ajuste para que el mes no colapse en móvil */
+  .month-grid { min-width: 600px; }
 }

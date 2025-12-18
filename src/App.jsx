@@ -49,7 +49,6 @@ const TRATAMIENTOS = [
 
 const STEPS = [ {n:1, t:'Datos'}, {n:2, t:'Servicio'}, {n:3, t:'Agenda'}, {n:4, t:'Confirmar'} ];
 
-// --- UTILS ---
 const fmtMoney = (v) => `$${v.toLocaleString('es-CL')}`;
 const fmtDate = (iso) => iso ? new Date(iso).toLocaleString('es-CL', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
 const toDateKey = (iso) => iso ? iso.split('T')[0] : '';
@@ -119,7 +118,7 @@ function Modal({ title, children, onClose }) {
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
                 <button className="modal-close" onClick={onClose}>×</button>
-                <h2 style={{marginTop:0, marginBottom:20}}>{title}</h2>
+                {title && <h2 style={{marginTop:0, marginBottom:20}}>{title}</h2>}
                 {children}
             </div>
         </div>, document.body
@@ -176,16 +175,17 @@ function DashboardContent({ module, view }) {
 }
 
 // ------------------------------------------------------------------
-// AGENDA RESUMEN (CALENDARIO PRINCIPAL)
+// AGENDA RESUMEN (CALENDARIO PRINCIPAL) - FIXED
 // ------------------------------------------------------------------
 function AgendaResumen({reservas, reload}){
     const [pros, setPros] = useState([]);
     const [filterPro, setFilterPro] = useState('');
     const [view, setView] = useState('week'); 
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [editId,setEditId]=useState(null); // Estado para edición móvil
+    const [selectedEvent, setSelectedEvent] = useState(null); // Modal detalle
 
-    // Estados para edición (Reutilizados del antiguo componente)
+    // Lógica antigua de edición
+    const [editId,setEditId]=useState(null);
     const [editProId, setEditProId] = useState('');
     const [editEspecialidad, setEditEspecialidad] = useState('');
     const [editTratamiento, setEditTratamiento] = useState('');
@@ -221,68 +221,21 @@ function AgendaResumen({reservas, reload}){
     const days = getDays();
     const filtered = reservas.filter(r => filterPro ? r.profesionalId === parseInt(filterPro) : true);
 
-    // Funciones de Edición para el Modo Lista Móvil
-    const startEdit=async(r)=>{
-        setEditId(r.id);
-        setEditProId(r.profesionalId.toString());
-        const matchTratamiento = TRATAMIENTOS.find(t => r.motivo.includes(t.tratamiento));
-        const especialidadInicial = matchTratamiento ? matchTratamiento.especialidad : '';
-        setEditEspecialidad(especialidadInicial);
-        setEditTratamiento(r.motivo);
-        const h = await getHorariosByProfesional(r.profesionalId);
-        setHorariosDisponibles(Array.isArray(h) ? h : []);
+    // Abrir detalle
+    const handleEventClick = (r) => {
+        const match = TRATAMIENTOS.find(t => r.motivo.includes(t.tratamiento));
+        setSelectedEvent({ ...r, fullTrat: match });
     };
 
-    const handleProChange = async(pid) => {
-        setEditProId(pid); setEditEspecialidad(''); setEditTratamiento(''); setEditHorarioId('');
-        if (pid) { const h = await getHorariosByProfesional(pid); setHorariosDisponibles(Array.isArray(h) ? h : []); } else { setHorariosDisponibles([]); }
-    };
-
-    const getEspecialidadesPro = () => {
-        const p = pros.find(x => x.id === parseInt(editProId));
-        if (!p || !p.especialidad) return [];
-        return p.especialidad.split(',');
-    };
-
-    const getTratamientosFiltrados = () => {
-        const p = pros.find(x => x.id === parseInt(editProId));
-        if (!p || !editEspecialidad) return [];
-        const teoricos = TRATAMIENTOS.filter(t => t.especialidad === editEspecialidad);
-        if (!p.tratamientos) return [];
-        const proTrats = p.tratamientos.split(',');
-        return teoricos.filter(t => proTrats.includes(t.tratamiento));
-    };
-
-    const saveEdit=async(id)=>{
-        if(!editHorarioId) return alert('Selecciona hora');
-        try{ await reagendarReserva(id, editHorarioId, editProId, editTratamiento); alert('Modificado con éxito'); setEditId(null); reload(); }catch(e){alert('Error al modificar')}
-    };
-
+    // Funciones Edición (Reutilizadas)
+    const startEdit=async(r)=>{ setEditId(r.id); setEditProId(r.profesionalId.toString()); const h = await getHorariosByProfesional(r.profesionalId); setHorariosDisponibles(Array.isArray(h) ? h : []); };
+    const handleProChange = async(pid) => { setEditProId(pid); if (pid) { const h = await getHorariosByProfesional(pid); setHorariosDisponibles(Array.isArray(h) ? h : []); } else { setHorariosDisponibles([]); } };
+    const saveEdit=async(id)=>{ try{ await reagendarReserva(id, editHorarioId, editProId, editTratamiento); alert('Modificado'); setEditId(null); reload(); }catch(e){alert('Error')} };
     const deleteReserva = async(id) => { if(confirm('¿Eliminar?')){await cancelarReserva(id);reload()} };
-
-    const EditForm = ({ r }) => (
-        <div style={{padding:15, display:'flex', flexDirection:'column', gap:10}}>
-            <strong>Reprogramar Cita</strong>
-            <div className="input-row">
-                <div><label className="form-label">Profesional</label><select className="form-control" value={editProId} onChange={e=>handleProChange(e.target.value)}>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div>
-                <div><label className="form-label">Especialidad</label><select className="form-control" value={editEspecialidad} onChange={e=>setEditEspecialidad(e.target.value)} disabled={!editProId}><option value="">Seleccionar...</option>{getEspecialidadesPro().map(e=><option key={e} value={e}>{e}</option>)}</select></div>
-            </div>
-            <div className="input-row">
-                <div><label className="form-label">Tratamiento</label><select className="form-control" value={editTratamiento} onChange={e=>setEditTratamiento(e.target.value)} disabled={!editEspecialidad}><option value="">Seleccionar...</option>{getTratamientosFiltrados().map(t=><option key={t.id} value={t.tratamiento}>{t.tratamiento}</option>)}</select></div>
-                <div><label className="form-label">Nuevo Horario</label><select className="form-control" value={editHorarioId} onChange={e=>setEditHorarioId(e.target.value)} disabled={!editTratamiento}><option value="">Selecciona hora...</option>{horariosDisponibles.map(h=><option key={h.id} value={h.id}>{fmtDate(h.fecha)}</option>)}</select></div>
-            </div>
-            <div style={{display:'flex', gap:10}}>
-                <button className="btn-primary" onClick={()=>saveEdit(r.id)}>Guardar</button>
-                <button className="btn-edit" onClick={()=>setEditId(null)}>Cancelar</button>
-            </div>
-        </div>
-    );
 
     return (
         <div style={{height:'100%', display:'flex', flexDirection:'column'}}>
             <div className="page-header"><div className="page-title"><h1>Calendario de Citas</h1></div></div>
-            
-            {/* CONTROLES (Visible en ambos) */}
             <div className="dashboard-controls">
                 <div className="cal-filter-group">
                     <select className="form-control" style={{maxWidth:250}} value={filterPro} onChange={e=>setFilterPro(e.target.value)}>
@@ -305,8 +258,7 @@ function AgendaResumen({reservas, reload}){
                 </div>
             </div>
 
-            {/* GRILLA CALENDARIO (Solo Desktop) */}
-            <div className="calendar-grid-wrapper desktop-view-only">
+            <div className="calendar-grid-wrapper">
                 {(view==='day'||view==='week') ? (
                     <>
                         <div className="cal-header-row" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}>
@@ -321,7 +273,7 @@ function AgendaResumen({reservas, reload}){
                                         const st = new Date(r.fecha), h=st.getHours(); if(h<8||h>20)return null;
                                         const top = ((h-8)*60)+st.getMinutes();
                                         return (
-                                            <div key={r.id} className="cal-event evt-blue" style={{top: top, height: 45}} title={r.pacienteNombre}>
+                                            <div key={r.id} className="cal-event evt-blue" style={{top: top, height: 45}} onClick={()=>handleEventClick(r)} title={r.pacienteNombre}>
                                                 <strong>{st.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'})}</strong>
                                                 <span>{r.pacienteNombre}</span>
                                             </div>
@@ -338,9 +290,20 @@ function AgendaResumen({reservas, reload}){
                             {days.map(d=>(
                                 <div key={d} className="month-cell">
                                     <div className="month-cell-header">{d.getDate()}</div>
-                                    {filtered.filter(r=>{const rd=new Date(r.fecha); return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth()}).map(r=>(
-                                        <div key={r.id} className="month-dot">{new Date(r.fecha).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'})} {r.pacienteNombre}</div>
-                                    ))}
+                                    {/* Lógica +X más */}
+                                    {(() => {
+                                        const dailyEvents = filtered.filter(r=>{const rd=new Date(r.fecha); return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth()});
+                                        constToShow = dailyEvents.slice(0, 3);
+                                        const rest = dailyEvents.length - 3;
+                                        return (
+                                            <>
+                                                {constToShow.map(r => (
+                                                    <div key={r.id} className="month-dot" onClick={()=>handleEventClick(r)}>{new Date(r.fecha).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'})} {r.pacienteNombre}</div>
+                                                ))}
+                                                {rest > 0 && <div className="month-more">+{rest} más</div>}
+                                            </>
+                                        )
+                                    })()}
                                 </div>
                             ))}
                         </div>
@@ -348,26 +311,28 @@ function AgendaResumen({reservas, reload}){
                 )}
             </div>
 
-            {/* LISTA DE RESERVAS (Solo Móvil) - Para editar en celular */}
-            <div className="mobile-view-only" style={{marginTop:20}}>
-                <h3>Lista de Citas (Móvil)</h3>
-                {filtered.map(r => {
-                    const match=TRATAMIENTOS.find(t=>r.motivo.includes(t.tratamiento));
-                    const valor = match ? match.valor : 0;
-                    if (editId === r.id) return <div key={r.id} className="mobile-card"><EditForm r={r} /></div>;
-                    return (
-                        <MobileAccordion key={r.id} title={fmtDate(r.fecha)} subtitle={r.pacienteNombre}>
-                            <div className="mobile-data-row"><span className="mobile-label">Profesional</span><span className="mobile-value">{r.profesionalNombre}</span></div>
-                            <div className="mobile-data-row"><span className="mobile-label">Tratamiento</span><span className="mobile-value">{r.motivo}</span></div>
-                            <div className="mobile-data-row"><span className="mobile-label">Valor</span><span className="mobile-value">{fmtMoney(valor)}</span></div>
-                            <div style={{marginTop:15, display:'flex', gap:10}}>
-                                <button className="btn-edit" onClick={()=>startEdit(r)} style={{flex:1}}>Modificar</button>
-                                <button className="btn-danger" onClick={()=>deleteReserva(r.id)} style={{flex:1}}>Eliminar</button>
-                            </div>
-                        </MobileAccordion>
-                    )
-                })}
-            </div>
+            {/* MODAL DETALLE DE CITA */}
+            {selectedEvent && (
+                <Modal onClose={()=>setSelectedEvent(null)}>
+                    <div className="detail-popup-header">
+                        <div>
+                            <h2 className="detail-popup-title">Detalle de la Cita</h2>
+                            <p className="detail-popup-subtitle">ID Reserva: #{selectedEvent.id}</p>
+                        </div>
+                    </div>
+                    <div className="detail-row"><span className="detail-label">Paciente:</span><span className="detail-value">{selectedEvent.pacienteNombre}</span></div>
+                    <div className="detail-row"><span className="detail-label">Profesional:</span><span className="detail-value">{selectedEvent.profesionalNombre}</span></div>
+                    <div className="detail-row"><span className="detail-label">Fecha:</span><span className="detail-value">{new Date(selectedEvent.fecha).toLocaleDateString('es-CL')}</span></div>
+                    <div className="detail-row"><span className="detail-label">Hora:</span><span className="detail-value">{new Date(selectedEvent.fecha).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}</span></div>
+                    <div className="detail-row"><span className="detail-label">Tratamiento:</span><span className="detail-value">{selectedEvent.motivo}</span></div>
+                    <div className="detail-row"><span className="detail-label">Valor:</span><span className="detail-value">{fmtMoney(selectedEvent.fullTrat?.valor || 0)}</span></div>
+                    
+                    <div className="detail-actions">
+                        <button className="btn-edit" onClick={()=>setSelectedEvent(null)}>Cerrar</button>
+                        <button className="btn-danger" onClick={()=>{deleteReserva(selectedEvent.id); setSelectedEvent(null)}}>Eliminar Cita</button>
+                    </div>
+                </Modal>
+            )}
         </div>
     )
 }
@@ -383,7 +348,8 @@ function AgendaNuevaReserva({ reload, reservas }) {
     const prosFiltrados = form.tratamientoId ? pros.filter(p => { const trat = TRATAMIENTOS.find(x => x.id === parseInt(form.tratamientoId)); return trat && p.tratamientos && p.tratamientos.includes(trat.tratamiento); }) : [];
     const handlePro = async (pid) => { setForm({ ...form, profesionalId: pid }); setHorarios([]); if (!pid) return; try { const h = await getHorariosByProfesional(pid); if (Array.isArray(h)) setHorarios(h); } catch(e) { setHorarios([]); } }
     const save = async (e) => { e.preventDefault(); if (!form.tratamientoId) return alert("Faltan datos"); const trat = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId)); try { await crearReserva({ pacienteId: parseInt(form.pacienteId), profesionalId: parseInt(form.profesionalId), horarioDisponibleId: form.horarioId, motivo: trat.tratamiento }); alert('Creada'); reload(); } catch (e) { alert('Error'); } };
-    
+    const deleteReserva = async(id) => { if(confirm('¿Eliminar?')){await cancelarReserva(id);reload()} };
+
     return (
         <div>
             <div className="page-header"><div className="page-title"><h1>Nueva Reserva Manual</h1></div></div>
@@ -397,8 +363,16 @@ function AgendaNuevaReserva({ reload, reservas }) {
             </div>
             <div className="pro-card">
                 <h3>Reservas Recientes</h3>
-                <div className="data-table-container desktop-view-only"><table className="data-table"><thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th></tr></thead><tbody>{reservas.slice(0, 5).map(r => (<tr key={r.id}><td>{fmtDate(r.fecha)}</td><td>{r.pacienteNombre}</td><td>{r.profesionalNombre}</td></tr>))}</tbody></table></div>
-                <div className="mobile-view-only">{reservas.slice(0, 5).map(r => (<MobileAccordion key={r.id} title={fmtDate(r.fecha)} subtitle={r.pacienteNombre}><div className="mobile-data-row"><span className="mobile-label">Profesional</span><span>{r.profesionalNombre}</span></div></MobileAccordion>))}</div>
+                <div className="data-table-container desktop-view-only">
+                    <table className="data-table"><thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th><th>Acción</th></tr></thead>
+                    <tbody>{reservas.slice(0, 5).map(r => (<tr key={r.id}><td>{fmtDate(r.fecha)}</td><td>{r.pacienteNombre}</td><td>{r.profesionalNombre}</td><td><button className="btn-danger" onClick={()=>deleteReserva(r.id)}>Eliminar</button></td></tr>))}</tbody></table>
+                </div>
+                <div className="mobile-view-only">{reservas.slice(0, 5).map(r => (
+                    <MobileAccordion key={r.id} title={fmtDate(r.fecha)} subtitle={r.pacienteNombre}>
+                        <div className="mobile-data-row"><span className="mobile-label">Profesional</span><span>{r.profesionalNombre}</span></div>
+                        <div style={{marginTop:10}}><button className="btn-danger" onClick={()=>deleteReserva(r.id)}>Eliminar</button></div>
+                    </MobileAccordion>))}
+                </div>
             </div>
         </div>
     )
@@ -478,23 +452,37 @@ function AgendaHorarios(){
     const [fechaSel, setFechaSel] = useState('');
     const [form,setForm]=useState({profesionalId:'',diaSemana:'',horaInicio:'09:00',horaFin:'18:00', duracionSlot: 30, intervalo: 0});
     const [showModal, setShowModal] = useState(false);
-    const [modalData, setModalData] = useState({ proName: '', slots: {} });
+    
+    // ESTADOS PARA EL CALENDARIO Y SINCRONIZACIÓN DE BLOQUES
+    const [events, setEvents] = useState([]);
+    const [selectedProName, setSelectedProName] = useState('');
 
     useEffect(()=>{ getProfesionales().then(setPros); loadConfigs(); },[]);
     const loadConfigs = async () => { try { const data = await getConfiguraciones(); setConfigs(Array.isArray(data) ? data : []); } catch (e) { setConfigs([]); } };
     const save=async(e)=>{ e.preventDefault(); const payload = { ...form, fecha: fechaSel }; await fetch(`${API_BASE_URL}/configuracion`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); alert(`Guardado`); await loadConfigs(); };
     const borrarConfig = async (id) => { if(confirm("¿Eliminar?")) { await deleteConfiguracion(id); loadConfigs(); } }
     
-    // [RESTAURADO] Ver Calendario Popup
+    // [FIX 1] SINCRONIZACIÓN BLOQUES + RESERVAS
     const verCalendario = async (p) => {
-        try {
-            const h = await getHorariosByProfesional(p.id);
-            if(Array.isArray(h)) {
-                const agrupados = h.reduce((acc, curr) => { const f = curr.fecha.split('T')[0]; if(!acc[f]) acc[f] = []; acc[f].push(curr); return acc; }, {});
-                setModalData({ proName: p.nombreCompleto, slots: agrupados });
-                setShowModal(true);
-            }
-        } catch(e) { alert("Error cargando horarios"); }
+        setSelectedProName(p.nombreCompleto);
+        const reservas = await getReservasDetalle();
+        
+        // 1. Mapear Reservas (Azul)
+        const misReservas = reservas.filter(r => r.profesionalId === p.id).map(r => {
+            return { id: r.id, title: r.pacienteNombre, start: new Date(r.fecha), type: 'occupied' };
+        });
+
+        // 2. Mapear Bloques Configurados (Verde)
+        // Nota: Esto es visual simplificado. En producción calcularías slots reales.
+        const misBloques = configs.filter(c => c.profesional?.id === p.id).map((c, i) => {
+            const start = new Date(`${c.fecha}T${c.horaInicio}`);
+            const end = new Date(`${c.fecha}T${c.horaFin}`);
+            const duration = (end - start) / 60000;
+            return { id: `block-${i}`, title: 'Disponible', start: start, duration: duration, type: 'available' };
+        });
+
+        setEvents([...misBloques, ...misReservas]);
+        setShowModal(true);
     };
 
     return(
@@ -502,35 +490,33 @@ function AgendaHorarios(){
             <div className="page-header"><div className="page-title"><h1>Configuración de Horarios</h1></div></div>
             <div className="pro-card">
                 <form onSubmit={save}>
-                    <div className="input-row"><div><label className="form-label">Profesional</label><select className="form-control" onChange={e=>setForm({...form,profesionalId:e.target.value})}><option>Seleccionar...</option>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div><div><label className="form-label">Fecha</label><input type="date" className="form-control" onChange={e=>setFechaSel(e.target.value)} /></div></div>
+                    <div className="input-row"><div><label className="form-label">Profesional</label><select className="form-control" onChange={e=>setForm({...form,profesionalId:e.target.value})}><option>Seleccionar...</option>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div><div><label className="form-label">Fecha del Bloque</label><input type="date" className="form-control" onChange={e=>setFechaSel(e.target.value)} /></div></div>
                     <div className="input-row"><div><label className="form-label">Inicio</label><input type="time" className="form-control" value={form.horaInicio} onChange={e=>setForm({...form,horaInicio:e.target.value})}/></div><div><label className="form-label">Fin</label><input type="time" className="form-control" value={form.horaFin} onChange={e=>setForm({...form,horaFin:e.target.value})}/></div></div>
                     <div className="input-row"><div><label className="form-label">Duración (Min)</label><select className="form-control" value={form.duracionSlot} onChange={e=>setForm({...form, duracionSlot: e.target.value})}><option value="15">15 Min</option><option value="30">30 Min</option><option value="45">45 Min</option><option value="60">60 Min</option></select></div><div><label className="form-label">Descanso (Min)</label><input type="number" className="form-control" value={form.intervalo} onChange={e=>setForm({...form, intervalo: e.target.value})} /></div></div>
                     <button className="btn-primary">Guardar Disponibilidad</button>
                 </form>
             </div>
-            
             <div className="pro-card">
                 <h3>Bloques Configurados</h3>
                 <div className="data-table-container desktop-view-only"><table className="data-table"><thead><tr><th>Profesional</th><th>Fecha</th><th>Horario</th><th>Acción</th></tr></thead><tbody>{configs.map(c=>(<tr key={c.id}><td>{c.profesional?.nombreCompleto}</td><td>{c.fecha}</td><td>{c.horaInicio} - {c.horaFin}</td><td><button className="btn-danger" onClick={()=>borrarConfig(c.id)}>Eliminar</button></td></tr>))}</tbody></table></div>
                 <div className="mobile-view-only">{configs.map(c => (<MobileAccordion key={c.id} title={c.profesional?.nombreCompleto} subtitle={c.fecha}><div className="mobile-data-row"><span className="mobile-label">Horario</span><span>{c.horaInicio} - {c.horaFin}</span></div><div style={{marginTop:10}}><button className="btn-danger" onClick={()=>borrarConfig(c.id)}>Eliminar</button></div></MobileAccordion>))}</div>
             </div>
-
             <div className="pro-card">
                 <h3>Ver Calendario Visual (Popup)</h3>
                 <div className="data-table-container desktop-view-only"><table className="data-table"><thead><tr><th>Profesional</th><th>Acción</th></tr></thead><tbody>{pros.map(p=>(<tr key={p.id}><td>{p.nombreCompleto}</td><td><button className="btn-edit" onClick={()=>verCalendario(p)}>Ver Horarios</button></td></tr>))}</tbody></table></div>
                 <div className="mobile-view-only">{pros.map(p => (<MobileAccordion key={p.id} title={p.nombreCompleto}><div style={{marginTop:10}}><button className="btn-edit" onClick={()=>verCalendario(p)}>Ver Horarios</button></div></MobileAccordion>))}</div>
             </div>
-
             {showModal && (
-                <Modal title={`Horarios: ${modalData.proName}`} onClose={()=>setShowModal(false)}>
-                    {Object.keys(modalData.slots).length === 0 ? <p>No hay horarios.</p> : Object.entries(modalData.slots).sort().map(([fecha, slots]) => (
-                        <div key={fecha} style={{marginBottom:15, borderBottom:'1px solid #eee', paddingBottom:10}}>
-                            <strong>{new Date(fecha + 'T00:00:00').toLocaleDateString('es-CL', {weekday:'long', day:'numeric', month:'long'})}</strong>
-                            <div style={{display:'flex', gap:5, flexWrap:'wrap', marginTop:5}}>
-                                {slots.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).map(s => (<span key={s.id} style={{background:'#f3f4f6', padding:'4px 8px', borderRadius:4, fontSize:'0.85rem'}}>{new Date(s.fecha).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}</span>))}
+                <Modal title={`Horarios: ${selectedProName}`} onClose={()=>setShowModal(false)}>
+                    {events.length === 0 ? <p>No hay datos.</p> : 
+                        // Visualización simplificada de lista para el modal de config
+                        events.sort((a,b)=>a.start-b.start).map((e, i) => (
+                            <div key={i} style={{marginBottom:10, padding:10, borderRadius:6, background: e.type==='available'?'#f0fdf4':'#eff6ff', borderLeft: e.type==='available'?'3px solid #22c55e':'3px solid #3b82f6'}}>
+                                <strong>{e.start.toLocaleDateString()}</strong> - {e.start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                                <div style={{fontSize:'0.85rem'}}>{e.title}</div>
                             </div>
-                        </div>
-                    ))}
+                        ))
+                    }
                 </Modal>
             )}
         </div>
