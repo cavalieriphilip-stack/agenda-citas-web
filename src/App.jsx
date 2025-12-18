@@ -49,6 +49,7 @@ const TRATAMIENTOS = [
 
 const STEPS = [ {n:1, t:'Datos'}, {n:2, t:'Servicio'}, {n:3, t:'Agenda'}, {n:4, t:'Confirmar'} ];
 
+// --- UTILS ---
 const fmtMoney = (v) => `$${v.toLocaleString('es-CL')}`;
 const fmtDate = (iso) => iso ? new Date(iso).toLocaleString('es-CL', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
 const toDateKey = (iso) => iso ? iso.split('T')[0] : '';
@@ -192,7 +193,7 @@ function DashboardContent({ module, view }) {
 }
 
 // ------------------------------------------------------------------
-// AGENDA RESUMEN (CALENDARIO PRINCIPAL) - FIXED
+// AGENDA RESUMEN (CALENDARIO)
 // ------------------------------------------------------------------
 function AgendaResumen({reservas, reload}){
     const [pros, setPros] = useState([]);
@@ -296,14 +297,14 @@ function AgendaResumen({reservas, reload}){
                         <option value="">Todos los Profesionales</option>
                         {pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}
                     </select>
-                    <div style={{display:'flex', gap:5}}>
+                    {/* WRAPPER PARA LOS BOTONES DE VISTA */}
+                    <div className="view-buttons-group">
                         <button className={`calendar-nav-btn ${view==='day'?'active':''}`} onClick={()=>setView('day')}>Día</button>
                         <button className={`calendar-nav-btn ${view==='week'?'active':''}`} onClick={()=>setView('week')}>Semana</button>
-                        {/* [MODIFICADO] OCULTAR BOTÓN MES EN MÓVIL */}
                         <button className={`calendar-nav-btn desktop-view-only ${view==='month'?'active':''}`} onClick={()=>setView('month')}>Mes</button>
                     </div>
                 </div>
-                <div className="cal-nav-group" style={{display:'flex', alignItems:'center', gap:10}}>
+                <div className="cal-nav-group">
                     <button className="calendar-nav-btn" onClick={()=>handleNav(-1)}>‹</button>
                     <span style={{fontWeight:'bold', textTransform:'capitalize'}}>
                         {view==='month' ? currentDate.toLocaleDateString('es-CL', {month:'long', year:'numeric'}) : `Semana del ${days[0]?.getDate()}`}
@@ -314,65 +315,66 @@ function AgendaResumen({reservas, reload}){
             </div>
 
             <div className="calendar-grid-wrapper">
-                {(view==='day'||view==='week') ? (
-                    <>
-                        <div className="cal-header-row" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}>
-                            <div className="cal-header-cell">Hora</div>
-                            {days.map((d, i)=><div key={i} className={`cal-header-cell ${d.toDateString()===new Date().toDateString()?'today':''}`}>{d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric'})}</div>)}
-                        </div>
-                        <div className="calendar-body" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}>
-                            <div>{Array.from({length:13},(_,i)=>i+8).map(h=><div key={h} className="cal-time-label">{h}:00</div>)}</div>
-                            {days.map((d, i)=>(
-                                <div key={i} className="cal-day-col">
-                                    {filtered.filter(r=>{
-                                        if(!r.fecha) return false;
-                                        const rd=new Date(r.fecha); 
-                                        return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth();
-                                    }).map(r=>{
-                                        const st = new Date(r.fecha), h=st.getHours(); if(h<8||h>20)return null;
-                                        const top = ((h-8)*60)+st.getMinutes();
-                                        return (
-                                            <div key={r.id} className="cal-event evt-blue" style={{top: top, height: 45}} onClick={()=>handleEventClick(r)} title={r.pacienteNombre}>
-                                                <strong>{st.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'})}</strong>
-                                                <span>{r.pacienteNombre}</span>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            ))}
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        <div className="cal-header-row" style={{gridTemplateColumns: 'repeat(7, 1fr)'}}>{['L','M','X','J','V','S','D'].map(d=><div key={d} className="cal-header-cell">{d}</div>)}</div>
-                        <div className="month-grid">
-                            {days.map((d, i)=>(
-                                <div key={i} className="month-cell">
-                                    <div className="month-cell-header">{d.getDate()}</div>
-                                    {(() => {
-                                        const dailyEvents = filtered.filter(r=>{
+                <div className="calendar-scroll-container">
+                    {(view==='day'||view==='week') ? (
+                        <>
+                            <div className="cal-header-row" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}>
+                                <div className="cal-header-cell">Hora</div>
+                                {days.map((d, i)=><div key={i} className={`cal-header-cell ${d.toDateString()===new Date().toDateString()?'today':''}`}>{d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric'})}</div>)}
+                            </div>
+                            <div className="calendar-body" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}>
+                                <div>{Array.from({length:13},(_,i)=>i+8).map(h=><div key={h} className="cal-time-label">{h}:00</div>)}</div>
+                                {days.map((d, i)=>(
+                                    <div key={i} className="cal-day-col">
+                                        {filtered.filter(r=>{
                                             if(!r.fecha) return false;
-                                            const rd=new Date(r.fecha); return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth();
-                                        });
-                                        const constToShow = dailyEvents.slice(0, 3);
-                                        const rest = dailyEvents.length - 3;
-                                        return (
-                                            <>
-                                                {constToShow.map(r => (
-                                                    <div key={r.id} className="month-dot" onClick={()=>handleEventClick(r)}>{new Date(r.fecha).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'})} {r.pacienteNombre}</div>
-                                                ))}
-                                                {rest > 0 && <div className="month-more">+{rest} más</div>}
-                                            </>
-                                        )
-                                    })()}
-                                </div>
-                            ))}
-                        </div>
-                    </>
-                )}
+                                            const rd=new Date(r.fecha); 
+                                            return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth();
+                                        }).map(r=>{
+                                            const st = new Date(r.fecha), h=st.getHours(); if(h<8||h>20)return null;
+                                            const top = ((h-8)*60)+st.getMinutes();
+                                            return (
+                                                <div key={r.id} className="cal-event evt-blue" style={{top: top, height: 45}} onClick={()=>handleEventClick(r)} title={r.pacienteNombre}>
+                                                    <strong>{st.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'})}</strong>
+                                                    <span>{r.pacienteNombre}</span>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="cal-header-row" style={{gridTemplateColumns: 'repeat(7, 1fr)'}}>{['L','M','X','J','V','S','D'].map(d=><div key={d} className="cal-header-cell">{d}</div>)}</div>
+                            <div className="month-grid">
+                                {days.map((d, i)=>(
+                                    <div key={i} className="month-cell">
+                                        <div className="month-cell-header">{d.getDate()}</div>
+                                        {(() => {
+                                            const dailyEvents = filtered.filter(r=>{
+                                                if(!r.fecha) return false;
+                                                const rd=new Date(r.fecha); return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth();
+                                            });
+                                            const constToShow = dailyEvents.slice(0, 3);
+                                            const rest = dailyEvents.length - 3;
+                                            return (
+                                                <>
+                                                    {constToShow.map(r => (
+                                                        <div key={r.id} className="month-dot" onClick={()=>handleEventClick(r)}>{new Date(r.fecha).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'})} {r.pacienteNombre}</div>
+                                                    ))}
+                                                    {rest > 0 && <div className="month-more">+{rest} más</div>}
+                                                </>
+                                            )
+                                        })()}
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
 
-            {/* MODAL DETALLE / EDICIÓN */}
             {selectedEvent && (
                 <Modal onClose={()=>setSelectedEvent(null)}>
                     {editId === selectedEvent.id ? (
@@ -420,7 +422,6 @@ function AgendaResumen({reservas, reload}){
 }
 
 function AgendaNuevaReserva({ reload, reservas }) {
-    // ... Mantén el código de AgendaNuevaReserva igual ...
     const [pacientes, setPacientes] = useState([]);
     const [pros, setPros] = useState([]);
     const [horarios, setHorarios] = useState([]);
@@ -492,7 +493,6 @@ function AgendaNuevaReserva({ reload, reservas }) {
 }
 
 function AgendaPacientes(){
-    // ... Mantén el código de AgendaPacientes ...
     const [pacientes,setPacientes]=useState([]);
     const [form,setForm]=useState({nombreCompleto:'',email:'',telefono:'', rut:''});
     const [editingId, setEditingId] = useState(null);
@@ -528,7 +528,6 @@ function AgendaPacientes(){
 }
 
 function AgendaProfesionales() {
-    // ... Mantén el código de AgendaProfesionales ...
     const [pros, setPros] = useState([]);
     const [form, setForm] = useState({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] });
     const [isEditing, setIsEditing] = useState(false);
@@ -562,7 +561,6 @@ function AgendaProfesionales() {
 }
 
 function AgendaHorarios(){
-    // ... Mantén el código de AgendaHorarios ...
     const [pros,setPros]=useState([]);
     const [configs, setConfigs] = useState([]);
     const [fechaSel, setFechaSel] = useState('');
@@ -630,7 +628,6 @@ function AgendaHorarios(){
 }
 
 function FinanzasReporte({total,count,reservas}){ 
-    // ... Mantén el código de FinanzasReporte (el que pegué arriba en la respuesta) ...
     const statsPro = reservas.reduce((acc, curr) => { acc[curr.profesionalNombre] = (acc[curr.profesionalNombre] || 0) + 1; return acc; }, {});
     const statsTrat = reservas.reduce((acc, curr) => { acc[curr.motivo] = (acc[curr.motivo] || 0) + 1; return acc; }, {});
 
@@ -705,7 +702,6 @@ function FinanzasReporte({total,count,reservas}){
 }
 
 function WebPaciente() {
-    // ... Mantén el código de WebPaciente (el que pegué arriba en la respuesta) ...
     const [step, setStep] = useState(0); 
     const [profesionales, setProfesionales] = useState([]);
     const [form, setForm] = useState({ rut:'', nombre:'', email:'', telefono:'', especialidad:'', tratamientoId:'', profesionalId:'', horarioId:'' });

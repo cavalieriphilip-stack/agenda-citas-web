@@ -245,16 +245,29 @@ html, body, #root {
 /* ============================================================
    7. CALENDARIO VISUAL (Dashboard)
    ============================================================ */
-.calendar-controls {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #eee;
-  flex-wrap: wrap; gap: 20px; 
+.dashboard-controls {
+  display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; align-items: center;
+  margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 12px; border: 1px solid #e5e7eb;
 }
-.cal-filter-group { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+
+.cal-filter-group { 
+  display: flex; align-items: center; gap: 15px; flex-wrap: wrap; 
+}
+
+/* Grupo de botones de vista (Día/Semana/Mes) */
+.view-buttons-group {
+  display: flex; gap: 10px; 
+}
+
 .calendar-nav-btn {
-  background: #fff; border: 1px solid #ccc; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;
+  background: #fff; border: 1px solid #ccc; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s;
 }
 .calendar-nav-btn:hover { background: #f0f0f0; }
+.calendar-nav-btn.active { background: #000; color: #fff; border-color: #000; }
+
+.cal-nav-group { 
+  display: flex; align-items: center; gap: 15px; 
+}
 
 .calendar-grid-wrapper {
   flex: 1; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; position: relative;
@@ -320,6 +333,12 @@ html, body, #root {
 /* ============================================================
    8. AJUSTES MÓVILES FINALES
    ============================================================ */
+/* Clase Auxiliar para forzar ancho en scroll */
+.calendar-scroll-container {
+  display: flex; flex-direction: column; height: 100%;
+  min-width: 100%; 
+}
+
 @media (max-width: 768px) {
   .desktop-view-only { display: none; }
   .mobile-view-only { display: block; }
@@ -347,6 +366,14 @@ html, body, #root {
     width: 100%; margin-bottom: 8px; text-align: center; display: block;
   }
 
+  /* Ajuste de controles calendario en móvil */
+  .dashboard-controls { flex-direction: column; align-items: stretch; gap: 15px; }
+  .cal-filter-group { flex-direction: column; width: 100%; }
+  .view-buttons-group { width: 100%; justify-content: space-between; }
+  .view-buttons-group .calendar-nav-btn { flex: 1; text-align: center; } /* Botones expandidos */
+  .cal-nav-group { justify-content: space-between; margin-top: 5px; }
+
   .calendar-grid-wrapper { overflow-x: auto; }
-  .month-grid { min-width: 600px; }
+  .calendar-scroll-container { min-width: 700px; }
+  .month-grid, .cal-header-row, .calendar-body { min-width: auto; }
 }
