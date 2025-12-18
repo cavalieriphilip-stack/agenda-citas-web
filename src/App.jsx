@@ -126,25 +126,17 @@ function Modal({ title, children, onClose }) {
     );
 }
 
-// --- APP PRINCIPAL ---
 function App() {
     if (window.location.pathname.startsWith('/centro')) return <AdminLayout />;
     return <WebPaciente />;
 }
 
-// [MODIFICADO] LAYOUT CON NAVEGACIÓN MÓVIL EN SIDEBAR
 function AdminLayout() {
     const [activeModule, setActiveModule] = useState('agenda');
     const [activeView, setActiveView] = useState('resumen');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const handleNavClick = (view) => { setActiveView(view); setMobileMenuOpen(false); }
-    
-    // Función para cambiar de módulo en móvil
-    const handleMobileModuleChange = (mod) => {
-        setActiveModule(mod);
-        setActiveView(mod === 'agenda' ? 'resumen' : 'reporte');
-        setMobileMenuOpen(false);
-    }
+    const handleMobileModuleChange = (mod) => { setActiveModule(mod); setActiveView(mod === 'agenda' ? 'resumen' : 'reporte'); setMobileMenuOpen(false); }
 
     return (
         <div className="dashboard-layout">
@@ -156,14 +148,12 @@ function AdminLayout() {
             <div className="workspace">
                 {mobileMenuOpen && <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)}></div>}
                 <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
-                    {/* [NUEVO] SWITCHER DE MÓDULOS PARA MÓVIL */}
                     <div className="mobile-view-only" style={{marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #eee'}}>
                         <div style={{display:'flex', gap:10}}>
                             <button className={`btn-edit ${activeModule === 'agenda' ? 'active-mod' : ''}`} onClick={()=>handleMobileModuleChange('agenda')} style={{flex:1, background: activeModule==='agenda'?'#000':'#f0f0f0', color: activeModule==='agenda'?'#fff':'#333', textAlign:'center', justifyContent:'center'}}>Agenda</button>
                             <button className={`btn-edit ${activeModule === 'finanzas' ? 'active-mod' : ''}`} onClick={()=>handleMobileModuleChange('finanzas')} style={{flex:1, background: activeModule==='finanzas'?'#000':'#f0f0f0', color: activeModule==='finanzas'?'#fff':'#333', textAlign:'center', justifyContent:'center'}}>Finanzas</button>
                         </div>
                     </div>
-
                     <div className="sidebar-header">MENÚ {activeModule === 'agenda' ? 'AGENDA' : 'FINANZAS'}</div>
                     {activeModule === 'agenda' && ( <><div className={`nav-item ${activeView==='resumen'?'active':''}`} onClick={()=>handleNavClick('resumen')}>Resumen Agendamientos</div><div className={`nav-item ${activeView==='reservas'?'active':''}`} onClick={()=>handleNavClick('reservas')}>Nueva Reserva</div><div className={`nav-item ${activeView==='pacientes'?'active':''}`} onClick={()=>handleNavClick('pacientes')}>Administrar Pacientes</div><div className={`nav-item ${activeView==='profesionales'?'active':''}`} onClick={()=>handleNavClick('profesionales')}>Administrar Profesionales</div><div className={`nav-item ${activeView==='horarios'?'active':''}`} onClick={()=>handleNavClick('horarios')}>Administrar Horarios</div></> )}
                     {activeModule === 'finanzas' && <div className={`nav-item ${activeView==='reporte'?'active':''}`} onClick={()=>handleNavClick('reporte')}>Dashboard Financiero</div>}
@@ -202,7 +192,6 @@ function AgendaResumen({reservas, reload}){
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedEvent, setSelectedEvent] = useState(null); 
     
-    // Estados para edición dentro del modal
     const [editId, setEditId] = useState(null);
     const [editProId, setEditProId] = useState('');
     const [editEspecialidad, setEditEspecialidad] = useState('');
@@ -248,7 +237,6 @@ function AgendaResumen({reservas, reload}){
 
     const deleteReserva = async(id) => { if(confirm('¿Eliminar?')){await cancelarReserva(id);reload(); setSelectedEvent(null);} };
 
-    // --- FUNCIONES EDICIÓN MODAL ---
     const startEdit = async(r) => {
         setEditId(r.id);
         setEditProId(r.profesionalId.toString());
@@ -315,7 +303,7 @@ function AgendaResumen({reservas, reload}){
             </div>
 
             <div className="calendar-grid-wrapper">
-                <div className="calendar-scroll-container">
+                <div className="calendar-scroll-container" style={{ minWidth: view === 'week' ? '700px' : '100%' }}>
                     {(view==='day'||view==='week') ? (
                         <>
                             <div className="cal-header-row" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}>
