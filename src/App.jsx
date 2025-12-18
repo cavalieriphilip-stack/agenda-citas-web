@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
+// IMPORTAR LIBRERÍA DE MERCADO PAGO
+import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
 import './App.css'; 
 import {
     API_BASE_URL, getPacientes, getProfesionales, getHorariosByProfesional,
@@ -8,43 +10,46 @@ import {
     buscarPacientePorRut, updateProfesional, deleteProfesional
 } from './api';
 
+// --- INICIALIZAR MERCADO PAGO CON TU PUBLIC KEY REAL ---
+initMercadoPago('TEST-a6568bc5-9caa-4678-abdf-023d72aa406b', { locale: 'es-CL' });
+
 // --- DATA MAESTRA ---
 const TRATAMIENTOS = [
-    { id: 1, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto online', valor: 20000, codigo: '1203001', descripcion: 'Evaluación completa.' },
-    { id: 2, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto presencial', valor: 35000, codigo: '1203002', descripcion: 'Evaluación presencial.' },
-    { id: 3, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto domicilio - RM', valor: 30000, codigo: '1203003', descripcion: 'Visita RM.' },
-    { id: 4, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto domicilio - Alrededor RM', valor: 50000, codigo: '1203004', descripcion: 'Visita alrededores.' },
-    { id: 5, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Consulta fonoaudiológica adulto online', valor: 20000, codigo: '1203005', descripcion: 'Sesión online.' },
+    { id: 1, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto online', valor: 20000, codigo: '1203001', descripcion: 'Evaluación completa por videollamada.' },
+    { id: 2, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto presencial', valor: 35000, codigo: '1203002', descripcion: 'Evaluación presencial en consulta.' },
+    { id: 3, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto domicilio - RM', valor: 30000, codigo: '1203003', descripcion: 'Visita domiciliaria en Región Metropolitana.' },
+    { id: 4, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto domicilio - Alrededor RM', valor: 50000, codigo: '1203004', descripcion: 'Visita en alrededores RM.' },
+    { id: 5, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Consulta fonoaudiológica adulto online', valor: 20000, codigo: '1203005', descripcion: 'Sesión de terapia online.' },
     { id: 6, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Consulta fonoaudiológica adulto presencial', valor: 35000, codigo: '1203006', descripcion: 'Sesión presencial.' },
-    { id: 7, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Consulta fonoaudiológica adulto domicilio - RM', valor: 30000, codigo: '1203007', descripcion: 'Sesión domicilio RM.' },
-    { id: 8, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Consulta fonoaudiológica adulto domicilio - Alrededor RM', valor: 50000, codigo: '1203008', descripcion: 'Sesión alrededores.' },
-    { id: 9, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Otoscopía + Lavado de oídos', valor: 20000, codigo: '1203009', descripcion: 'Procedimiento.' },
-    { id: 10, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Evaluación fonoaudiológica infanto-juvenil online', valor: 20000, codigo: '1203010', descripcion: 'Evaluación online.' },
-    { id: 11, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Evaluación fonoaudiológica presencial', valor: 35000, codigo: '1203011', descripcion: 'Evaluación presencial.' },
-    { id: 12, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Evaluación fonoaudiológica domicilio - RM', valor: 30000, codigo: '1203012', descripcion: 'Domicilio RM.' },
-    { id: 13, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Evaluación fonoaudiológica domicilio - Alrededor RM', valor: 50000, codigo: '1203013', descripcion: 'Domicilio alrededores.' },
-    { id: 14, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Consulta fonoaudiológica online', valor: 20000, codigo: '1203014', descripcion: 'Terapia online.' },
-    { id: 15, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Consulta fonoaudiológica presencial', valor: 35000, codigo: '1203015', descripcion: 'Terapia presencial.' },
-    { id: 16, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Consulta fonoaudiológica domicilio - RM', valor: 30000, codigo: '1203016', descripcion: 'Terapia RM.' },
-    { id: 17, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Consulta fonoaudiológica domicilio - Alrededor RM', valor: 50000, codigo: '1203017', descripcion: 'Terapia alrededores.' },
-    { id: 18, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Otoscopía + Lavado de oídos', valor: 20000, codigo: '1203018', descripcion: 'Procedimiento.' },
-    { id: 19, especialidad: 'Psicología Adulto', tratamiento: 'Evaluación Psicología Adulto Online', valor: 25000, codigo: '1204001', descripcion: 'Evaluación online.' },
-    { id: 20, especialidad: 'Psicología Adulto', tratamiento: 'Evaluación Psicología Adulto Presencial - Stgo Centro', valor: 35000, codigo: '1204002', descripcion: 'Evaluación Centro.' },
+    { id: 7, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Consulta fonoaudiológica adulto domicilio - RM', valor: 30000, codigo: '1203007', descripcion: 'Sesión a domicilio RM.' },
+    { id: 8, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Consulta fonoaudiológica adulto domicilio - Alrededor RM', valor: 50000, codigo: '1203008', descripcion: 'Sesión a domicilio alrededores.' },
+    { id: 9, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Otoscopía + Lavado de oídos', valor: 20000, codigo: '1203009', descripcion: 'Procedimiento clínico.' },
+    { id: 10, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Evaluación fonoaudiológica infanto-juvenil online', valor: 20000, codigo: '1203010', descripcion: 'Evaluación online niños.' },
+    { id: 11, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Evaluación fonoaudiológica presencial', valor: 35000, codigo: '1203011', descripcion: 'Evaluación presencial niños.' },
+    { id: 12, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Evaluación fonoaudiológica domicilio - RM', valor: 30000, codigo: '1203012', descripcion: 'Domicilio niños RM.' },
+    { id: 13, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Evaluación fonoaudiológica domicilio - Alrededor RM', valor: 50000, codigo: '1203013', descripcion: 'Domicilio niños alrededores.' },
+    { id: 14, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Consulta fonoaudiológica online', valor: 20000, codigo: '1203014', descripcion: 'Terapia online niños.' },
+    { id: 15, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Consulta fonoaudiológica presencial', valor: 35000, codigo: '1203015', descripcion: 'Terapia presencial niños.' },
+    { id: 16, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Consulta fonoaudiológica domicilio - RM', valor: 30000, codigo: '1203016', descripcion: 'Terapia domicilio RM.' },
+    { id: 17, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Consulta fonoaudiológica domicilio - Alrededor RM', valor: 50000, codigo: '1203017', descripcion: 'Terapia domicilio alrededores.' },
+    { id: 18, especialidad: 'Fonoaudiología Infanto-Juvenil', tratamiento: 'Otoscopía + Lavado de oídos', valor: 20000, codigo: '1203018', descripcion: 'Procedimiento niños.' },
+    { id: 19, especialidad: 'Psicología Adulto', tratamiento: 'Evaluación Psicología Adulto Online', valor: 25000, codigo: '1204001', descripcion: 'Evaluación inicial online.' },
+    { id: 20, especialidad: 'Psicología Adulto', tratamiento: 'Evaluación Psicología Adulto Presencial - Stgo Centro', valor: 35000, codigo: '1204002', descripcion: 'Evaluación Stgo Centro.' },
     { id: 21, especialidad: 'Psicología Adulto', tratamiento: 'Evaluación Psicología Adulto Presencial - Providencia', valor: 35000, codigo: '1204003', descripcion: 'Evaluación Providencia.' },
-    { id: 24, especialidad: 'Psicología Adulto', tratamiento: 'Consulta Psicología Adulto online', valor: 25000, codigo: '1204004', descripcion: 'Sesión online.' },
-    { id: 25, especialidad: 'Psicología Adulto', tratamiento: 'Consulta Psicología Adulto Presencial - Stgo Centro', valor: 35000, codigo: '1204005', descripcion: 'Sesión Centro.' },
+    { id: 24, especialidad: 'Psicología Adulto', tratamiento: 'Consulta Psicología Adulto online', valor: 25000, codigo: '1204004', descripcion: 'Sesión psicoterapia online.' },
+    { id: 25, especialidad: 'Psicología Adulto', tratamiento: 'Consulta Psicología Adulto Presencial - Stgo Centro', valor: 35000, codigo: '1204005', descripcion: 'Sesión Stgo Centro.' },
     { id: 26, especialidad: 'Psicología Adulto', tratamiento: 'Consulta Psicología Adulto Presencial - Providencia', valor: 35000, codigo: '1204006', descripcion: 'Sesión Providencia.' },
-    { id: 29, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Evaluación Psicología infanto-juvenil online', valor: 25000, codigo: '1204009', descripcion: 'Evaluación online.' },
-    { id: 30, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Evaluación Psicología infanto-juvenil Presencial - Stgo Centro', valor: 35000, codigo: '1204010', descripcion: 'Evaluación Centro.' },
-    { id: 31, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Evaluación Psicología infanto-juvenil Presencial - Providencia', valor: 35000, codigo: '1204011', descripcion: 'Evaluación Providencia.' },
-    { id: 34, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Consulta Psicología infanto-juvenil online', valor: 25000, codigo: '1204014', descripcion: 'Terapia online.' },
-    { id: 35, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Consulta Psicología infanto-juvenil Presencial - Stgo Centro', valor: 35000, codigo: '1204015', descripcion: 'Terapia Centro.' },
-    { id: 36, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Consulta Psicología infanto-juvenil Presencial - Providencia', valor: 35000, codigo: '1204016', descripcion: 'Terapia Providencia.' },
+    { id: 29, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Evaluación Psicología infanto-juvenil online', valor: 25000, codigo: '1204009', descripcion: 'Evaluación niños online.' },
+    { id: 30, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Evaluación Psicología infanto-juvenil Presencial - Stgo Centro', valor: 35000, codigo: '1204010', descripcion: 'Evaluación niños Stgo Centro.' },
+    { id: 31, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Evaluación Psicología infanto-juvenil Presencial - Providencia', valor: 35000, codigo: '1204011', descripcion: 'Evaluación niños Providencia.' },
+    { id: 34, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Consulta Psicología infanto-juvenil online', valor: 25000, codigo: '1204014', descripcion: 'Terapia niños online.' },
+    { id: 35, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Consulta Psicología infanto-juvenil Presencial - Stgo Centro', valor: 35000, codigo: '1204015', descripcion: 'Terapia niños Stgo Centro.' },
+    { id: 36, especialidad: 'Psicología Infanto-Juvenil', tratamiento: 'Consulta Psicología infanto-juvenil Presencial - Providencia', valor: 35000, codigo: '1204016', descripcion: 'Terapia niños Providencia.' },
     { id: 39, especialidad: 'Matrona', tratamiento: 'Ginecología Infanto-Juvenil', valor: 16000, codigo: '1205001', descripcion: 'Atención especializada.' },
-    { id: 41, especialidad: 'Matrona', tratamiento: 'Ginecología General', valor: 16000, codigo: '1205002', descripcion: 'Consulta general.' },
-    { id: 45, especialidad: 'Matrona', tratamiento: 'Asesoría de Lactancia', valor: 16000, codigo: '1205003', descripcion: 'Lactancia.' },
-    { id: 54, especialidad: 'Psicopedagogía', tratamiento: 'Evaluación Psicopedagógica Online', valor: 20000, codigo: '1206001', descripcion: 'Evaluación.' },
-    { id: 55, especialidad: 'Psicopedagogía', tratamiento: 'Sesión Psicopedagogía Online', valor: 20000, codigo: '1206002', descripcion: 'Sesión.' },
+    { id: 41, especialidad: 'Matrona', tratamiento: 'Ginecología General', valor: 16000, codigo: '1205002', descripcion: 'Consulta general matrona.' },
+    { id: 45, especialidad: 'Matrona', tratamiento: 'Asesoría de Lactancia', valor: 16000, codigo: '1205003', descripcion: 'Apoyo lactancia materna.' },
+    { id: 54, especialidad: 'Psicopedagogía', tratamiento: 'Evaluación Psicopedagógica Online', valor: 20000, codigo: '1206001', descripcion: 'Evaluación aprendizaje.' },
+    { id: 55, especialidad: 'Psicopedagogía', tratamiento: 'Sesión Psicopedagogía Online', valor: 20000, codigo: '1206002', descripcion: 'Sesión de apoyo.' },
 ];
 
 const STEPS = [ {n:1, t:'Datos'}, {n:2, t:'Servicio'}, {n:3, t:'Agenda'}, {n:4, t:'Confirmar'} ];
@@ -83,6 +88,7 @@ const validateRut = (rut) => {
 
 const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
+// --- COMPONENTES UI ---
 function MobileAccordion({ title, subtitle, children }) {
     const [isOpen, setIsOpen] = useState(false);
     return (
@@ -693,7 +699,10 @@ function WebPaciente() {
     const [multiAgenda, setMultiAgenda] = useState({}); 
     const [selectedDateKey, setSelectedDateKey] = useState(null); 
     const [availableDates, setAvailableDates] = useState([]);
-    const [showPayModal, setShowPayModal] = useState(false); 
+    
+    // --- ESTADOS PARA MERCADOPAGO ---
+    const [preferenceId, setPreferenceId] = useState(null);
+    const [showPayModal, setShowPayModal] = useState(false);
 
     useEffect(()=>{ getProfesionales().then(setProfesionales) },[]);
 
@@ -712,35 +721,17 @@ function WebPaciente() {
         } catch(e) { setStep(1); } setLoading(false);
     };
 
-    // [FIX: VALIDACIÓN DE DISPONIBILIDAD]
     const handleTreatmentConfirm = async () => {
         setLoading(true);
         const prosAptos = profesionales.filter(p => p.tratamientos && p.tratamientos.includes(tratamientoSel.tratamiento));
-        if (prosAptos.length === 0) { alert("No hay profesionales para este servicio."); setLoading(false); return; }
-        
+        if (prosAptos.length === 0) { alert("No hay profesionales."); setLoading(false); return; }
         const promises = prosAptos.map(async p => { const horarios = await getHorariosByProfesional(p.id); return { profesional: p, slots: Array.isArray(horarios) ? horarios.filter(x => new Date(x.fecha) > new Date()) : [] }; });
         const results = await Promise.all(promises);
-        
         const agendaMap = {}; const datesSet = new Set();
-        results.forEach(({profesional, slots}) => { 
-            slots.forEach(slot => { 
-                const dateKey = toDateKey(slot.fecha); 
-                datesSet.add(dateKey); 
-                if (!agendaMap[dateKey]) agendaMap[dateKey] = []; 
-                let proEntry = agendaMap[dateKey].find(entry => entry.profesional.id === profesional.id); 
-                if (!proEntry) { proEntry = { profesional, slots: [] }; agendaMap[dateKey].push(proEntry); } 
-                proEntry.slots.push(slot); 
-            }); 
-        });
-        
+        results.forEach(({profesional, slots}) => { slots.forEach(slot => { const dateKey = toDateKey(slot.fecha); datesSet.add(dateKey); if (!agendaMap[dateKey]) agendaMap[dateKey] = []; let proEntry = agendaMap[dateKey].find(entry => entry.profesional.id === profesional.id); if (!proEntry) { proEntry = { profesional, slots: [] }; agendaMap[dateKey].push(proEntry); } proEntry.slots.push(slot); }); });
         const sortedDates = Array.from(datesSet).sort();
         
-        // --- VALIDACIÓN: SI NO HAY FECHAS, NO AVANZAR ---
-        if (sortedDates.length === 0) {
-            alert("Lo sentimos, no hay horas disponibles para este tratamiento en este momento.");
-            setLoading(false);
-            return;
-        }
+        if (sortedDates.length === 0) { alert("No hay horas disponibles."); setLoading(false); return; }
 
         setMultiAgenda(agendaMap); setAvailableDates(sortedDates);
         if (sortedDates.length > 0) setSelectedDateKey(sortedDates[0]);
@@ -749,21 +740,49 @@ function WebPaciente() {
 
     const selectSlot = (pid, hid) => { setForm(prev => ({ ...prev, profesionalId: pid, horarioId: hid })); setStep(4); };
 
-    // [MODIFICADO] FUNCIÓN DE PAGO SIMULADO
-    const handlePaymentSubmit = async () => {
+    // --- FUNCIÓN 1: INICIAR PAGO (LLAMA AL BACKEND) ---
+    const initPaymentProcess = async () => {
         setLoading(true);
-        // Simular retraso de pasarela de pago (2 segundos)
-        setTimeout(async () => {
-            try {
-                let pid = pacienteId;
-                if (!pid) { const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); const pac = await crearPaciente({nombreCompleto:form.nombre, email:form.email, telefono:form.telefono, rut: rutLimpio}); pid = pac.id; }
-                await crearReserva({ pacienteId: pid, profesionalId: form.profesionalId, horarioDisponibleId: form.horarioId, motivo: `${tratamientoSel.tratamiento}` });
-                setBookingSuccess(true);
-            } catch(e) { alert('Error al procesar reserva.'); } 
+        try {
+            // Creamos o actualizamos el paciente primero para asegurar que existe
+            let pid = pacienteId;
+            if (!pid) { 
+                const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); 
+                const pac = await crearPaciente({nombreCompleto:form.nombre, email:form.email, telefono:form.telefono, rut: rutLimpio}); 
+                pid = pac.id; 
+                setPacienteId(pid);
+            }
+
+            // Llamamos a TU backend para crear la preferencia
+            const response = await fetch(`${API_BASE_URL}/create_preference`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: tratamientoSel.tratamiento,
+                    quantity: 1,
+                    unit_price: tratamientoSel.valor
+                }),
+            });
+
+            const preference = await response.json();
+            
+            if (preference.id) {
+                setPreferenceId(preference.id);
+                setShowPayModal(true);
+            } else {
+                alert("Error al iniciar el pago");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Error de conexión");
+        } finally {
             setLoading(false);
-            setShowPayModal(false);
-        }, 2000);
+        }
     };
+
+    // --- NOTA: EL PAGO EXITOSO SE MANEJA POR REDIRECCIÓN (BACK_URLS) O WEBHOOKS ---
+    // Pero aquí podemos tener un "fallback" si quisieras guardar la reserva antes de pagar (opcional).
+    // Por ahora, MercadoPago redirigirá a tu web tras el pago.
 
     const goBack = () => { if(step===0)return; if(step===2 && pacienteId) setStep(0); else setStep(step-1); };
 
@@ -789,54 +808,18 @@ function WebPaciente() {
                 {step === 1 && ( <> <h2 className="web-title">Datos Personales</h2><div className="input-group"><label className="web-label">Nombre</label><input className="web-input" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} /></div><div className="input-group"><label className="web-label">Email</label><input className="web-input" value={form.email} onChange={e=>setForm({...form, email:e.target.value})} /></div><div className="input-group"><label className="web-label">Teléfono</label><input className="web-input" value={form.telefono} onChange={e=>setForm({...form, telefono:e.target.value})} /></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.nombre || !validateEmail(form.email)} onClick={()=>setStep(2)}>Guardar Datos</button></div> </> )}
                 {step === 2 && ( <> <h2 className="web-title">¿Qué necesitas?</h2><div className="input-group"><label className="web-label">Especialidad</label><select className="web-select" value={form.especialidad} onChange={e=>setForm({...form, especialidad:e.target.value, tratamientoId:''})}><option value="">Selecciona...</option>{especialidades.map(e=><option key={e} value={e}>{e}</option>)}</select></div><div className="input-group"><label className="web-label">Tratamiento</label><select className="web-select" disabled={!form.especialidad} value={form.tratamientoId} onChange={e=>setForm({...form, tratamientoId:e.target.value})}><option value="">Selecciona...</option>{prestaciones.map(p=><option key={p.id} value={p.id}>{p.tratamiento}</option>)}</select></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.tratamientoId || loading} onClick={handleTreatmentConfirm}>{loading ? 'Buscando...' : 'Buscar Horas'}</button></div> </> )}
                 {step === 3 && ( <> <h2 className="web-title">Elige tu Hora</h2><div className="rs-date-tabs">{availableDates.map(dateStr => { const dateObj = new Date(dateStr + 'T00:00:00'); return ( <div key={dateStr} className={`rs-date-tab ${selectedDateKey === dateStr ? 'selected' : ''}`} onClick={() => setSelectedDateKey(dateStr)}><div className="rs-day-name">{dateObj.toLocaleDateString('es-CL', {weekday: 'short'})}</div><div className="rs-day-number">{dateObj.getDate()}</div></div> ); })}</div><div className="rs-pro-list">{multiAgenda[selectedDateKey]?.map((entry) => ( <div key={entry.profesional.id} className="rs-pro-card"><div className="rs-pro-header"><div className="rs-avatar-circle">{entry.profesional.nombreCompleto.charAt(0)}</div><div className="rs-pro-details"><strong>{entry.profesional.nombreCompleto}</strong><span>{entry.profesional.especialidad}</span></div></div><div className="rs-slots-grid">{entry.slots.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).map(slot => ( <button key={slot.id} className="rs-slot-btn" onClick={() => selectSlot(entry.profesional.id, slot.id)}>{new Date(slot.fecha).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}</button> ))}</div></div> ))}</div> </> )}
-                {step === 4 && ( 
-                    <> 
-                        <h2 className="web-title">Confirmar Reserva</h2>
-                        <ReservaDetalleCard title="Resumen" showTotal={true} />
-                        <div className="bottom-bar">
-                            {/* [CAMBIO] BOTÓN ABRE EL MODAL DE PAGO */}
-                            <button className="btn-block-action" disabled={loading} onClick={()=>setShowPayModal(true)}>
-                                {loading ? 'Procesando...' : `Pagar ${fmtMoney(tratamientoSel?.valor || 0)}`}
-                            </button>
-                        </div> 
-                    </> 
-                )}
+                {step === 4 && ( <> <h2 className="web-title">Confirmar Reserva</h2><ReservaDetalleCard title="Resumen" showTotal={true} /><div className="bottom-bar"><button className="btn-block-action" disabled={loading} onClick={initPaymentProcess}>{loading ? 'Iniciando Pago...' : 'Ir a Pagar'}</button></div> </> )}
             </div>
 
-            {/* MODAL SIMULADO DE PAGO */}
-            {showPayModal && (
-                <Modal onClose={()=>!loading && setShowPayModal(false)}>
-                    <div className="pay-modal-content">
-                        <div className="pay-icon">💳</div>
-                        <h2>Pago Seguro</h2>
-                        <p>Webpay / Transbank Simulator</p>
-                        
-                        <div className="pay-card-preview">
-                            <div className="card-chip"></div>
-                            <div className="card-number">•••• •••• •••• 4242</div>
-                            <div className="card-holder">NOMBRE TITULAR</div>
-                        </div>
-
-                        <div className="input-group">
-                            <label className="web-label" style={{textAlign:'left'}}>Número de Tarjeta</label>
-                            <input className="web-input" placeholder="0000 0000 0000 0000" disabled />
-                        </div>
-                        <div style={{display:'flex', gap:10}}>
-                            <div className="input-group">
-                                <label className="web-label" style={{textAlign:'left'}}>Expira</label>
-                                <input className="web-input" placeholder="MM/AA" disabled />
-                            </div>
-                            <div className="input-group">
-                                <label className="web-label" style={{textAlign:'left'}}>CVC</label>
-                                <input className="web-input" placeholder="123" disabled />
-                            </div>
-                        </div>
-
-                        <button className="btn-block-action" disabled={loading} onClick={handlePaymentSubmit} style={{background: '#2563eb'}}>
-                            {loading ? 'Procesando Pago...' : 'Confirmar Pago'}
-                        </button>
-                        <br/><br/>
-                        <button className="btn-edit" disabled={loading} onClick={()=>setShowPayModal(false)} style={{background:'transparent', textDecoration:'underline'}}>Cancelar</button>
+            {/* MODAL DE MERCADO PAGO */}
+            {showPayModal && preferenceId && (
+                <Modal onClose={()=>setShowPayModal(false)} title="Finalizar Pago">
+                    <div style={{padding: '10px 0'}}>
+                        <p style={{marginBottom: 20, textAlign: 'center', color: '#666'}}>
+                            Serás redirigido a Mercado Pago de forma segura.
+                        </p>
+                        {/* COMPONENTE WALLET REAL */}
+                        <Wallet initialization={{ preferenceId: preferenceId }} />
                     </div>
                 </Modal>
             )}
