@@ -8,7 +8,7 @@ import {
     buscarPacientePorRut, updateProfesional, deleteProfesional
 } from './api';
 
-// --- DATA MAESTRA ACTUALIZADA (Con Códigos y Descripción) ---
+// --- DATA MAESTRA ACTUALIZADA ---
 const TRATAMIENTOS = [
     { id: 1, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto online', valor: 20000, codigo: '1203001', descripcion: 'Evaluación completa por videollamada.' },
     { id: 2, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto presencial', valor: 35000, codigo: '1203002', descripcion: 'Evaluación presencial en consulta.' },
@@ -65,7 +65,7 @@ const formatRut = (rut) => {
     return `${bodyDots}-${dv}`;
 };
 
-// --- NUEVOS COMPONENTES UI ---
+// --- COMPONENTES UI ---
 
 function MobileAccordion({ title, subtitle, children }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -217,11 +217,21 @@ function AgendaNuevaReserva({ reload, reservas }) {
             </div>
             <h3 style={{ marginTop: 40 }}>Reservas Recientes</h3>
             <div className="pro-card" style={{ padding: 0 }}>
-                <div className="data-table-container">
+                <div className="data-table-container desktop-view-only">
                     <table className="data-table">
                         <thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th></tr></thead>
                         <tbody>{reservas.slice(0, 5).map(r => (<tr key={r.id}><td>{fmtDate(r.fecha)}</td><td>{r.pacienteNombre}</td><td>{r.profesionalNombre}</td></tr>))}</tbody>
                     </table>
+                </div>
+                {/* PUNTO 2: VISTA MÓVIL AÑADIDA */}
+                <div className="mobile-view-only" style={{padding:15}}>
+                    {reservas.slice(0, 5).map(r => (
+                        <div key={r.id} style={{borderBottom:'1px solid #eee', padding:'10px 0'}}>
+                            <div style={{fontWeight:'bold'}}>{fmtDate(r.fecha)}</div>
+                            <div style={{fontSize:'0.9rem'}}>{r.pacienteNombre}</div>
+                            <div style={{fontSize:'0.8rem', color:'#666'}}>{r.profesionalNombre}</div>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>
@@ -272,40 +282,42 @@ function AgendaResumen({reservas, reload}){
 
     const saveEdit=async(id)=>{
         if(!editHorarioId) return alert('Selecciona hora');
-        try{ await reagendarReserva(id, editHorarioId, editProId, editTratamiento); alert('Modificado'); setEditId(null); reload(); }catch(e){alert('Error')}
+        try{ await reagendarReserva(id, editHorarioId, editProId, editTratamiento); alert('Modificado con éxito'); setEditId(null); reload(); }catch(e){alert('Error al modificar')}
     };
 
     const deleteReserva = async(id) => { if(confirm('¿Eliminar?')){await cancelarReserva(id);reload()} };
+
+    // Formulario reutilizable
+    const EditForm = ({ r }) => (
+        <div style={{padding:15, display:'flex', flexDirection:'column', gap:10}}>
+            <strong>Reprogramar Cita</strong>
+            <div className="input-row">
+                <div><label className="form-label">Profesional</label><select className="form-control" value={editProId} onChange={e=>handleProChange(e.target.value)}>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div>
+                <div><label className="form-label">Especialidad</label><select className="form-control" value={editEspecialidad} onChange={e=>setEditEspecialidad(e.target.value)} disabled={!editProId}><option value="">Seleccionar...</option>{getEspecialidadesPro().map(e=><option key={e} value={e}>{e}</option>)}</select></div>
+            </div>
+            <div className="input-row">
+                <div><label className="form-label">Tratamiento</label><select className="form-control" value={editTratamiento} onChange={e=>setEditTratamiento(e.target.value)} disabled={!editEspecialidad}><option value="">Seleccionar...</option>{getTratamientosFiltrados().map(t=><option key={t.id} value={t.tratamiento}>{t.tratamiento}</option>)}</select></div>
+                <div><label className="form-label">Nuevo Horario</label><select className="form-control" value={editHorarioId} onChange={e=>setEditHorarioId(e.target.value)} disabled={!editTratamiento}><option value="">Selecciona hora...</option>{horariosDisponibles.map(h=><option key={h.id} value={h.id}>{fmtDate(h.fecha)}</option>)}</select></div>
+            </div>
+            <div style={{display:'flex', gap:10}}>
+                <button className="btn-primary" onClick={()=>saveEdit(r.id)}>Guardar</button>
+                <button className="btn-edit" onClick={()=>setEditId(null)}>Cancelar</button>
+            </div>
+        </div>
+    );
 
     return (
         <div>
             <div className="page-header"><div className="page-title"><h1>Resumen de Agendamientos</h1></div></div>
             <div className="pro-card">
-                {/* VISTA ESCRITORIO (TABLA) */}
+                {/* VISTA ESCRITORIO */}
                 <div className="data-table-container desktop-view-only">
                     <table className="data-table">
                         <thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th><th>Tratamiento</th><th>Valor</th><th>Acciones</th></tr></thead>
                         <tbody>{reservas.map(r=>{
                             const match=TRATAMIENTOS.find(t=>r.motivo.includes(t.tratamiento));
                             const valor = match ? match.valor : 0;
-                            if(editId===r.id) return (
-                                <tr key={r.id} style={{background:'#fff9c4'}}>
-                                    <td colSpan={6}>
-                                        <div style={{padding:15, display:'flex', flexDirection:'column', gap:10}}>
-                                            <strong>Reprogramar Cita</strong>
-                                            <div className="input-row">
-                                                <div><label className="form-label">Profesional</label><select className="form-control" value={editProId} onChange={e=>handleProChange(e.target.value)}>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div>
-                                                <div><label className="form-label">Especialidad</label><select className="form-control" value={editEspecialidad} onChange={e=>setEditEspecialidad(e.target.value)} disabled={!editProId}><option value="">Seleccionar...</option>{getEspecialidadesPro().map(e=><option key={e} value={e}>{e}</option>)}</select></div>
-                                                <div><label className="form-label">Tratamiento</label><select className="form-control" value={editTratamiento} onChange={e=>setEditTratamiento(e.target.value)} disabled={!editEspecialidad}><option value="">Seleccionar...</option>{getTratamientosFiltrados().map(t=><option key={t.id} value={t.tratamiento}>{t.tratamiento}</option>)}</select></div>
-                                            </div>
-                                            <div className="input-row">
-                                                <div style={{maxWidth:300}}><label className="form-label">Nuevo Horario</label><select className="form-control" value={editHorarioId} onChange={e=>setEditHorarioId(e.target.value)} disabled={!editTratamiento}><option value="">Selecciona hora...</option>{horariosDisponibles.map(h=><option key={h.id} value={h.id}>{fmtDate(h.fecha)}</option>)}</select></div>
-                                                <div style={{display:'flex', alignItems:'flex-end', gap:10}}><button className="btn-primary" onClick={()=>saveEdit(r.id)}>Guardar</button><button className="btn-edit" onClick={()=>setEditId(null)}>Cancelar</button></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            );
+                            if(editId===r.id) return <tr key={r.id} style={{background:'#fff9c4'}}><td colSpan={6}><EditForm r={r}/></td></tr>;
                             return(
                                 <tr key={r.id}>
                                     <td>{fmtDate(r.fecha)}</td>
@@ -319,23 +331,20 @@ function AgendaResumen({reservas, reload}){
                         })}</tbody>
                     </table>
                 </div>
-
-                {/* VISTA MÓVIL (ACORDEONES) */}
+                {/* VISTA MÓVIL */}
                 <div className="mobile-view-only">
                     {reservas.map(r => {
                         const match=TRATAMIENTOS.find(t=>r.motivo.includes(t.tratamiento));
                         const valor = match ? match.valor : 0;
+                        if (editId === r.id) return <div key={r.id} className="mobile-card"><EditForm r={r} /></div>; // PUNTO 4: EDICIÓN EN MÓVIL
                         return (
-                            <MobileAccordion 
-                                key={r.id} 
-                                title={fmtDate(r.fecha)} 
-                                subtitle={r.pacienteNombre}
-                            >
+                            <MobileAccordion key={r.id} title={fmtDate(r.fecha)} subtitle={r.pacienteNombre}>
                                 <div className="mobile-data-row"><span className="mobile-label">Profesional</span><span className="mobile-value">{r.profesionalNombre}</span></div>
                                 <div className="mobile-data-row"><span className="mobile-label">Tratamiento</span><span className="mobile-value">{r.motivo}</span></div>
                                 <div className="mobile-data-row"><span className="mobile-label">Valor</span><span className="mobile-value">{fmtMoney(valor)}</span></div>
-                                <div style={{marginTop:15}}>
-                                    <button className="btn-danger" onClick={()=>deleteReserva(r.id)} style={{width:'100%'}}>Eliminar Cita</button>
+                                <div style={{marginTop:15, display:'flex', gap:10}}>
+                                    <button className="btn-edit" onClick={()=>startEdit(r)} style={{flex:1}}>Modificar</button>
+                                    <button className="btn-danger" onClick={()=>deleteReserva(r.id)} style={{flex:1}}>Eliminar</button>
                                 </div>
                             </MobileAccordion>
                         )
@@ -383,7 +392,6 @@ function AgendaPacientes(){
                 </form>
             </div>
             <div className="pro-card">
-                {/* VISTA ESCRITORIO */}
                 <div className="data-table-container desktop-view-only">
                     <table className="data-table">
                         <thead><tr><th>RUT</th><th>Nombre</th><th>Email</th><th>Acciones</th></tr></thead>
@@ -395,7 +403,6 @@ function AgendaPacientes(){
                         ))}</tbody>
                     </table>
                 </div>
-                {/* VISTA MÓVIL */}
                 <div className="mobile-view-only">
                     {pacientes.map(p => (
                         <MobileAccordion key={p.id} title={p.nombreCompleto}>
@@ -522,19 +529,36 @@ function AgendaHorarios(){
                 <form onSubmit={save}>
                     <div className="input-row">
                         <div><label className="form-label">Profesional</label><select className="form-control" onChange={e=>setForm({...form,profesionalId:e.target.value})}><option>Seleccionar...</option>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div>
-                        <div><label className="form-label">Fecha</label><input type="date" className="form-control" onChange={e=>setFechaSel(e.target.value)} /></div>
+                        <div><label className="form-label">Fecha del Bloque</label><input type="date" className="form-control" onChange={e=>setFechaSel(e.target.value)} /></div>
                     </div>
                     <div className="input-row">
                         <div><label className="form-label">Inicio</label><input type="time" className="form-control" value={form.horaInicio} onChange={e=>setForm({...form,horaInicio:e.target.value})}/></div>
                         <div><label className="form-label">Fin</label><input type="time" className="form-control" value={form.horaFin} onChange={e=>setForm({...form,horaFin:e.target.value})}/></div>
                     </div>
+                    
+                    {/* PUNTO 1: INPUTS RESTAURADOS */}
+                    <div className="input-row">
+                        <div>
+                            <label className="form-label">Duración del Bloque (Min)</label>
+                            <select className="form-control" value={form.duracionSlot} onChange={e=>setForm({...form, duracionSlot: e.target.value})}>
+                                <option value="15">15 Minutos</option>
+                                <option value="30">30 Minutos</option>
+                                <option value="45">45 Minutos</option>
+                                <option value="60">60 Minutos</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="form-label">Tiempo de descanso (Min)</label>
+                            <input type="number" className="form-control" value={form.intervalo} onChange={e=>setForm({...form, intervalo: e.target.value})} placeholder="Ej: 10" />
+                        </div>
+                    </div>
+
                     <button className="btn-primary">Guardar Disponibilidad</button>
                 </form>
             </div>
 
             <div className="pro-card">
                 <h3>Ver Calendario Visual</h3>
-                {/* VISTA ESCRITORIO */}
                 <div className="data-table-container desktop-view-only">
                     <table className="data-table">
                         <thead><tr><th>Profesional</th><th>Acción</th></tr></thead>
@@ -546,7 +570,6 @@ function AgendaHorarios(){
                         ))}</tbody>
                     </table>
                 </div>
-                {/* VISTA MÓVIL */}
                 <div className="mobile-view-only">
                     {pros.map(p => (
                         <div key={p.id} className="mobile-simple-list-item">
@@ -598,8 +621,6 @@ function WebPaciente() {
     const [loading, setLoading] = useState(false);
     const [bookingSuccess, setBookingSuccess] = useState(false);
     const [pacienteId, setPacienteId] = useState(null);
-    
-    // Estados agenda
     const [multiAgenda, setMultiAgenda] = useState({}); 
     const [selectedDateKey, setSelectedDateKey] = useState(null); 
     const [availableDates, setAvailableDates] = useState([]); 
@@ -610,7 +631,6 @@ function WebPaciente() {
     const prestaciones = TRATAMIENTOS.filter(t => t.especialidad === form.especialidad);
     const tratamientoSel = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId));
     
-    // --- LÓGICA ---
     const handleRutSearch = async () => {
         if(!form.rut) return alert("Ingrese su RUT");
         setLoading(true);
@@ -620,10 +640,8 @@ function WebPaciente() {
             if (paciente) {
                 setPacienteId(paciente.id);
                 setForm(prev => ({...prev, nombre: paciente.nombreCompleto, email: paciente.email, telefono: paciente.telefono}));
-                setStep(2); // Salta registro
-            } else { 
-                setStep(1); // Va a registro
-            }
+                setStep(2); 
+            } else { setStep(1); }
         } catch(e) { setStep(1); }
         setLoading(false);
     };
@@ -631,47 +649,29 @@ function WebPaciente() {
     const handleTreatmentConfirm = async () => {
         setLoading(true);
         const prosAptos = profesionales.filter(p => p.tratamientos && p.tratamientos.includes(tratamientoSel.tratamiento));
-        
-        if (prosAptos.length === 0) {
-            alert("No hay profesionales disponibles para este tratamiento.");
-            setLoading(false); return;
-        }
-
+        if (prosAptos.length === 0) { alert("No hay profesionales."); setLoading(false); return; }
         const promises = prosAptos.map(async p => {
             const horarios = await getHorariosByProfesional(p.id);
             return { profesional: p, slots: Array.isArray(horarios) ? horarios.filter(x => new Date(x.fecha) > new Date()) : [] };
         });
-
         const results = await Promise.all(promises);
-        const agendaMap = {};
-        const datesSet = new Set();
-
+        const agendaMap = {}; const datesSet = new Set();
         results.forEach(({profesional, slots}) => {
             slots.forEach(slot => {
-                const dateKey = toDateKey(slot.fecha);
-                datesSet.add(dateKey);
+                const dateKey = toDateKey(slot.fecha); datesSet.add(dateKey);
                 if (!agendaMap[dateKey]) agendaMap[dateKey] = [];
                 let proEntry = agendaMap[dateKey].find(entry => entry.profesional.id === profesional.id);
                 if (!proEntry) { proEntry = { profesional, slots: [] }; agendaMap[dateKey].push(proEntry); }
                 proEntry.slots.push(slot);
             });
         });
-
         const sortedDates = Array.from(datesSet).sort();
-        setMultiAgenda(agendaMap);
-        setAvailableDates(sortedDates);
-        
+        setMultiAgenda(agendaMap); setAvailableDates(sortedDates);
         if (sortedDates.length > 0) setSelectedDateKey(sortedDates[0]);
-        else alert("No hay horas disponibles próximamente.");
-        
-        setLoading(false);
-        if (sortedDates.length > 0) setStep(3);
+        setLoading(false); setStep(3); 
     };
 
-    const selectSlot = (pid, hid) => {
-        setForm(prev => ({ ...prev, profesionalId: pid, horarioId: hid }));
-        setStep(4);
-    };
+    const selectSlot = (pid, hid) => { setForm(prev => ({ ...prev, profesionalId: pid, horarioId: hid })); setStep(4); };
 
     const confirmar = async () => {
         setLoading(true);
@@ -684,249 +684,52 @@ function WebPaciente() {
             }
             await crearReserva({ pacienteId: pid, profesionalId: form.profesionalId, horarioDisponibleId: form.horarioId, motivo: `${tratamientoSel.tratamiento}` });
             setBookingSuccess(true);
-        } catch(e) { alert('Error al procesar reserva.'); }
-        setLoading(false);
+        } catch(e) { alert('Error al reservar.'); } setLoading(false);
     }
 
-    // Navegación hacia atrás
-    const goBack = () => {
-        if(step === 0) return;
-        if(step === 2 && pacienteId) setStep(0); // Si ya existía, volver al inicio
-        else setStep(step - 1);
-    };
+    const goBack = () => { if(step===0)return; if(step===2 && pacienteId) setStep(0); else setStep(step-1); };
 
-    // Componente de Detalle de Reserva
     const ReservaDetalleCard = ({ title, showTotal }) => {
-        // Encontrar datos para mostrar
         const slotDate = new Date(form.horarioId || new Date());
         const fechaStr = slotDate.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
         const horaStr = slotDate.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
-        
-        // Buscar profesional en la agenda cargada
-        let proName = "Profesional asignado";
+        let proName = "Asignado";
         if (multiAgenda[selectedDateKey]) {
             const foundEntry = multiAgenda[selectedDateKey].find(e => e.profesional.id === form.profesionalId);
             if (foundEntry) proName = foundEntry.profesional.nombreCompleto;
         }
-
         return (
             <div className="conf-card">
-                <div className="conf-section">
-                    <div className="conf-title">Paciente</div>
-                    <div className="conf-row"><span className="conf-label">Nombre</span><span className="conf-value">{form.nombre}</span></div>
-                    <div className="conf-row"><span className="conf-label">RUT</span><span className="conf-value">{form.rut}</span></div>
-                    <div className="conf-row"><span className="conf-label">Email</span><span className="conf-value">{form.email}</span></div>
-                </div>
-                
-                <div className="conf-section">
-                    <div className="conf-title">Servicio</div>
-                    <div className="conf-row"><span className="conf-label">Especialidad</span><span className="conf-value">{tratamientoSel?.especialidad}</span></div>
-                    <div className="conf-row"><span className="conf-label">Tratamiento</span><span className="conf-value">{tratamientoSel?.tratamiento}</span></div>
-                    {tratamientoSel?.codigo && <div className="conf-row"><span className="conf-label">Cód. Fonasa</span><span className="conf-value">{tratamientoSel.codigo}</span></div>}
-                    <div className="conf-row"><span className="conf-label" style={{fontStyle:'italic', fontSize:'0.85rem', marginTop:5}}>{tratamientoSel?.descripcion}</span></div>
-                </div>
-
-                <div className="conf-section">
-                    <div className="conf-title">Cita</div>
-                    <div className="conf-row"><span className="conf-label">Profesional</span><span className="conf-value">{proName}</span></div>
-                    <div className="conf-row"><span className="conf-label">Fecha</span><span className="conf-value">{fechaStr}</span></div>
-                    <div className="conf-row"><span className="conf-label">Hora</span><span className="conf-value">{horaStr}</span></div>
-                </div>
-
-                {showTotal && (
-                    <div className="conf-section" style={{background:'#fafafa'}}>
-                        <div className="conf-total">
-                            <span className="conf-total-label">Total a Pagar</span>
-                            <span className="conf-total-value">{fmtMoney(tratamientoSel?.valor || 0)}</span>
-                        </div>
-                    </div>
-                )}
+                <div className="conf-section"><div className="conf-title">Paciente</div><div className="conf-row"><span className="conf-label">Nombre</span><span className="conf-value">{form.nombre}</span></div><div className="conf-row"><span className="conf-label">RUT</span><span className="conf-value">{form.rut}</span></div></div>
+                <div className="conf-section"><div className="conf-title">Servicio</div><div className="conf-row"><span className="conf-label">Tratamiento</span><span className="conf-value">{tratamientoSel?.tratamiento}</span></div><div className="conf-row"><span className="conf-label" style={{fontStyle:'italic', fontSize:'0.85rem'}}>{tratamientoSel?.descripcion}</span></div></div>
+                <div className="conf-section"><div className="conf-title">Cita</div><div className="conf-row"><span className="conf-label">Profesional</span><span className="conf-value">{proName}</span></div><div className="conf-row"><span className="conf-label">Fecha</span><span className="conf-value">{fechaStr}</span></div><div className="conf-row"><span className="conf-label">Hora</span><span className="conf-value">{horaStr}</span></div></div>
+                {showTotal && <div className="conf-section" style={{background:'#fafafa'}}><div className="conf-total"><span className="conf-total-label">Total a Pagar</span><span className="conf-total-value">{fmtMoney(tratamientoSel?.valor || 0)}</span></div></div>}
             </div>
         );
     };
 
-    // VISTA DE ÉXITO
     if(bookingSuccess) {
         return (
             <div className="web-shell">
                 <div className="web-content success-card">
-                    <span className="success-icon-big">✓</span>
-                    <h1 className="web-title">¡Reserva Exitosa!</h1>
-                    <p className="web-subtitle">Hemos enviado el comprobante a<br/><strong>{form.email}</strong></p>
-                    
+                    <span className="success-icon-big">✓</span><h1 className="web-title">¡Reserva Exitosa!</h1><p className="web-subtitle">Hemos enviado el comprobante a<br/><strong>{form.email}</strong></p>
                     <ReservaDetalleCard title="Comprobante" showTotal={true} />
-                    
                     <button className="btn-block-action" onClick={()=>window.location.reload()}>Volver al Inicio</button>
                 </div>
             </div>
         )
     }
 
-    // RENDER PRINCIPAL
     return (
         <div className="web-shell">
-            {/* Header Fijo con Flecha Atrás */}
-            <header className="web-header">
-                {step > 0 && <button className="web-back-btn" onClick={goBack}>‹</button>}
-                <img src={LOGO_URL} alt="Logo" className="cisd-logo-web" />
-            </header>
-
-            {/* Stepper Visual */}
-            <div className="stepper-container">
-                <div className="stepper">
-                    <div className={`step-dot ${step >= 0 ? 'active' : ''}`}></div>
-                    <div className={`step-line ${step >= 1 ? 'filled' : ''}`}></div>
-                    <div className={`step-dot ${step >= 1 ? 'active' : ''}`}></div>
-                    <div className={`step-line ${step >= 2 ? 'filled' : ''}`}></div>
-                    <div className={`step-dot ${step >= 2 ? 'active' : ''}`}></div>
-                    <div className={`step-line ${step >= 3 ? 'filled' : ''}`}></div>
-                    <div className={`step-dot ${step >= 3 ? 'active' : ''}`}></div>
-                </div>
-            </div>
-
+            <header className="web-header">{step > 0 && <button className="web-back-btn" onClick={goBack}>‹</button>}<img src={LOGO_URL} alt="Logo" className="cisd-logo-web" /></header>
+            <div className="stepper-container"><div className="stepper"><div className={`step-dot ${step >= 0 ? 'active' : ''}`}></div><div className={`step-line ${step >= 1 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 1 ? 'active' : ''}`}></div><div className={`step-line ${step >= 2 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 2 ? 'active' : ''}`}></div><div className={`step-line ${step >= 3 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 3 ? 'active' : ''}`}></div></div></div>
             <div className="web-content">
-                
-                {/* PASO 0: RUT */}
-                {step === 0 && (
-                    <>
-                        <div>
-                            <h2 className="web-title">Bienvenido</h2>
-                            <p className="web-subtitle">Agenda tu hora médica fácil y rápido.</p>
-                        </div>
-                        <div className="input-group">
-                            <label className="web-label">Ingresa tu RUT</label>
-                            <input 
-                                className="web-input" 
-                                placeholder="Ej: 12.345.678-9" 
-                                value={form.rut} 
-                                onChange={e=>setForm({...form, rut: formatRut(e.target.value)})}
-                                maxLength={12}
-                                autoFocus
-                            />
-                        </div>
-                        <div className="bottom-bar">
-                            <button className="btn-block-action" disabled={!form.rut || loading} onClick={handleRutSearch}>
-                                {loading ? 'Cargando...' : 'Comenzar'}
-                            </button>
-                        </div>
-                    </>
-                )}
-
-                {/* PASO 1: REGISTRO */}
-                {step === 1 && (
-                    <>
-                        <h2 className="web-title">Datos Personales</h2>
-                        <p className="web-subtitle">Es tu primera vez, crea tu ficha.</p>
-                        
-                        <div className="input-group">
-                            <label className="web-label">Nombre Completo</label>
-                            <input className="web-input" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} placeholder="Tu nombre"/>
-                        </div>
-                        <div className="input-group">
-                            <label className="web-label">Correo Electrónico</label>
-                            <input className="web-input" type="email" value={form.email} onChange={e=>setForm({...form, email:e.target.value})} placeholder="ejemplo@correo.com"/>
-                        </div>
-                        <div className="input-group">
-                            <label className="web-label">Teléfono Móvil</label>
-                            <input className="web-input" type="tel" value={form.telefono} onChange={e=>setForm({...form, telefono:e.target.value})} placeholder="+56 9..."/>
-                        </div>
-
-                        <div className="bottom-bar">
-                            <button className="btn-block-action" disabled={!form.nombre || !form.email} onClick={()=>setStep(2)}>
-                                Guardar Datos
-                            </button>
-                        </div>
-                    </>
-                )}
-
-                {/* PASO 2: SERVICIO */}
-                {step === 2 && (
-                    <>
-                        <h2 className="web-title">¿Qué necesitas?</h2>
-                        <p className="web-subtitle">Hola <b>{form.nombre.split(' ')[0]}</b>, selecciona tu atención.</p>
-
-                        <div className="input-group">
-                            <label className="web-label">Especialidad</label>
-                            <select className="web-select" value={form.especialidad} onChange={e=>setForm({...form, especialidad:e.target.value, tratamientoId:''})}>
-                                <option value="">Selecciona una opción...</option>
-                                {especialidades.map(e=><option key={e} value={e}>{e}</option>)}
-                            </select>
-                        </div>
-
-                        <div className="input-group">
-                            <label className="web-label">Tratamiento / Motivo</label>
-                            <select className="web-select" disabled={!form.especialidad} value={form.tratamientoId} onChange={e=>setForm({...form, tratamientoId:e.target.value})}>
-                                <option value="">Selecciona una opción...</option>
-                                {prestaciones.map(p=><option key={p.id} value={p.id}>{p.tratamiento}</option>)}
-                            </select>
-                        </div>
-
-                        <div className="bottom-bar">
-                            <button className="btn-block-action" disabled={!form.tratamientoId || loading} onClick={handleTreatmentConfirm}>
-                                {loading ? 'Buscando...' : 'Buscar Horas Disponibles'}
-                            </button>
-                        </div>
-                    </>
-                )}
-
-                {/* PASO 3: AGENDA */}
-                {step === 3 && (
-                    <>
-                        <h2 className="web-title">Elige tu Hora</h2>
-                        <p className="web-subtitle">Selecciona el día y horario que prefieras.</p>
-                        
-                        <div className="rs-date-tabs">
-                            {availableDates.map(dateStr => {
-                                const dateObj = new Date(dateStr + 'T00:00:00');
-                                const isSelected = selectedDateKey === dateStr;
-                                return (
-                                    <div key={dateStr} className={`rs-date-tab ${isSelected ? 'selected' : ''}`} onClick={() => setSelectedDateKey(dateStr)}>
-                                        <div className="rs-day-name">{dateObj.toLocaleDateString('es-CL', {weekday: 'short'})}</div>
-                                        <div className="rs-day-number">{dateObj.getDate()}</div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        <div className="rs-pro-list">
-                            {multiAgenda[selectedDateKey]?.map((entry) => (
-                                <div key={entry.profesional.id} className="rs-pro-card">
-                                    <div className="rs-pro-header">
-                                        <div className="rs-avatar-circle">{entry.profesional.nombreCompleto.charAt(0)}</div>
-                                        <div className="rs-pro-details">
-                                            <strong>{entry.profesional.nombreCompleto}</strong>
-                                            <span>{entry.profesional.especialidad}</span>
-                                        </div>
-                                    </div>
-                                    <div className="rs-slots-grid">
-                                        {entry.slots.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).map(slot => (
-                                            <button key={slot.id} className="rs-slot-btn" onClick={() => selectSlot(entry.profesional.id, slot.id)}>
-                                                {new Date(slot.fecha).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </>
-                )}
-
-                {/* PASO 4: CONFIRMAR DETALLADO */}
-                {step === 4 && (
-                    <>
-                        <h2 className="web-title">Confirmar Reserva</h2>
-                        <p className="web-subtitle">Revisa los detalles antes de finalizar.</p>
-
-                        <ReservaDetalleCard title="Resumen" showTotal={true} />
-
-                        <div className="bottom-bar">
-                            <button className="btn-block-action" disabled={loading} onClick={confirmar}>
-                                {loading ? 'Confirmando...' : 'Confirmar Reserva'}
-                            </button>
-                        </div>
-                    </>
-                )}
-
+                {step === 0 && ( <> <div><h2 className="web-title">Bienvenido</h2><p className="web-subtitle">Agenda tu hora médica.</p></div><div className="input-group"><label className="web-label">RUT</label><input className="web-input" placeholder="Ej: 12.345.678-9" value={form.rut} onChange={e=>setForm({...form, rut: formatRut(e.target.value)})} maxLength={12} autoFocus /></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.rut || loading} onClick={handleRutSearch}>{loading ? 'Cargando...' : 'Comenzar'}</button></div> </> )}
+                {step === 1 && ( <> <h2 className="web-title">Datos Personales</h2><div className="input-group"><label className="web-label">Nombre</label><input className="web-input" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} /></div><div className="input-group"><label className="web-label">Email</label><input className="web-input" value={form.email} onChange={e=>setForm({...form, email:e.target.value})} /></div><div className="input-group"><label className="web-label">Teléfono</label><input className="web-input" value={form.telefono} onChange={e=>setForm({...form, telefono:e.target.value})} /></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.nombre || !form.email} onClick={()=>setStep(2)}>Guardar Datos</button></div> </> )}
+                {step === 2 && ( <> <h2 className="web-title">¿Qué necesitas?</h2><div className="input-group"><label className="web-label">Especialidad</label><select className="web-select" value={form.especialidad} onChange={e=>setForm({...form, especialidad:e.target.value, tratamientoId:''})}><option value="">Selecciona...</option>{especialidades.map(e=><option key={e} value={e}>{e}</option>)}</select></div><div className="input-group"><label className="web-label">Tratamiento</label><select className="web-select" disabled={!form.especialidad} value={form.tratamientoId} onChange={e=>setForm({...form, tratamientoId:e.target.value})}><option value="">Selecciona...</option>{prestaciones.map(p=><option key={p.id} value={p.id}>{p.tratamiento}</option>)}</select></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.tratamientoId || loading} onClick={handleTreatmentConfirm}>{loading ? 'Buscando...' : 'Buscar Horas'}</button></div> </> )}
+                {step === 3 && ( <> <h2 className="web-title">Elige tu Hora</h2><div className="rs-date-tabs">{availableDates.map(dateStr => { const dateObj = new Date(dateStr + 'T00:00:00'); return ( <div key={dateStr} className={`rs-date-tab ${selectedDateKey === dateStr ? 'selected' : ''}`} onClick={() => setSelectedDateKey(dateStr)}><div className="rs-day-name">{dateObj.toLocaleDateString('es-CL', {weekday: 'short'})}</div><div className="rs-day-number">{dateObj.getDate()}</div></div> ); })}</div><div className="rs-pro-list">{multiAgenda[selectedDateKey]?.map((entry) => ( <div key={entry.profesional.id} className="rs-pro-card"><div className="rs-pro-header"><div className="rs-avatar-circle">{entry.profesional.nombreCompleto.charAt(0)}</div><div className="rs-pro-details"><strong>{entry.profesional.nombreCompleto}</strong><span>{entry.profesional.especialidad}</span></div></div><div className="rs-slots-grid">{entry.slots.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).map(slot => ( <button key={slot.id} className="rs-slot-btn" onClick={() => selectSlot(entry.profesional.id, slot.id)}>{new Date(slot.fecha).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}</button> ))}</div></div> ))}</div> </> )}
+                {step === 4 && ( <> <h2 className="web-title">Confirmar Reserva</h2><ReservaDetalleCard title="Resumen" showTotal={true} /><div className="bottom-bar"><button className="btn-block-action" disabled={loading} onClick={confirmar}>{loading ? 'Confirmando...' : 'Confirmar Reserva'}</button></div> </> )}
             </div>
         </div>
     );
