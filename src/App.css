@@ -320,6 +320,12 @@ html, body, #root {
 /* ============================================================
    8. AJUSTES MÓVILES FINALES
    ============================================================ */
+/* Clase Auxiliar para forzar ancho en scroll */
+.calendar-scroll-container {
+  display: flex; flex-direction: column; height: 100%;
+  min-width: 100%; 
+}
+
 @media (max-width: 768px) {
   .desktop-view-only { display: none; }
   .mobile-view-only { display: block; }
@@ -349,6 +355,9 @@ html, body, #root {
 
   .calendar-grid-wrapper { overflow-x: auto; }
   
-  /* FIX CALENDARIO MES MÓVIL: Forzar scroll horizontal */
-  .month-grid, .cal-header-row, .calendar-body { min-width: 700px; } 
+  /* FIX ALINEACIÓN MÓVIL: Forzamos el ancho en el contenedor interno */
+  .calendar-scroll-container { min-width: 700px; }
+  
+  /* Reset de anchos individuales */
+  .month-grid, .cal-header-row, .calendar-body { min-width: auto; }
 }
