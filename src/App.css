@@ -63,8 +63,7 @@ html, body, #root {
 .form-control {
   width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem;
   outline: none; background-color: #fff !important; color: #000 !important; 
-  -webkit-appearance: none; /* Propiedad antigua */
-  appearance: none; /* ESTÁNDAR AÑADIDO */
+  -webkit-appearance: none; appearance: none;
 }
 .form-control:focus { border-color: #000; box-shadow: 0 0 0 2px rgba(0,0,0,0.05); }
 
@@ -131,8 +130,7 @@ html, body, #root {
 .web-input, .web-select {
   width: 100%; padding: 16px; font-size: 1.05rem; border: 1px solid #e5e7eb; border-radius: 12px;
   background: #f9fafb; outline: none; transition: 0.2s; -webkit-appearance: none; color: #111;
-  -webkit-appearance: none; /* Propiedad antigua */
-  appearance: none; /* ESTÁNDAR AÑADIDO */
+  -webkit-appearance: none; appearance: none;
 }
 .web-input:focus, .web-select:focus { border-color: #000; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 
@@ -205,7 +203,6 @@ html, body, #root {
 .modal-content { background: #fff; padding: 25px; border-radius: 12px; width: 100%; max-width: 600px; max-height: 85vh; overflow-y: auto; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
 .modal-close { position: absolute; top: 15px; right: 15px; background: transparent; border: none; font-size: 1.8rem; cursor: pointer; color: #666; line-height: 1; }
 
-/* Popup de Detalle de Cita */
 .detail-popup-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
 .detail-popup-title { font-size: 1.4rem; font-weight: 700; margin: 0; color: #111; }
 .detail-popup-subtitle { font-size: 0.9rem; color: #666; margin-top: 5px; }
@@ -214,7 +211,6 @@ html, body, #root {
 .detail-value { flex: 1; color: #000; }
 .detail-actions { display: flex; gap: 10px; margin-top: 25px; justify-content: flex-end; }
 
-/* Dropdowns */
 .dropdown-wrapper { position: relative; width: 100%; margin-bottom: 5px; }
 .dropdown-header { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; background: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 1rem; user-select: none; }
 .dropdown-list { position: absolute; top: 105%; left: 0; right: 0; background: #fff; border: 1px solid #ccc; border-radius: 8px; max-height: 250px; overflow-y: auto; z-index: 2000; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 5px; }
@@ -266,9 +262,8 @@ html, body, #root {
   min-height: 500px; 
 }
 
-/* IMPORTANTE: GRID PARA EL CALENDARIO */
 .calendar-grid, .cal-header-row, .calendar-body {
-  display: grid; min-width: 100%; /* Ajuste a contenedor */
+  display: grid; min-width: 100%; 
 }
 
 .cal-header-row {
@@ -283,8 +278,7 @@ html, body, #root {
 
 .cal-time-col { background: #fff; border-right: 1px solid #e5e7eb; }
 .cal-time-label {
-  height: 60px; /* 1 hora = 60px */
-  display: flex; align-items: start; justify-content: center;
+  height: 60px; display: flex; align-items: start; justify-content: center;
   font-size: 0.75rem; color: #888; padding-top: 5px; border-bottom: 1px solid #f3f4f6;
 }
 
@@ -301,7 +295,6 @@ html, body, #root {
 }
 .cal-event:hover { z-index: 30; transform: scale(1.02); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
 
-/* Colores de Eventos */
 .evt-blue { background: #eff6ff; border-left: 3px solid #3b82f6; color: #1e3a8a; }
 .evt-green { background: #f0fdf4; border-left: 3px solid #22c55e; color: #14532d; opacity: 0.7; pointer-events: none; } 
 

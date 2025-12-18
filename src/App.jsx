@@ -175,7 +175,7 @@ function DashboardContent({ module, view }) {
 }
 
 // ------------------------------------------------------------------
-// AGENDA RESUMEN (CALENDARIO PRINCIPAL) - FIXED MONTH VIEW
+// AGENDA RESUMEN (CALENDARIO PRINCIPAL) - FIXED
 // ------------------------------------------------------------------
 function AgendaResumen({reservas, reload}){
     const [pros, setPros] = useState([]);
@@ -194,42 +194,44 @@ function AgendaResumen({reservas, reload}){
         setCurrentDate(d);
     };
 
-    // FIX ROBUSTO PARA VISTA MENSUAL (EVITA PANTALLA BLANCA)
+    // --- LÓGICA DE DÍAS CORREGIDA (EVITA PANTALLA BLANCA) ---
     const getDays = () => {
-        const days = [];
+        const d = [];
         const start = new Date(currentDate);
+        start.setHours(0,0,0,0);
 
         if (view === 'day') {
-            days.push(new Date(start));
+            d.push(new Date(start));
         } else if (view === 'week') {
-            const day = start.getDay();
+            const day = start.getDay(); 
             const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-            const monday = new Date(start); 
+            const monday = new Date(start);
             monday.setDate(diff);
             for (let i = 0; i < 7; i++) {
-                const d = new Date(monday);
-                d.setDate(monday.getDate() + i);
-                days.push(d);
+                const next = new Date(monday);
+                next.setDate(monday.getDate() + i);
+                d.push(next);
             }
         } else {
-            // Lógica Mes Segura
+            // Mes seguro
             const year = start.getFullYear();
             const month = start.getMonth();
-            const firstDayOfMonth = new Date(year, month, 1);
-            let dayOfWeek = firstDayOfMonth.getDay(); // 0 (Dom) - 6 (Sab)
-            if (dayOfWeek === 0) dayOfWeek = 7; // Ajuste Lunes=1
-
-            // Calcular inicio de la grilla (Lunes anterior)
-            const gridStartDate = new Date(firstDayOfMonth);
-            gridStartDate.setDate(firstDayOfMonth.getDate() - (dayOfWeek - 1));
-
+            const first = new Date(year, month, 1);
+            first.setHours(0,0,0,0);
+            
+            let dayOfWeek = first.getDay(); 
+            if (dayOfWeek === 0) dayOfWeek = 7; 
+            
+            const runner = new Date(first);
+            runner.setDate(first.getDate() - (dayOfWeek - 1));
+            
             for (let i = 0; i < 42; i++) {
-                const d = new Date(gridStartDate);
-                d.setDate(gridStartDate.getDate() + i);
-                days.push(d);
+                const next = new Date(runner);
+                next.setDate(runner.getDate() + i);
+                d.push(next);
             }
         }
-        return days;
+        return d;
     };
 
     const days = getDays();
@@ -272,12 +274,12 @@ function AgendaResumen({reservas, reload}){
                     <>
                         <div className="cal-header-row" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}>
                             <div className="cal-header-cell">Hora</div>
-                            {days.map(d=><div key={d} className={`cal-header-cell ${d.toDateString()===new Date().toDateString()?'today':''}`}>{d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric'})}</div>)}
+                            {days.map(d=><div key={d.getTime()} className={`cal-header-cell ${d.toDateString()===new Date().toDateString()?'today':''}`}>{d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric'})}</div>)}
                         </div>
                         <div className="calendar-body" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}>
                             <div>{Array.from({length:13},(_,i)=>i+8).map(h=><div key={h} className="cal-time-label">{h}:00</div>)}</div>
                             {days.map(d=>(
-                                <div key={d} className="cal-day-col">
+                                <div key={d.getTime()} className="cal-day-col">
                                     {filtered.filter(r=>{
                                         if(!r.fecha) return false;
                                         const rd=new Date(r.fecha); 
@@ -301,7 +303,7 @@ function AgendaResumen({reservas, reload}){
                         <div className="cal-header-row" style={{gridTemplateColumns: 'repeat(7, 1fr)'}}>{['L','M','X','J','V','S','D'].map(d=><div key={d} className="cal-header-cell">{d}</div>)}</div>
                         <div className="month-grid">
                             {days.map(d=>(
-                                <div key={d} className="month-cell">
+                                <div key={d.getTime()} className="month-cell">
                                     <div className="month-cell-header">{d.getDate()}</div>
                                     {(() => {
                                         const dailyEvents = filtered.filter(r=>{
@@ -357,7 +359,7 @@ function AgendaNuevaReserva({ reload, reservas }) {
     const [pros, setPros] = useState([]);
     const [horarios, setHorarios] = useState([]);
     const [form, setForm] = useState({ pacienteId: '', profesionalId: '', horarioId: '', motivo: '', especialidad: '', tratamientoId: '' });
-    const [editingId, setEditingId] = useState(null); // Para saber si editamos
+    const [editingId, setEditingId] = useState(null); 
 
     useEffect(() => { getPacientes().then(setPacientes); getProfesionales().then(setPros); }, []);
     const especialidades = [...new Set(TRATAMIENTOS.map(t => t.especialidad))];
@@ -366,43 +368,27 @@ function AgendaNuevaReserva({ reload, reservas }) {
     
     const handlePro = async (pid) => { setForm({ ...form, profesionalId: pid }); setHorarios([]); if (!pid) return; try { const h = await getHorariosByProfesional(pid); if (Array.isArray(h)) setHorarios(h); } catch(e) { setHorarios([]); } }
     
-    // CARGAR DATOS PARA MODIFICAR
     const handleEditReserva = async (r) => {
         setEditingId(r.id);
         const matchTrat = TRATAMIENTOS.find(t => r.motivo.includes(t.tratamiento));
-        // Precargar estados (Nota: esto es simplificado, en app real requeriría más lógica de dependencias)
         setForm({
-            pacienteId: r.pacienteId, // Asumiendo que viene del back
-            profesionalId: r.profesionalId,
-            horarioId: '', // Hay que reseleccionar horario
-            motivo: r.motivo,
+            pacienteId: r.pacienteId, profesionalId: r.profesionalId, horarioId: '', motivo: r.motivo,
             especialidad: matchTrat ? matchTrat.especialidad : '',
             tratamientoId: matchTrat ? matchTrat.id : ''
         });
-        // Cargar horarios del profesional
         const h = await getHorariosByProfesional(r.profesionalId);
         setHorarios(Array.isArray(h) ? h : []);
         window.scrollTo(0,0);
     };
 
     const save = async (e) => { 
-        e.preventDefault(); 
-        if (!form.tratamientoId) return alert("Faltan datos"); 
-        const trat = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId)); 
+        e.preventDefault(); if (!form.tratamientoId) return alert("Faltan datos"); const trat = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId)); 
         try { 
-            if(editingId) {
-                // Lógica de modificación: Reagendar
-                await reagendarReserva(editingId, form.horarioId, parseInt(form.profesionalId), trat.tratamiento);
-                alert('Reserva Modificada');
-                setEditingId(null);
-            } else {
-                await crearReserva({ pacienteId: parseInt(form.pacienteId), profesionalId: parseInt(form.profesionalId), horarioDisponibleId: form.horarioId, motivo: trat.tratamiento }); 
-                alert('Creada'); 
-            }
+            if(editingId) { await reagendarReserva(editingId, form.horarioId, parseInt(form.profesionalId), trat.tratamiento); alert('Reserva Modificada'); setEditingId(null); } 
+            else { await crearReserva({ pacienteId: parseInt(form.pacienteId), profesionalId: parseInt(form.profesionalId), horarioDisponibleId: form.horarioId, motivo: trat.tratamiento }); alert('Creada'); }
             reload(); 
         } catch (e) { alert('Error'); } 
     };
-    
     const deleteReserva = async(id) => { if(confirm('¿Eliminar?')){await cancelarReserva(id);reload()} };
 
     return (
@@ -523,25 +509,19 @@ function AgendaHorarios(){
     const save=async(e)=>{ e.preventDefault(); const payload = { ...form, fecha: fechaSel }; await fetch(`${API_BASE_URL}/configuracion`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); alert(`Guardado`); await loadConfigs(); };
     const borrarConfig = async (id) => { if(confirm("¿Eliminar?")) { await deleteConfiguracion(id); loadConfigs(); } }
     
-    // [FIX 1] SINCRONIZACIÓN BLOQUES + RESERVAS
+    // SINCRONIZACIÓN BLOQUES + RESERVAS
     const verCalendario = async (p) => {
         setSelectedProName(p.nombreCompleto);
         const reservas = await getReservasDetalle();
-        
-        // 1. Mapear Reservas (Azul)
         const misReservas = reservas.filter(r => r.profesionalId === p.id).map(r => {
             return { id: r.id, title: r.pacienteNombre, start: new Date(r.fecha), type: 'occupied' };
         });
-
-        // 2. Mapear Bloques Configurados (Verde)
-        // Nota: Esto es visual simplificado. En producción calcularías slots reales.
         const misBloques = configs.filter(c => c.profesional?.id === p.id).map((c, i) => {
             const start = new Date(`${c.fecha}T${c.horaInicio}`);
             const end = new Date(`${c.fecha}T${c.horaFin}`);
             const duration = (end - start) / 60000;
             return { id: `block-${i}`, title: 'Disponible', start: start, duration: duration, type: 'available' };
         });
-
         setEvents([...misBloques, ...misReservas]);
         setShowModal(true);
     };
@@ -583,19 +563,10 @@ function AgendaHorarios(){
     )
 }
 
-// [MODIFICADO] REPORTE FINANCIERO DETALLADO
+// [MODIFICADO] REPORTE FINANCIERO CON TABLA DETALLADA
 function FinanzasReporte({total,count,reservas}){ 
-    // Agrupar por Profesional
-    const statsPro = reservas.reduce((acc, curr) => {
-        acc[curr.profesionalNombre] = (acc[curr.profesionalNombre] || 0) + 1;
-        return acc;
-    }, {});
-
-    // Agrupar por Tratamiento
-    const statsTrat = reservas.reduce((acc, curr) => {
-        acc[curr.motivo] = (acc[curr.motivo] || 0) + 1;
-        return acc;
-    }, {});
+    const statsPro = reservas.reduce((acc, curr) => { acc[curr.profesionalNombre] = (acc[curr.profesionalNombre] || 0) + 1; return acc; }, {});
+    const statsTrat = reservas.reduce((acc, curr) => { acc[curr.motivo] = (acc[curr.motivo] || 0) + 1; return acc; }, {});
 
     return ( 
         <div>
@@ -606,20 +577,8 @@ function FinanzasReporte({total,count,reservas}){
             </div>
 
             <div className="input-row finance-section">
-                <div className="pro-card">
-                    <h3>Atenciones por Profesional</h3>
-                    <table className="finance-table">
-                        <thead><tr><th>Profesional</th><th>Citas</th></tr></thead>
-                        <tbody>{Object.entries(statsPro).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody>
-                    </table>
-                </div>
-                <div className="pro-card">
-                    <h3>Agendas por Tratamiento</h3>
-                    <table className="finance-table">
-                        <thead><tr><th>Tratamiento</th><th>Cantidad</th></tr></thead>
-                        <tbody>{Object.entries(statsTrat).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody>
-                    </table>
-                </div>
+                <div className="pro-card"><h3>Atenciones por Profesional</h3><table className="finance-table"><thead><tr><th>Profesional</th><th>Citas</th></tr></thead><tbody>{Object.entries(statsPro).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table></div>
+                <div className="pro-card"><h3>Agendas por Tratamiento</h3><table className="finance-table"><thead><tr><th>Tratamiento</th><th>Cantidad</th></tr></thead><tbody>{Object.entries(statsTrat).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table></div>
             </div>
 
             {/* TABLA DETALLADA DE TRANSACCIONES */}
