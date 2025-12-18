@@ -62,7 +62,9 @@ html, body, #root {
 .form-label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; color: #444; }
 .form-control {
   width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem;
-  outline: none; background-color: #fff !important; color: #000 !important; -webkit-appearance: none;
+  outline: none; background-color: #fff !important; color: #000 !important; 
+  -webkit-appearance: none; /* Propiedad antigua */
+  appearance: none; /* ESTÁNDAR AÑADIDO */
 }
 .form-control:focus { border-color: #000; box-shadow: 0 0 0 2px rgba(0,0,0,0.05); }
 
@@ -129,6 +131,8 @@ html, body, #root {
 .web-input, .web-select {
   width: 100%; padding: 16px; font-size: 1.05rem; border: 1px solid #e5e7eb; border-radius: 12px;
   background: #f9fafb; outline: none; transition: 0.2s; -webkit-appearance: none; color: #111;
+  -webkit-appearance: none; /* Propiedad antigua */
+  appearance: none; /* ESTÁNDAR AÑADIDO */
 }
 .web-input:focus, .web-select:focus { border-color: #000; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 
@@ -264,7 +268,7 @@ html, body, #root {
 
 /* IMPORTANTE: GRID PARA EL CALENDARIO */
 .calendar-grid, .cal-header-row, .calendar-body {
-  display: grid; min-width: 100%; 
+  display: grid; min-width: 100%; /* Ajuste a contenedor */
 }
 
 .cal-header-row {
