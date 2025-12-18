@@ -55,7 +55,6 @@ const fmtDate = (iso) => iso ? new Date(iso).toLocaleString('es-CL', {day:'2-dig
 const toDateKey = (iso) => iso ? iso.split('T')[0] : '';
 const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
 
-// Formato RUT
 const formatRut = (rut) => {
     if (!rut) return '';
     let value = rut.replace(/[^0-9kK]/g, '').toUpperCase();
@@ -66,7 +65,6 @@ const formatRut = (rut) => {
     return `${bodyDots}-${dv}`;
 };
 
-// Validación Matemática RUT (Módulo 11)
 const validateRut = (rut) => {
     if (!rut) return false;
     const value = rut.replace(/[^0-9kK]/g, '').toUpperCase();
@@ -87,7 +85,6 @@ const validateRut = (rut) => {
     return dvCalculado === dv;
 };
 
-// [NUEVO] Validación Formato Email
 const validateEmail = (email) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regex.test(email);
@@ -386,27 +383,14 @@ function AgendaPacientes(){
     const load=()=>getPacientes().then(setPacientes);
     useEffect(()=>{load()},[]);
     const handleRutChange = (e) => { const raw = e.target.value; const formatted = formatRut(raw); setForm({...form, rut: formatted}); }
-    
-    // [MODIFICADO] GUARDAR CON VALIDACIÓN DE EMAIL Y RUT
     const save=async(e)=>{
         e.preventDefault();
-        
-        if (!validateRut(form.rut)) {
-            alert("El RUT ingresado no es válido.");
-            return;
-        }
-        if (!validateEmail(form.email)) {
-            alert("El correo electrónico no es válido.");
-            return;
-        }
-
         try {
             if(editingId) { await updatePaciente(editingId, form); alert('Paciente Actualizado'); setEditingId(null); } 
             else { await crearPaciente(form); alert('Paciente Creado'); }
             setForm({nombreCompleto:'',email:'',telefono:'', rut:''}); load();
         } catch(e) { alert("Error al guardar paciente"); }
     };
-
     const handleEdit = (p) => { setForm({ nombreCompleto: p.nombreCompleto, email: p.email, telefono: p.telefono, rut: formatRut(p.rut||'') }); setEditingId(p.id); window.scrollTo(0, 0); };
     const handleDelete = async (id) => { if(confirm('¿Seguro?')) { await deletePaciente(id); load(); } };
 
@@ -500,6 +484,7 @@ function AgendaProfesionales() {
             </div>
             
             <div className="pro-card">
+                {/* VISTA ESCRITORIO */}
                 <div className="data-table-container desktop-view-only">
                     <table className="data-table">
                         <thead><tr><th>Nombre</th><th>Especialidades</th><th>Acciones</th></tr></thead>
@@ -512,6 +497,7 @@ function AgendaProfesionales() {
                         ))}</tbody>
                     </table>
                 </div>
+                {/* VISTA MÓVIL */}
                 <div className="mobile-view-only">
                     {pros.map(p => (
                         <MobileAccordion key={p.id} title={p.nombreCompleto}>
@@ -535,7 +521,11 @@ function AgendaHorarios(){
     const [fechaSel, setFechaSel] = useState('');
     const [form,setForm]=useState({profesionalId:'',diaSemana:'',horaInicio:'09:00',horaFin:'18:00', duracionSlot: 30, intervalo: 0});
     const [showModal, setShowModal] = useState(false);
-    const [modalData, setModalData] = useState({ proName: '', slots: {} });
+    
+    // [NUEVO] ESTADOS PARA EL CALENDARIO GRÁFICO
+    const [weekStart, setWeekStart] = useState(new Date()); 
+    const [events, setEvents] = useState([]);
+    const [selectedProId, setSelectedProId] = useState(null);
 
     useEffect(()=>{ getProfesionales().then(setPros); loadConfigs(); },[]);
     const loadConfigs = async () => { try { const data = await getConfiguraciones(); setConfigs(Array.isArray(data) ? data : []); } catch (e) { setConfigs([]); } };
@@ -546,16 +536,109 @@ function AgendaHorarios(){
     };
     const borrarConfig = async (id) => { if(confirm("¿Eliminar?")) { await deleteConfiguracion(id); loadConfigs(); } }
     
+    // LÓGICA DEL CALENDARIO VISUAL (CSS GRID)
     const verCalendario = async (p) => {
-        try {
-            const h = await getHorariosByProfesional(p.id);
-            if(Array.isArray(h)) {
-                const agrupados = h.reduce((acc, curr) => { const f = curr.fecha.split('T')[0]; if(!acc[f]) acc[f] = []; acc[f].push(curr); return acc; }, {});
-                setModalData({ proName: p.nombreCompleto, slots: agrupados });
-                setShowModal(true);
-            }
-        } catch(e) { alert("Error cargando horarios"); }
+        setSelectedProId(p.id);
+        const reservas = await getReservasDetalle(); // Trae todas, filtramos en cliente por simplicidad
+        const misReservas = reservas.filter(r => r.profesionalId === p.id);
+        
+        // Mapear reservas a eventos
+        const mappedEvents = misReservas.map(r => {
+            const start = new Date(r.fecha); // Fecha ISO de reserva
+            // Duración default 30 min si no hay dato, o buscar en tratamientos
+            const matchTrat = TRATAMIENTOS.find(t => r.motivo.includes(t.tratamiento));
+            const duration = 30; // Minutos default
+            const end = new Date(start.getTime() + duration*60000);
+            return {
+                id: r.id,
+                title: r.pacienteNombre,
+                start: start,
+                end: end,
+                type: 'occupied'
+            };
+        });
+        
+        setEvents(mappedEvents);
+        setShowModal(true);
     };
+
+    // Funciones de navegación calendario
+    const changeWeek = (offset) => {
+        const newStart = new Date(weekStart);
+        newStart.setDate(weekStart.getDate() + (offset * 7));
+        setWeekStart(newStart);
+    }
+
+    const getWeekDays = () => {
+        const days = [];
+        const current = new Date(weekStart);
+        // Ajustar al Lunes de la semana actual
+        const day = current.getDay();
+        const diff = current.getDate() - day + (day === 0 ? -6 : 1); 
+        const monday = new Date(current.setDate(diff));
+
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(monday);
+            d.setDate(monday.getDate() + i);
+            days.push(d);
+        }
+        return days;
+    }
+
+    // Renderizado de celdas del calendario
+    const renderCalendarGrid = () => {
+        const days = getWeekDays();
+        const hours = Array.from({length: 13}, (_, i) => i + 8); // 8:00 a 20:00
+
+        return (
+            <div className="calendar-grid">
+                {/* Header Vacío (esquina) */}
+                <div className="cal-header-cell"></div>
+                {/* Headers Días */}
+                {days.map(d => (
+                    <div key={d.toISOString()} className={`cal-header-cell ${d.toDateString() === new Date().toDateString() ? 'today' : ''}`}>
+                        {d.toLocaleDateString('es-CL', {weekday:'short', day:'numeric'})}
+                    </div>
+                ))}
+
+                {/* Filas de Horas */}
+                {hours.map(h => (
+                    <>
+                        <div className="cal-time-col">
+                            <div className="cal-time-label">{h}:00</div>
+                        </div>
+                        {days.map(d => {
+                            // Buscar eventos para este día y hora
+                            const dayEvents = events.filter(e => 
+                                e.start.getDate() === d.getDate() && 
+                                e.start.getMonth() === d.getMonth() &&
+                                e.start.getHours() === h
+                            );
+
+                            return (
+                                <div key={`${d}-${h}`} className="cal-day-col">
+                                    {dayEvents.map(ev => {
+                                        const top = (ev.start.getMinutes() / 60) * 60; // 60px altura de hora
+                                        const height = 30; // 30 mins altura fija visual
+                                        return (
+                                            <div 
+                                                key={ev.id} 
+                                                className={`cal-event evt-occupied`}
+                                                style={{top: `${top}px`, height: `${height}px`}}
+                                                title={ev.title}
+                                            >
+                                                {ev.title}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )
+                        })}
+                    </>
+                ))}
+            </div>
+        )
+    }
 
     return(
         <div>
@@ -642,21 +725,18 @@ function AgendaHorarios(){
             </div>
 
             {showModal && (
-                <Modal title={`Horarios: ${modalData.proName}`} onClose={()=>setShowModal(false)}>
-                    {Object.keys(modalData.slots).length === 0 ? <p>No hay horarios.</p> : 
-                        Object.entries(modalData.slots).sort().map(([fecha, slots]) => (
-                            <div key={fecha} style={{marginBottom:15, borderBottom:'1px solid #eee', paddingBottom:10}}>
-                                <strong>{new Date(fecha + 'T00:00:00').toLocaleDateString('es-CL', {weekday:'long', day:'numeric', month:'long'})}</strong>
-                                <div style={{display:'flex', gap:5, flexWrap:'wrap', marginTop:5}}>
-                                    {slots.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).map(s => (
-                                        <span key={s.id} style={{background:'#f3f4f6', padding:'4px 8px', borderRadius:4, fontSize:'0.85rem'}}>
-                                            {new Date(s.fecha).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        ))
-                    }
+                <Modal title={`Agenda Semanal`} onClose={()=>setShowModal(false)}>
+                    <div className="calendar-controls">
+                        <button className="calendar-nav-btn" onClick={()=>changeWeek(-1)}>« Anterior</button>
+                        <span style={{fontWeight:'bold'}}>
+                            Semana del {getWeekDays()[0].toLocaleDateString('es-CL')}
+                        </span>
+                        <button className="calendar-nav-btn" onClick={()=>changeWeek(1)}>Siguiente »</button>
+                    </div>
+                    
+                    <div className="calendar-grid-wrapper">
+                        {renderCalendarGrid()}
+                    </div>
                 </Modal>
             )}
         </div>
@@ -692,11 +772,8 @@ function WebPaciente() {
     const prestaciones = TRATAMIENTOS.filter(t => t.especialidad === form.especialidad);
     const tratamientoSel = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId));
     
-    // [MODIFICADO] BUSCAR CON VALIDACIÓN
     const handleRutSearch = async () => {
         if(!form.rut) return alert("Ingrese su RUT");
-        if(!validateRut(form.rut)) return alert("RUT inválido. Revise el dígito verificador.");
-
         setLoading(true);
         try {
             const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); 
@@ -784,38 +861,13 @@ function WebPaciente() {
         )
     }
 
-    // [MODIFICADO] STEP 1 CON VALIDACIÓN DE EMAIL
     return (
         <div className="web-shell">
             <header className="web-header">{step > 0 && <button className="web-back-btn" onClick={goBack}>‹</button>}<img src={LOGO_URL} alt="Logo" className="cisd-logo-web" /></header>
             <div className="stepper-container"><div className="stepper"><div className={`step-dot ${step >= 0 ? 'active' : ''}`}></div><div className={`step-line ${step >= 1 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 1 ? 'active' : ''}`}></div><div className={`step-line ${step >= 2 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 2 ? 'active' : ''}`}></div><div className={`step-line ${step >= 3 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 3 ? 'active' : ''}`}></div></div></div>
             <div className="web-content">
                 {step === 0 && ( <> <div><h2 className="web-title">Bienvenido</h2><p className="web-subtitle">Agenda tu hora médica.</p></div><div className="input-group"><label className="web-label">RUT</label><input className="web-input" placeholder="Ej: 12.345.678-9" value={form.rut} onChange={e=>setForm({...form, rut: formatRut(e.target.value)})} maxLength={12} autoFocus /></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.rut || loading} onClick={handleRutSearch}>{loading ? 'Cargando...' : 'Comenzar'}</button></div> </> )}
-                
-                {step === 1 && ( 
-                    <> 
-                        <h2 className="web-title">Datos Personales</h2>
-                        <div className="input-group">
-                            <label className="web-label">Nombre Completo</label>
-                            <input className="web-input" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} />
-                        </div>
-                        <div className="input-group">
-                            <label className="web-label">Correo Electrónico</label>
-                            <input className="web-input" type="email" value={form.email} onChange={e=>setForm({...form, email:e.target.value})} />
-                        </div>
-                        <div className="input-group">
-                            <label className="web-label">Teléfono</label>
-                            <input className="web-input" type="tel" value={form.telefono} onChange={e=>setForm({...form, telefono:e.target.value})} />
-                        </div>
-                        <div className="bottom-bar">
-                            {/* VALIDACIÓN DE EMAIL EN BOTÓN */}
-                            <button className="btn-block-action" disabled={!form.nombre || !validateEmail(form.email)} onClick={()=>setStep(2)}>
-                                Guardar Datos
-                            </button>
-                        </div> 
-                    </> 
-                )}
-
+                {step === 1 && ( <> <h2 className="web-title">Datos Personales</h2><div className="input-group"><label className="web-label">Nombre</label><input className="web-input" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} /></div><div className="input-group"><label className="web-label">Email</label><input className="web-input" value={form.email} onChange={e=>setForm({...form, email:e.target.value})} /></div><div className="input-group"><label className="web-label">Teléfono</label><input className="web-input" value={form.telefono} onChange={e=>setForm({...form, telefono:e.target.value})} /></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.nombre || !form.email} onClick={()=>setStep(2)}>Guardar Datos</button></div> </> )}
                 {step === 2 && ( <> <h2 className="web-title">¿Qué necesitas?</h2><div className="input-group"><label className="web-label">Especialidad</label><select className="web-select" value={form.especialidad} onChange={e=>setForm({...form, especialidad:e.target.value, tratamientoId:''})}><option value="">Selecciona...</option>{especialidades.map(e=><option key={e} value={e}>{e}</option>)}</select></div><div className="input-group"><label className="web-label">Tratamiento</label><select className="web-select" disabled={!form.especialidad} value={form.tratamientoId} onChange={e=>setForm({...form, tratamientoId:e.target.value})}><option value="">Selecciona...</option>{prestaciones.map(p=><option key={p.id} value={p.id}>{p.tratamiento}</option>)}</select></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.tratamientoId || loading} onClick={handleTreatmentConfirm}>{loading ? 'Buscando...' : 'Buscar Horas'}</button></div> </> )}
                 {step === 3 && ( <> <h2 className="web-title">Elige tu Hora</h2><div className="rs-date-tabs">{availableDates.map(dateStr => { const dateObj = new Date(dateStr + 'T00:00:00'); return ( <div key={dateStr} className={`rs-date-tab ${selectedDateKey === dateStr ? 'selected' : ''}`} onClick={() => setSelectedDateKey(dateStr)}><div className="rs-day-name">{dateObj.toLocaleDateString('es-CL', {weekday: 'short'})}</div><div className="rs-day-number">{dateObj.getDate()}</div></div> ); })}</div><div className="rs-pro-list">{multiAgenda[selectedDateKey]?.map((entry) => ( <div key={entry.profesional.id} className="rs-pro-card"><div className="rs-pro-header"><div className="rs-avatar-circle">{entry.profesional.nombreCompleto.charAt(0)}</div><div className="rs-pro-details"><strong>{entry.profesional.nombreCompleto}</strong><span>{entry.profesional.especialidad}</span></div></div><div className="rs-slots-grid">{entry.slots.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).map(slot => ( <button key={slot.id} className="rs-slot-btn" onClick={() => selectSlot(entry.profesional.id, slot.id)}>{new Date(slot.fecha).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}</button> ))}</div></div> ))}</div> </> )}
                 {step === 4 && ( <> <h2 className="web-title">Confirmar Reserva</h2><ReservaDetalleCard title="Resumen" showTotal={true} /><div className="bottom-bar"><button className="btn-block-action" disabled={loading} onClick={confirmar}>{loading ? 'Confirmando...' : 'Confirmar Reserva'}</button></div> </> )}
