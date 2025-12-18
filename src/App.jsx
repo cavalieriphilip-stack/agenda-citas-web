@@ -225,7 +225,7 @@ function AgendaResumen({reservas, reload}){
     const handleEventClick = (r) => {
         const match = TRATAMIENTOS.find(t => r.motivo.includes(t.tratamiento));
         setSelectedEvent({ ...r, fullTrat: match });
-        setEditId(null); // Asegurar que no abra en modo edición directamente
+        setEditId(null); 
     };
 
     const deleteReserva = async(id) => { if(confirm('¿Eliminar?')){await cancelarReserva(id);reload(); setSelectedEvent(null);} };
@@ -546,8 +546,6 @@ function AgendaHorarios(){
     const [fechaSel, setFechaSel] = useState('');
     const [form,setForm]=useState({profesionalId:'',diaSemana:'',horaInicio:'09:00',horaFin:'18:00', duracionSlot: 30, intervalo: 0});
     const [showModal, setShowModal] = useState(false);
-    
-    // ESTADOS PARA EL CALENDARIO Y SINCRONIZACIÓN DE BLOQUES
     const [events, setEvents] = useState([]);
     const [selectedProName, setSelectedProName] = useState('');
 
@@ -610,7 +608,7 @@ function AgendaHorarios(){
     )
 }
 
-// [MODIFICADO] REPORTE FINANCIERO CON TABLA DETALLADA
+// [MODIFICADO] REPORTE FINANCIERO ADAPTADO A MÓVIL
 function FinanzasReporte({total,count,reservas}){ 
     const statsPro = reservas.reduce((acc, curr) => { acc[curr.profesionalNombre] = (acc[curr.profesionalNombre] || 0) + 1; return acc; }, {});
     const statsTrat = reservas.reduce((acc, curr) => { acc[curr.motivo] = (acc[curr.motivo] || 0) + 1; return acc; }, {});
@@ -624,8 +622,31 @@ function FinanzasReporte({total,count,reservas}){
             </div>
 
             <div className="input-row finance-section">
-                <div className="pro-card"><h3>Atenciones por Profesional</h3><table className="finance-table"><thead><tr><th>Profesional</th><th>Citas</th></tr></thead><tbody>{Object.entries(statsPro).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table></div>
-                <div className="pro-card"><h3>Agendas por Tratamiento</h3><table className="finance-table"><thead><tr><th>Tratamiento</th><th>Cantidad</th></tr></thead><tbody>{Object.entries(statsTrat).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table></div>
+                {/* TABLA PROFESIONALES (RESPONSIVE) */}
+                <div className="pro-card">
+                    <h3>Atenciones por Profesional</h3>
+                    <div className="data-table-container desktop-view-only">
+                        <table className="finance-table"><thead><tr><th>Profesional</th><th>Citas</th></tr></thead><tbody>{Object.entries(statsPro).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table>
+                    </div>
+                    <div className="mobile-view-only">
+                        {Object.entries(statsPro).map(([k,v]) => (
+                            <div key={k} style={{display:'flex',justifyContent:'space-between', padding:'10px 0', borderBottom:'1px solid #eee'}}><span>{k}</span><strong>{v}</strong></div>
+                        ))}
+                    </div>
+                </div>
+                
+                {/* TABLA TRATAMIENTOS (RESPONSIVE) */}
+                <div className="pro-card">
+                    <h3>Agendas por Tratamiento</h3>
+                    <div className="data-table-container desktop-view-only">
+                        <table className="finance-table"><thead><tr><th>Tratamiento</th><th>Cantidad</th></tr></thead><tbody>{Object.entries(statsTrat).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table>
+                    </div>
+                    <div className="mobile-view-only">
+                        {Object.entries(statsTrat).map(([k,v]) => (
+                            <div key={k} style={{display:'flex',justifyContent:'space-between', padding:'10px 0', borderBottom:'1px solid #eee'}}><span>{k}</span><strong>{v}</strong></div>
+                        ))}
+                    </div>
+                </div>
             </div>
 
             {/* TABLA DETALLADA DE TRANSACCIONES */}
