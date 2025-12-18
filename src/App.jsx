@@ -8,7 +8,7 @@ import {
     buscarPacientePorRut, updateProfesional, deleteProfesional
 } from './api';
 
-// --- DATA MAESTRA ACTUALIZADA ---
+// --- DATA MAESTRA ---
 const TRATAMIENTOS = [
     { id: 1, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto online', valor: 20000, codigo: '1203001', descripcion: 'Evaluación completa por videollamada.' },
     { id: 2, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto presencial', valor: 35000, codigo: '1203002', descripcion: 'Evaluación presencial en consulta.' },
@@ -55,6 +55,7 @@ const fmtDate = (iso) => iso ? new Date(iso).toLocaleString('es-CL', {day:'2-dig
 const toDateKey = (iso) => iso ? iso.split('T')[0] : '';
 const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
 
+// Formato visual (puntos y guión)
 const formatRut = (rut) => {
     if (!rut) return '';
     let value = rut.replace(/[^0-9kK]/g, '').toUpperCase();
@@ -63,6 +64,36 @@ const formatRut = (rut) => {
     const dv = value.slice(-1);
     const bodyDots = body.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     return `${bodyDots}-${dv}`;
+};
+
+// [NUEVO] VALIDACIÓN MATEMÁTICA REAL DE RUT (Módulo 11)
+const validateRut = (rut) => {
+    if (!rut) return false;
+    // 1. Limpiar el RUT
+    const value = rut.replace(/[^0-9kK]/g, '').toUpperCase();
+    if (value.length < 2) return false;
+
+    // 2. Separar cuerpo y dígito verificador
+    const body = value.slice(0, -1);
+    const dv = value.slice(-1);
+
+    // 3. Calcular dígito esperado
+    let suma = 0;
+    let multiplo = 2;
+
+    for (let i = body.length - 1; i >= 0; i--) {
+        suma += multiplo * parseInt(body.charAt(i));
+        multiplo = multiplo < 7 ? multiplo + 1 : 2;
+    }
+
+    const dvEsperado = 11 - (suma % 11);
+    let dvCalculado = '';
+    if (dvEsperado === 11) dvCalculado = '0';
+    else if (dvEsperado === 10) dvCalculado = 'K';
+    else dvCalculado = dvEsperado.toString();
+
+    // 4. Comparar
+    return dvCalculado === dv;
 };
 
 // --- COMPONENTES UI ---
@@ -287,7 +318,6 @@ function AgendaResumen({reservas, reload}){
 
     const deleteReserva = async(id) => { if(confirm('¿Eliminar?')){await cancelarReserva(id);reload()} };
 
-    // Formulario reutilizable
     const EditForm = ({ r }) => (
         <div style={{padding:15, display:'flex', flexDirection:'column', gap:10}}>
             <strong>Reprogramar Cita</strong>
@@ -360,14 +390,23 @@ function AgendaPacientes(){
     const load=()=>getPacientes().then(setPacientes);
     useEffect(()=>{load()},[]);
     const handleRutChange = (e) => { const raw = e.target.value; const formatted = formatRut(raw); setForm({...form, rut: formatted}); }
+    
+    // GUARDAR PACIENTE (CON VALIDACIÓN DE RUT)
     const save=async(e)=>{
         e.preventDefault();
+        // Validar RUT antes de enviar
+        if (!validateRut(form.rut)) {
+            alert("El RUT ingresado no es válido.");
+            return;
+        }
+
         try {
             if(editingId) { await updatePaciente(editingId, form); alert('Paciente Actualizado'); setEditingId(null); } 
             else { await crearPaciente(form); alert('Paciente Creado'); }
             setForm({nombreCompleto:'',email:'',telefono:'', rut:''}); load();
         } catch(e) { alert("Error al guardar paciente"); }
     };
+
     const handleEdit = (p) => { setForm({ nombreCompleto: p.nombreCompleto, email: p.email, telefono: p.telefono, rut: formatRut(p.rut||'') }); setEditingId(p.id); window.scrollTo(0, 0); };
     const handleDelete = async (id) => { if(confirm('¿Seguro?')) { await deletePaciente(id); load(); } };
 
@@ -461,6 +500,7 @@ function AgendaProfesionales() {
             </div>
             
             <div className="pro-card">
+                {/* VISTA ESCRITORIO */}
                 <div className="data-table-container desktop-view-only">
                     <table className="data-table">
                         <thead><tr><th>Nombre</th><th>Especialidades</th><th>Acciones</th></tr></thead>
@@ -473,6 +513,7 @@ function AgendaProfesionales() {
                         ))}</tbody>
                     </table>
                 </div>
+                {/* VISTA MÓVIL */}
                 <div className="mobile-view-only">
                     {pros.map(p => (
                         <MobileAccordion key={p.id} title={p.nombreCompleto}>
@@ -647,8 +688,6 @@ function WebPaciente() {
     const [loading, setLoading] = useState(false);
     const [bookingSuccess, setBookingSuccess] = useState(false);
     const [pacienteId, setPacienteId] = useState(null);
-    
-    // Estados agenda
     const [multiAgenda, setMultiAgenda] = useState({}); 
     const [selectedDateKey, setSelectedDateKey] = useState(null); 
     const [availableDates, setAvailableDates] = useState([]); 
@@ -659,8 +698,16 @@ function WebPaciente() {
     const prestaciones = TRATAMIENTOS.filter(t => t.especialidad === form.especialidad);
     const tratamientoSel = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId));
     
+    // --- LÓGICA DE BÚSQUEDA ---
     const handleRutSearch = async () => {
         if(!form.rut) return alert("Ingrese su RUT");
+        
+        // VALIDAR RUT ANTES DE BUSCAR
+        if (!validateRut(form.rut)) {
+            alert("RUT inválido. Revise el dígito verificador.");
+            return;
+        }
+
         setLoading(true);
         try {
             const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); 
