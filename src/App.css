@@ -76,7 +76,7 @@ html, body, #root {
 .btn-edit { background: #f0f0f0; color: #333; }
 .btn-danger { background: #fee2e2; color: #d00; }
 
-.data-table-container { width: 100%; overflow-x: auto; }
+.data-table-container { width: 100%; overflow-x: auto; margin-bottom: 20px; }
 .data-table { width: 100%; border-collapse: collapse; min-width: 600px; }
 .data-table th { text-align: left; padding: 12px; background: #f9f9f9; border-bottom: 2px solid #eee; font-size: 0.85rem; text-transform: uppercase; color: #666; }
 .data-table td { padding: 12px; border-bottom: 1px solid #eee; color: #333; }
@@ -248,7 +248,7 @@ html, body, #root {
 .calendar-controls {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #eee;
-  flex-wrap: wrap; gap: 20px; /* AUMENTADO ESPACIO */
+  flex-wrap: wrap; gap: 20px; 
 }
 .cal-filter-group { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 .calendar-nav-btn {
@@ -264,7 +264,7 @@ html, body, #root {
 
 /* IMPORTANTE: GRID PARA EL CALENDARIO */
 .calendar-grid, .cal-header-row, .calendar-body {
-  display: grid; min-width: 100%; /* Ajuste a contenedor */
+  display: grid; min-width: 100%; 
 }
 
 .cal-header-row {

@@ -194,23 +194,42 @@ function AgendaResumen({reservas, reload}){
         setCurrentDate(d);
     };
 
-    // FIX PARA VISTA MENSUAL
+    // FIX ROBUSTO PARA VISTA MENSUAL (EVITA PANTALLA BLANCA)
     const getDays = () => {
-        const d = [], start = new Date(currentDate);
-        if(view==='day'){ d.push(new Date(start)); }
-        else if(view==='week'){ 
-            const day = start.getDay(), diff = start.getDate() - day + (day===0?-6:1);
-            const mon = new Date(start.setDate(diff));
-            for(let i=0;i<7;i++){ const x = new Date(mon); x.setDate(mon.getDate()+i); d.push(x); }
+        const days = [];
+        const start = new Date(currentDate);
+
+        if (view === 'day') {
+            days.push(new Date(start));
+        } else if (view === 'week') {
+            const day = start.getDay();
+            const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+            const monday = new Date(start); 
+            monday.setDate(diff);
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(monday);
+                d.setDate(monday.getDate() + i);
+                days.push(d);
+            }
         } else {
-            // Mes completo + relleno
-            const y = start.getFullYear(), m = start.getMonth();
-            const first = new Date(y, m, 1);
-            let sDay = first.getDay(); if(sDay===0) sDay=7; // Lunes = 1
-            const run = new Date(first); run.setDate(run.getDate() - (sDay - 1));
-            for(let i=0;i<42;i++){ d.push(new Date(run)); run.setDate(run.getDate()+1); }
+            // Lógica Mes Segura
+            const year = start.getFullYear();
+            const month = start.getMonth();
+            const firstDayOfMonth = new Date(year, month, 1);
+            let dayOfWeek = firstDayOfMonth.getDay(); // 0 (Dom) - 6 (Sab)
+            if (dayOfWeek === 0) dayOfWeek = 7; // Ajuste Lunes=1
+
+            // Calcular inicio de la grilla (Lunes anterior)
+            const gridStartDate = new Date(firstDayOfMonth);
+            gridStartDate.setDate(firstDayOfMonth.getDate() - (dayOfWeek - 1));
+
+            for (let i = 0; i < 42; i++) {
+                const d = new Date(gridStartDate);
+                d.setDate(gridStartDate.getDate() + i);
+                days.push(d);
+            }
         }
-        return d;
+        return days;
     };
 
     const days = getDays();
@@ -564,7 +583,7 @@ function AgendaHorarios(){
     )
 }
 
-// [NUEVO] REPORTE FINANCIERO DETALLADO
+// [MODIFICADO] REPORTE FINANCIERO DETALLADO
 function FinanzasReporte({total,count,reservas}){ 
     // Agrupar por Profesional
     const statsPro = reservas.reduce((acc, curr) => {
@@ -600,6 +619,41 @@ function FinanzasReporte({total,count,reservas}){
                         <thead><tr><th>Tratamiento</th><th>Cantidad</th></tr></thead>
                         <tbody>{Object.entries(statsTrat).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody>
                     </table>
+                </div>
+            </div>
+
+            {/* TABLA DETALLADA DE TRANSACCIONES */}
+            <div className="pro-card" style={{marginTop: 30}}>
+                <h3>Resumen Financiero por Cliente</h3>
+                <div className="data-table-container desktop-view-only">
+                    <table className="data-table">
+                        <thead><tr><th>Fecha</th><th>Paciente</th><th>Tratamiento</th><th>Valor</th></tr></thead>
+                        <tbody>
+                            {reservas.map(r => {
+                                const match = TRATAMIENTOS.find(t => r.motivo.includes(t.tratamiento));
+                                return (
+                                    <tr key={r.id}>
+                                        <td>{new Date(r.fecha).toLocaleDateString()}</td>
+                                        <td>{r.pacienteNombre}</td>
+                                        <td>{r.motivo}</td>
+                                        <td>{fmtMoney(match ? match.valor : 0)}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+                {/* MÓVIL */}
+                <div className="mobile-view-only">
+                    {reservas.map(r => {
+                        const match = TRATAMIENTOS.find(t => r.motivo.includes(t.tratamiento));
+                        return (
+                            <MobileAccordion key={r.id} title={r.pacienteNombre} subtitle={new Date(r.fecha).toLocaleDateString()}>
+                                <div className="mobile-data-row"><span className="mobile-label">Tratamiento</span><span>{r.motivo}</span></div>
+                                <div className="mobile-data-row"><span className="mobile-label">Valor</span><span>{fmtMoney(match ? match.valor : 0)}</span></div>
+                            </MobileAccordion>
+                        );
+                    })}
                 </div>
             </div>
         </div> 
