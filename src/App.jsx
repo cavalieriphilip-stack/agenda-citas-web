@@ -8,7 +8,7 @@ import {
     buscarPacientePorRut, updateProfesional, deleteProfesional
 } from './api';
 
-// --- DATA MAESTRA ---
+// --- DATA MAESTRA ACTUALIZADA ---
 const TRATAMIENTOS = [
     { id: 1, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto online', valor: 20000, codigo: '1203001', descripcion: 'Evaluación completa por videollamada.' },
     { id: 2, especialidad: 'Fonoaudiología Adulto', tratamiento: 'Evaluación fonoaudiológica adulto presencial', valor: 35000, codigo: '1203002', descripcion: 'Evaluación presencial en consulta.' },
@@ -55,7 +55,7 @@ const fmtDate = (iso) => iso ? new Date(iso).toLocaleString('es-CL', {day:'2-dig
 const toDateKey = (iso) => iso ? iso.split('T')[0] : '';
 const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
 
-// Formato visual (puntos y guión)
+// Formato RUT
 const formatRut = (rut) => {
     if (!rut) return '';
     let value = rut.replace(/[^0-9kK]/g, '').toUpperCase();
@@ -66,34 +66,31 @@ const formatRut = (rut) => {
     return `${bodyDots}-${dv}`;
 };
 
-// [NUEVO] VALIDACIÓN MATEMÁTICA REAL DE RUT (Módulo 11)
+// Validación Matemática RUT (Módulo 11)
 const validateRut = (rut) => {
     if (!rut) return false;
-    // 1. Limpiar el RUT
     const value = rut.replace(/[^0-9kK]/g, '').toUpperCase();
     if (value.length < 2) return false;
-
-    // 2. Separar cuerpo y dígito verificador
     const body = value.slice(0, -1);
     const dv = value.slice(-1);
-
-    // 3. Calcular dígito esperado
     let suma = 0;
     let multiplo = 2;
-
     for (let i = body.length - 1; i >= 0; i--) {
         suma += multiplo * parseInt(body.charAt(i));
         multiplo = multiplo < 7 ? multiplo + 1 : 2;
     }
-
     const dvEsperado = 11 - (suma % 11);
     let dvCalculado = '';
     if (dvEsperado === 11) dvCalculado = '0';
     else if (dvEsperado === 10) dvCalculado = 'K';
     else dvCalculado = dvEsperado.toString();
-
-    // 4. Comparar
     return dvCalculado === dv;
+};
+
+// [NUEVO] Validación Formato Email
+const validateEmail = (email) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
 };
 
 // --- COMPONENTES UI ---
@@ -254,7 +251,6 @@ function AgendaNuevaReserva({ reload, reservas }) {
                         <tbody>{reservas.slice(0, 5).map(r => (<tr key={r.id}><td>{fmtDate(r.fecha)}</td><td>{r.pacienteNombre}</td><td>{r.profesionalNombre}</td></tr>))}</tbody>
                     </table>
                 </div>
-                {/* VISTA MÓVIL: LISTA SIMPLE (Resumen) */}
                 <div className="mobile-view-only" style={{padding:15}}>
                     {reservas.slice(0, 5).map(r => (
                         <div key={r.id} style={{borderBottom:'1px solid #eee', padding:'10px 0'}}>
@@ -391,12 +387,16 @@ function AgendaPacientes(){
     useEffect(()=>{load()},[]);
     const handleRutChange = (e) => { const raw = e.target.value; const formatted = formatRut(raw); setForm({...form, rut: formatted}); }
     
-    // GUARDAR PACIENTE (CON VALIDACIÓN DE RUT)
+    // [MODIFICADO] GUARDAR CON VALIDACIÓN DE EMAIL Y RUT
     const save=async(e)=>{
         e.preventDefault();
-        // Validar RUT antes de enviar
+        
         if (!validateRut(form.rut)) {
             alert("El RUT ingresado no es válido.");
+            return;
+        }
+        if (!validateEmail(form.email)) {
+            alert("El correo electrónico no es válido.");
             return;
         }
 
@@ -500,7 +500,6 @@ function AgendaProfesionales() {
             </div>
             
             <div className="pro-card">
-                {/* VISTA ESCRITORIO */}
                 <div className="data-table-container desktop-view-only">
                     <table className="data-table">
                         <thead><tr><th>Nombre</th><th>Especialidades</th><th>Acciones</th></tr></thead>
@@ -513,7 +512,6 @@ function AgendaProfesionales() {
                         ))}</tbody>
                     </table>
                 </div>
-                {/* VISTA MÓVIL */}
                 <div className="mobile-view-only">
                     {pros.map(p => (
                         <MobileAccordion key={p.id} title={p.nombreCompleto}>
@@ -593,8 +591,6 @@ function AgendaHorarios(){
 
             <div className="pro-card">
                 <h3>Bloques de Atención Configurados</h3>
-                
-                {/* VISTA ESCRITORIO */}
                 <div className="data-table-container desktop-view-only">
                     <table className="data-table">
                         <thead><tr><th>Profesional</th><th>Fecha</th><th>Horario</th><th>Duración / Intervalo</th><th>Acción</th></tr></thead>
@@ -609,8 +605,6 @@ function AgendaHorarios(){
                         ))}</tbody>
                     </table>
                 </div>
-
-                {/* VISTA MÓVIL (ACORDEÓN) */}
                 <div className="mobile-view-only">
                     {configs.map(c => (
                         <MobileAccordion key={c.id} title={c.profesional?.nombreCompleto} subtitle={c.fecha}>
@@ -698,15 +692,10 @@ function WebPaciente() {
     const prestaciones = TRATAMIENTOS.filter(t => t.especialidad === form.especialidad);
     const tratamientoSel = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId));
     
-    // --- LÓGICA DE BÚSQUEDA ---
+    // [MODIFICADO] BUSCAR CON VALIDACIÓN
     const handleRutSearch = async () => {
         if(!form.rut) return alert("Ingrese su RUT");
-        
-        // VALIDAR RUT ANTES DE BUSCAR
-        if (!validateRut(form.rut)) {
-            alert("RUT inválido. Revise el dígito verificador.");
-            return;
-        }
+        if(!validateRut(form.rut)) return alert("RUT inválido. Revise el dígito verificador.");
 
         setLoading(true);
         try {
@@ -795,13 +784,38 @@ function WebPaciente() {
         )
     }
 
+    // [MODIFICADO] STEP 1 CON VALIDACIÓN DE EMAIL
     return (
         <div className="web-shell">
             <header className="web-header">{step > 0 && <button className="web-back-btn" onClick={goBack}>‹</button>}<img src={LOGO_URL} alt="Logo" className="cisd-logo-web" /></header>
             <div className="stepper-container"><div className="stepper"><div className={`step-dot ${step >= 0 ? 'active' : ''}`}></div><div className={`step-line ${step >= 1 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 1 ? 'active' : ''}`}></div><div className={`step-line ${step >= 2 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 2 ? 'active' : ''}`}></div><div className={`step-line ${step >= 3 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 3 ? 'active' : ''}`}></div></div></div>
             <div className="web-content">
                 {step === 0 && ( <> <div><h2 className="web-title">Bienvenido</h2><p className="web-subtitle">Agenda tu hora médica.</p></div><div className="input-group"><label className="web-label">RUT</label><input className="web-input" placeholder="Ej: 12.345.678-9" value={form.rut} onChange={e=>setForm({...form, rut: formatRut(e.target.value)})} maxLength={12} autoFocus /></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.rut || loading} onClick={handleRutSearch}>{loading ? 'Cargando...' : 'Comenzar'}</button></div> </> )}
-                {step === 1 && ( <> <h2 className="web-title">Datos Personales</h2><div className="input-group"><label className="web-label">Nombre</label><input className="web-input" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} /></div><div className="input-group"><label className="web-label">Email</label><input className="web-input" value={form.email} onChange={e=>setForm({...form, email:e.target.value})} /></div><div className="input-group"><label className="web-label">Teléfono</label><input className="web-input" value={form.telefono} onChange={e=>setForm({...form, telefono:e.target.value})} /></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.nombre || !form.email} onClick={()=>setStep(2)}>Guardar Datos</button></div> </> )}
+                
+                {step === 1 && ( 
+                    <> 
+                        <h2 className="web-title">Datos Personales</h2>
+                        <div className="input-group">
+                            <label className="web-label">Nombre Completo</label>
+                            <input className="web-input" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} />
+                        </div>
+                        <div className="input-group">
+                            <label className="web-label">Correo Electrónico</label>
+                            <input className="web-input" type="email" value={form.email} onChange={e=>setForm({...form, email:e.target.value})} />
+                        </div>
+                        <div className="input-group">
+                            <label className="web-label">Teléfono</label>
+                            <input className="web-input" type="tel" value={form.telefono} onChange={e=>setForm({...form, telefono:e.target.value})} />
+                        </div>
+                        <div className="bottom-bar">
+                            {/* VALIDACIÓN DE EMAIL EN BOTÓN */}
+                            <button className="btn-block-action" disabled={!form.nombre || !validateEmail(form.email)} onClick={()=>setStep(2)}>
+                                Guardar Datos
+                            </button>
+                        </div> 
+                    </> 
+                )}
+
                 {step === 2 && ( <> <h2 className="web-title">¿Qué necesitas?</h2><div className="input-group"><label className="web-label">Especialidad</label><select className="web-select" value={form.especialidad} onChange={e=>setForm({...form, especialidad:e.target.value, tratamientoId:''})}><option value="">Selecciona...</option>{especialidades.map(e=><option key={e} value={e}>{e}</option>)}</select></div><div className="input-group"><label className="web-label">Tratamiento</label><select className="web-select" disabled={!form.especialidad} value={form.tratamientoId} onChange={e=>setForm({...form, tratamientoId:e.target.value})}><option value="">Selecciona...</option>{prestaciones.map(p=><option key={p.id} value={p.id}>{p.tratamiento}</option>)}</select></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.tratamientoId || loading} onClick={handleTreatmentConfirm}>{loading ? 'Buscando...' : 'Buscar Horas'}</button></div> </> )}
                 {step === 3 && ( <> <h2 className="web-title">Elige tu Hora</h2><div className="rs-date-tabs">{availableDates.map(dateStr => { const dateObj = new Date(dateStr + 'T00:00:00'); return ( <div key={dateStr} className={`rs-date-tab ${selectedDateKey === dateStr ? 'selected' : ''}`} onClick={() => setSelectedDateKey(dateStr)}><div className="rs-day-name">{dateObj.toLocaleDateString('es-CL', {weekday: 'short'})}</div><div className="rs-day-number">{dateObj.getDate()}</div></div> ); })}</div><div className="rs-pro-list">{multiAgenda[selectedDateKey]?.map((entry) => ( <div key={entry.profesional.id} className="rs-pro-card"><div className="rs-pro-header"><div className="rs-avatar-circle">{entry.profesional.nombreCompleto.charAt(0)}</div><div className="rs-pro-details"><strong>{entry.profesional.nombreCompleto}</strong><span>{entry.profesional.especialidad}</span></div></div><div className="rs-slots-grid">{entry.slots.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).map(slot => ( <button key={slot.id} className="rs-slot-btn" onClick={() => selectSlot(entry.profesional.id, slot.id)}>{new Date(slot.fecha).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}</button> ))}</div></div> ))}</div> </> )}
                 {step === 4 && ( <> <h2 className="web-title">Confirmar Reserva</h2><ReservaDetalleCard title="Resumen" showTotal={true} /><div className="bottom-bar"><button className="btn-block-action" disabled={loading} onClick={confirmar}>{loading ? 'Confirmando...' : 'Confirmar Reserva'}</button></div> </> )}
