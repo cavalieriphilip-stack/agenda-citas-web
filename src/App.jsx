@@ -194,7 +194,7 @@ function AgendaResumen({reservas, reload}){
         setCurrentDate(d);
     };
 
-    // --- LÓGICA DE DÍAS CORREGIDA (EVITA PANTALLA BLANCA) ---
+    // --- FIX CRÍTICO: CÁLCULO DE DÍAS SEGURO ---
     const getDays = () => {
         const d = [];
         const start = new Date(currentDate);
@@ -213,22 +213,26 @@ function AgendaResumen({reservas, reload}){
                 d.push(next);
             }
         } else {
-            // Mes seguro
+            // Lógica MES a prueba de balas:
             const year = start.getFullYear();
             const month = start.getMonth();
-            const first = new Date(year, month, 1);
-            first.setHours(0,0,0,0);
             
-            let dayOfWeek = first.getDay(); 
-            if (dayOfWeek === 0) dayOfWeek = 7; 
+            // 1. Obtener primer día del mes
+            const firstDayOfMonth = new Date(year, month, 1);
             
-            const runner = new Date(first);
-            runner.setDate(first.getDate() - (dayOfWeek - 1));
+            // 2. Determinar qué día de la semana cae (0=Dom, 1=Lun...)
+            let dayOfWeek = firstDayOfMonth.getDay();
+            if (dayOfWeek === 0) dayOfWeek = 7; // Convertir Domingo a 7 para que Lunes sea 1
             
+            // 3. Retroceder hasta el Lunes de esa semana (inicio de la grilla)
+            const gridStartDate = new Date(firstDayOfMonth);
+            gridStartDate.setDate(firstDayOfMonth.getDate() - (dayOfWeek - 1));
+            
+            // 4. Generar exactamente 42 días (6 semanas)
             for (let i = 0; i < 42; i++) {
-                const next = new Date(runner);
-                next.setDate(runner.getDate() + i);
-                d.push(next);
+                const nextDay = new Date(gridStartDate);
+                nextDay.setDate(gridStartDate.getDate() + i);
+                d.push(nextDay);
             }
         }
         return d;
@@ -274,12 +278,12 @@ function AgendaResumen({reservas, reload}){
                     <>
                         <div className="cal-header-row" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}>
                             <div className="cal-header-cell">Hora</div>
-                            {days.map(d=><div key={d.getTime()} className={`cal-header-cell ${d.toDateString()===new Date().toDateString()?'today':''}`}>{d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric'})}</div>)}
+                            {days.map((d, i)=><div key={i} className={`cal-header-cell ${d.toDateString()===new Date().toDateString()?'today':''}`}>{d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric'})}</div>)}
                         </div>
                         <div className="calendar-body" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}>
                             <div>{Array.from({length:13},(_,i)=>i+8).map(h=><div key={h} className="cal-time-label">{h}:00</div>)}</div>
-                            {days.map(d=>(
-                                <div key={d.getTime()} className="cal-day-col">
+                            {days.map((d, i)=>(
+                                <div key={i} className="cal-day-col">
                                     {filtered.filter(r=>{
                                         if(!r.fecha) return false;
                                         const rd=new Date(r.fecha); 
@@ -302,8 +306,8 @@ function AgendaResumen({reservas, reload}){
                     <>
                         <div className="cal-header-row" style={{gridTemplateColumns: 'repeat(7, 1fr)'}}>{['L','M','X','J','V','S','D'].map(d=><div key={d} className="cal-header-cell">{d}</div>)}</div>
                         <div className="month-grid">
-                            {days.map(d=>(
-                                <div key={d.getTime()} className="month-cell">
+                            {days.map((d, i)=>(
+                                <div key={i} className="month-cell">
                                     <div className="month-cell-header">{d.getDate()}</div>
                                     {(() => {
                                         const dailyEvents = filtered.filter(r=>{

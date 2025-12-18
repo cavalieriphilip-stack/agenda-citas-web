@@ -262,6 +262,7 @@ html, body, #root {
   min-height: 500px; 
 }
 
+/* IMPORTANTE: GRID PARA EL CALENDARIO */
 .calendar-grid, .cal-header-row, .calendar-body {
   display: grid; min-width: 100%; 
 }
