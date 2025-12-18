@@ -223,7 +223,7 @@ function AgendaNuevaReserva({ reload, reservas }) {
                         <tbody>{reservas.slice(0, 5).map(r => (<tr key={r.id}><td>{fmtDate(r.fecha)}</td><td>{r.pacienteNombre}</td><td>{r.profesionalNombre}</td></tr>))}</tbody>
                     </table>
                 </div>
-                {/* PUNTO 2: VISTA MÓVIL AÑADIDA */}
+                {/* VISTA MÓVIL: LISTA SIMPLE (Resumen) */}
                 <div className="mobile-view-only" style={{padding:15}}>
                     {reservas.slice(0, 5).map(r => (
                         <div key={r.id} style={{borderBottom:'1px solid #eee', padding:'10px 0'}}>
@@ -310,7 +310,6 @@ function AgendaResumen({reservas, reload}){
         <div>
             <div className="page-header"><div className="page-title"><h1>Resumen de Agendamientos</h1></div></div>
             <div className="pro-card">
-                {/* VISTA ESCRITORIO */}
                 <div className="data-table-container desktop-view-only">
                     <table className="data-table">
                         <thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th><th>Tratamiento</th><th>Valor</th><th>Acciones</th></tr></thead>
@@ -331,12 +330,11 @@ function AgendaResumen({reservas, reload}){
                         })}</tbody>
                     </table>
                 </div>
-                {/* VISTA MÓVIL */}
                 <div className="mobile-view-only">
                     {reservas.map(r => {
                         const match=TRATAMIENTOS.find(t=>r.motivo.includes(t.tratamiento));
                         const valor = match ? match.valor : 0;
-                        if (editId === r.id) return <div key={r.id} className="mobile-card"><EditForm r={r} /></div>; // PUNTO 4: EDICIÓN EN MÓVIL
+                        if (editId === r.id) return <div key={r.id} className="mobile-card"><EditForm r={r} /></div>;
                         return (
                             <MobileAccordion key={r.id} title={fmtDate(r.fecha)} subtitle={r.pacienteNombre}>
                                 <div className="mobile-data-row"><span className="mobile-label">Profesional</span><span className="mobile-value">{r.profesionalNombre}</span></div>
@@ -463,7 +461,6 @@ function AgendaProfesionales() {
             </div>
             
             <div className="pro-card">
-                {/* VISTA ESCRITORIO */}
                 <div className="data-table-container desktop-view-only">
                     <table className="data-table">
                         <thead><tr><th>Nombre</th><th>Especialidades</th><th>Acciones</th></tr></thead>
@@ -476,7 +473,6 @@ function AgendaProfesionales() {
                         ))}</tbody>
                     </table>
                 </div>
-                {/* VISTA MÓVIL */}
                 <div className="mobile-view-only">
                     {pros.map(p => (
                         <MobileAccordion key={p.id} title={p.nombreCompleto}>
@@ -535,8 +531,6 @@ function AgendaHorarios(){
                         <div><label className="form-label">Inicio</label><input type="time" className="form-control" value={form.horaInicio} onChange={e=>setForm({...form,horaInicio:e.target.value})}/></div>
                         <div><label className="form-label">Fin</label><input type="time" className="form-control" value={form.horaFin} onChange={e=>setForm({...form,horaFin:e.target.value})}/></div>
                     </div>
-                    
-                    {/* PUNTO 1: INPUTS RESTAURADOS */}
                     <div className="input-row">
                         <div>
                             <label className="form-label">Duración del Bloque (Min)</label>
@@ -552,9 +546,41 @@ function AgendaHorarios(){
                             <input type="number" className="form-control" value={form.intervalo} onChange={e=>setForm({...form, intervalo: e.target.value})} placeholder="Ej: 10" />
                         </div>
                     </div>
-
                     <button className="btn-primary">Guardar Disponibilidad</button>
                 </form>
+            </div>
+
+            <div className="pro-card">
+                <h3>Bloques de Atención Configurados</h3>
+                
+                {/* VISTA ESCRITORIO */}
+                <div className="data-table-container desktop-view-only">
+                    <table className="data-table">
+                        <thead><tr><th>Profesional</th><th>Fecha</th><th>Horario</th><th>Duración / Intervalo</th><th>Acción</th></tr></thead>
+                        <tbody>{configs.map(c=>(
+                            <tr key={c.id}>
+                                <td>{c.profesional?.nombreCompleto}</td>
+                                <td>{c.fecha}</td>
+                                <td>{c.horaInicio} - {c.horaFin}</td>
+                                <td>{c.duracionSlot}m / {c.intervalo}m gap</td>
+                                <td><button className="btn-danger" onClick={()=>borrarConfig(c.id)}>Eliminar</button></td>
+                            </tr>
+                        ))}</tbody>
+                    </table>
+                </div>
+
+                {/* VISTA MÓVIL (ACORDEÓN) */}
+                <div className="mobile-view-only">
+                    {configs.map(c => (
+                        <MobileAccordion key={c.id} title={c.profesional?.nombreCompleto} subtitle={c.fecha}>
+                            <div className="mobile-data-row"><span className="mobile-label">Horario</span><span className="mobile-value">{c.horaInicio} - {c.horaFin}</span></div>
+                            <div className="mobile-data-row"><span className="mobile-label">Configuración</span><span className="mobile-value">{c.duracionSlot}m bloque / {c.intervalo}m descanso</span></div>
+                            <div style={{marginTop:15}}>
+                                <button className="btn-danger" onClick={()=>borrarConfig(c.id)} style={{width:'100%'}}>Eliminar Bloque</button>
+                            </div>
+                        </MobileAccordion>
+                    ))}
+                </div>
             </div>
 
             <div className="pro-card">
@@ -621,6 +647,8 @@ function WebPaciente() {
     const [loading, setLoading] = useState(false);
     const [bookingSuccess, setBookingSuccess] = useState(false);
     const [pacienteId, setPacienteId] = useState(null);
+    
+    // Estados agenda
     const [multiAgenda, setMultiAgenda] = useState({}); 
     const [selectedDateKey, setSelectedDateKey] = useState(null); 
     const [availableDates, setAvailableDates] = useState([]); 

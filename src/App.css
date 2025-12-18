@@ -1,77 +1,42 @@
 /* ============================================================
-   1. ESTRUCTURA MAESTRA (Ocupar 100% Real)
+   1. ESTRUCTURA MAESTRA
    ============================================================ */
-:root {
-  color-scheme: light;
-}
-
-* { 
-  box-sizing: border-box;
-}
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
 
 html, body, #root {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  background-color: #f4f7f6;
-  color: #333;
+  width: 100%; height: 100%; margin: 0; padding: 0;
+  overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif;
+  background-color: #f4f7f6; color: #333;
 }
 
 /* ============================================================
    2. LAYOUT GENERAL
    ============================================================ */
-.dashboard-layout {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-}
+.dashboard-layout { display: flex; flex-direction: column; width: 100%; height: 100%; }
 
 .top-nav {
-  height: 60px;
-  min-height: 60px;
-  background: #fff;
-  border-bottom: 1px solid #ddd;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 20px;
-  z-index: 50;
+  height: 60px; min-height: 60px; background: #fff; border-bottom: 1px solid #ddd;
+  display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 50;
 }
-
 .brand-area { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 1.1rem; }
 .cisd-logo-admin { height: 35px; }
 .mobile-menu-btn { display: none; }
 
 .module-switcher { display: flex; gap: 10px; }
-.module-tab {
-  padding: 8px 16px; border: none; background: transparent; 
-  cursor: pointer; color: #666; font-weight: 500; border-radius: 6px;
-}
+.module-tab { padding: 8px 16px; border: none; background: transparent; cursor: pointer; color: #666; font-weight: 500; border-radius: 6px; }
 .module-tab.active { background: #000; color: #fff; }
 
-.btn-top-action {
-  background: #000; color: #fff; padding: 8px 15px; text-decoration: none; border-radius: 6px; font-size: 0.9rem;
-}
+.btn-top-action { background: #000; color: #fff; padding: 8px 15px; text-decoration: none; border-radius: 6px; font-size: 0.9rem; }
 
-.workspace {
-  flex: 1; display: flex; overflow: hidden; position: relative; width: 100%;
-}
+.workspace { flex: 1; display: flex; overflow: hidden; position: relative; width: 100%; }
 
 .sidebar {
   width: 260px; min-width: 260px; background: #fff; border-right: 1px solid #ddd;
   display: flex; flex-direction: column; padding: 20px; overflow-y: auto;
 }
-
-.sidebar-header {
-  font-size: 0.75rem; color: #999; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;
-}
-.nav-item {
-  padding: 12px; border-radius: 8px; cursor: pointer; color: #555; margin-bottom: 5px; font-size: 0.95rem;
-}
+.sidebar-header { font-size: 0.75rem; color: #999; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; }
+.nav-item { padding: 12px; border-radius: 8px; cursor: pointer; color: #555; margin-bottom: 5px; font-size: 0.95rem; }
 .nav-item:hover { background: #f5f5f5; color: #000; }
 .nav-item.active { background: #f0f0f0; color: #000; font-weight: 600; }
 
@@ -121,7 +86,7 @@ html, body, #root {
 .kpi-value { font-size: 2rem; font-weight: bold; color: #000; }
 
 /* ============================================================
-   4. WEB PACIENTE (ESTILO APP)
+   4. WEB PACIENTE
    ============================================================ */
 .web-shell {
   min-height: 100vh; height: 100dvh; width: 100%; background: #fff;
@@ -208,7 +173,6 @@ html, body, #root {
 .btn-block-action:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
 .btn-block-action:active { transform: scale(0.98); }
 
-/* TARJETA DE CONFIRMACIÓN DETALLADA */
 .conf-card { width: 100%; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 20px; }
 .conf-section { padding: 20px; border-bottom: 1px solid #f0f0f0; }
 .conf-section:last-child { border-bottom: none; }
@@ -225,10 +189,43 @@ html, body, #root {
 .success-icon-big { font-size: 5rem; color: #10b981; margin-bottom: 20px; display: block; }
 
 /* ============================================================
-   5. MÓVIL ADMIN (FIXED)
+   5. MODAL, DROPDOWN Y MÓVIL
    ============================================================ */
-.sidebar-overlay { display: none; }
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 3000; display: flex; justify-content: center; align-items: center; padding: 20px; animation: fadeIn 0.2s ease-out; }
+.modal-content { background: #fff; padding: 25px; border-radius: 12px; width: 100%; max-width: 600px; max-height: 85vh; overflow-y: auto; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+.modal-close { position: absolute; top: 15px; right: 15px; background: transparent; border: none; font-size: 1.8rem; cursor: pointer; color: #666; line-height: 1; }
 
+.dropdown-wrapper { position: relative; width: 100%; margin-bottom: 5px; }
+.dropdown-header { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; background: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 1rem; user-select: none; }
+.dropdown-list { position: absolute; top: 105%; left: 0; right: 0; background: #fff; border: 1px solid #ccc; border-radius: 8px; max-height: 250px; overflow-y: auto; z-index: 2000; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 5px; }
+.dropdown-item { display: flex; align-items: center; gap: 10px; padding: 10px; cursor: pointer; font-size: 0.95rem; border-radius: 4px; border-bottom: 1px solid #f9f9f9; }
+.dropdown-item:hover { background: #f3f4f6; }
+.dropdown-item input { width: 18px; height: 18px; accent-color: #000; cursor: pointer; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* MÓVIL: CLASES DE VISIBILIDAD */
+.mobile-view-only { display: none; }
+.desktop-view-only { display: block; }
+
+/* TARJETAS ACORDEÓN */
+.mobile-card {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 10px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05); position: relative; overflow: visible; /* Clave para dropdowns */
+}
+.mobile-card-header { padding: 15px; background: #fff; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 1px solid transparent; transition: background 0.2s; border-radius: 8px; }
+.mobile-card-header.open { background: #f9fafb; border-bottom: 1px solid #e5e7eb; border-radius: 8px 8px 0 0; }
+.mobile-card-title { font-size: 0.95rem; font-weight: 600; color: #111; display: flex; flex-direction: column; }
+.mobile-card-subtitle { font-size: 0.8rem; color: #666; font-weight: normal; margin-top: 2px; }
+.mobile-card-icon { font-size: 1.2rem; color: #999; margin-left: 10px; }
+.mobile-card-body { padding: 15px; background: #fdfdfd; font-size: 0.9rem; color: #444; border-radius: 0 0 8px 8px; }
+.mobile-data-row { margin-bottom: 8px; display: flex; flex-direction: column; }
+.mobile-label { font-weight: 600; font-size: 0.75rem; color: #888; text-transform: uppercase; }
+.mobile-value { font-size: 0.95rem; }
+
+.mobile-simple-list-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; background: #fff; }
+.mobile-simple-list-item:last-child { border-bottom: none; }
+
+/* MEDIA QUERY PRINCIPAL MÓVIL */
 @media (max-width: 768px) {
   .desktop-view-only { display: none; }
   .mobile-view-only { display: block; }
@@ -256,43 +253,3 @@ html, body, #root {
     padding: 8px 16px; width: 100%; margin-bottom: 8px; text-align: center; display: block;
   }
 }
-
-/* ============================================================
-   6. NUEVOS COMPONENTES 
-   ============================================================ */
-.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 3000; display: flex; justify-content: center; align-items: center; padding: 20px; animation: fadeIn 0.2s ease-out; }
-.modal-content { background: #fff; padding: 25px; border-radius: 12px; width: 100%; max-width: 600px; max-height: 85vh; overflow-y: auto; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-.modal-close { position: absolute; top: 15px; right: 15px; background: transparent; border: none; font-size: 1.8rem; cursor: pointer; color: #666; line-height: 1; }
-
-.dropdown-wrapper { position: relative; width: 100%; margin-bottom: 5px; }
-.dropdown-header { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; background: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 1rem; user-select: none; }
-.dropdown-list { position: absolute; top: 105%; left: 0; right: 0; background: #fff; border: 1px solid #ccc; border-radius: 8px; max-height: 250px; overflow-y: auto; z-index: 2000; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 5px; }
-.dropdown-item { display: flex; align-items: center; gap: 10px; padding: 10px; cursor: pointer; font-size: 0.95rem; border-radius: 4px; border-bottom: 1px solid #f9f9f9; }
-.dropdown-item:hover { background: #f3f4f6; }
-.dropdown-item input { width: 18px; height: 18px; accent-color: #000; cursor: pointer; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-/* ============================================================
-   7. TARJETAS MÓVILES (ACORDEONES)
-   ============================================================ */
-.mobile-view-only { display: none; }
-.desktop-view-only { display: block; }
-
-.mobile-card {
-  background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 10px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  overflow: visible; /* IMPORTANTE: Para que el dropdown se vea */
-  position: relative;
-}
-.mobile-card-header { padding: 15px; background: #fff; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 1px solid transparent; transition: background 0.2s; border-radius: 8px; }
-.mobile-card-header.open { background: #f9fafb; border-bottom: 1px solid #e5e7eb; border-radius: 8px 8px 0 0; }
-.mobile-card-title { font-size: 0.95rem; font-weight: 600; color: #111; display: flex; flex-direction: column; }
-.mobile-card-subtitle { font-size: 0.8rem; color: #666; font-weight: normal; margin-top: 2px; }
-.mobile-card-icon { font-size: 1.2rem; color: #999; margin-left: 10px; }
-.mobile-card-body { padding: 15px; background: #fdfdfd; font-size: 0.9rem; color: #444; border-radius: 0 0 8px 8px; }
-.mobile-data-row { margin-bottom: 8px; display: flex; flex-direction: column; }
-.mobile-label { font-weight: 600; font-size: 0.75rem; color: #888; text-transform: uppercase; }
-.mobile-value { font-size: 0.95rem; }
-
-.mobile-simple-list-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; background: #fff; }
-.mobile-simple-list-item:last-child { border-bottom: none; }
