@@ -9,7 +9,7 @@ import {
     buscarPacientePorRut, updateProfesional, deleteProfesional
 } from './api';
 
-// --- INICIALIZAR CON LA NUEVA PUBLIC KEY DE PRUEBA (APP_USR) ---
+// --- INICIALIZAR CON LA PUBLIC KEY DE PRUEBA (APP_USR) ---
 initMercadoPago('APP_USR-a5a67c3b-4b4b-44a1-b973-ff2fd82fe90a', { locale: 'es-CL' });
 
 // --- DATA MAESTRA ---
@@ -705,6 +705,27 @@ function WebPaciente() {
 
     useEffect(()=>{ getProfesionales().then(setProfesionales) },[]);
 
+    // --- EFECTO: DETECTAR REGRESO DE MERCADOPAGO (STATUS=APPROVED) ---
+    useEffect(() => {
+        const query = new URLSearchParams(window.location.search);
+        const status = query.get('status');
+
+        if (status === 'approved') {
+            // Recuperamos los datos guardados antes de ir a pagar
+            const savedData = localStorage.getItem('pendingReservation');
+            if (savedData) {
+                const parsed = JSON.parse(savedData);
+                setForm(parsed);
+                setBookingSuccess(true);
+                // Limpiamos la memoria para que no salga de nuevo al refrescar
+                localStorage.removeItem('pendingReservation');
+                
+                // Limpiar la URL para que se vea bonita
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+    }, []);
+
     const especialidades = [...new Set(TRATAMIENTOS.map(t => t.especialidad))];
     const prestaciones = TRATAMIENTOS.filter(t => t.especialidad === form.especialidad);
     const tratamientoSel = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId));
@@ -742,6 +763,10 @@ function WebPaciente() {
     // --- FUNCIÓN 1: INICIAR PAGO (LLAMA AL BACKEND) ---
     const initPaymentProcess = async () => {
         setLoading(true);
+        
+        // GUARDAMOS EL ESTADO ANTES DE CUALQUIER COSA
+        localStorage.setItem('pendingReservation', JSON.stringify(form));
+
         try {
             let pid = pacienteId;
             if (!pid) { 
@@ -783,13 +808,62 @@ function WebPaciente() {
         const slotDate = new Date(form.horarioId || new Date());
         const fechaStr = slotDate.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
         const horaStr = slotDate.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+        
+        // Recalculamos el tratamiento seleccionado si venimos del localStorage
+        const currentTratamiento = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId));
+        
+        // Intentamos buscar el nombre del profesional
+        // Si no está en multiAgenda (porque venimos de un refresh), mostramos "Asignado"
         let proName = "Asignado";
-        if (multiAgenda[selectedDateKey]) { const foundEntry = multiAgenda[selectedDateKey].find(e => e.profesional.id === form.profesionalId); if (foundEntry) proName = foundEntry.profesional.nombreCompleto; }
-        return ( <div className="conf-card"><div className="conf-section"><div className="conf-title">Paciente</div><div className="conf-row"><span className="conf-label">Nombre</span><span className="conf-value">{form.nombre}</span></div><div className="conf-row"><span className="conf-label">RUT</span><span className="conf-value">{form.rut}</span></div></div><div className="conf-section"><div className="conf-title">Servicio</div><div className="conf-row"><span className="conf-label">Tratamiento</span><span className="conf-value">{tratamientoSel?.tratamiento}</span></div></div><div className="conf-section"><div className="conf-title">Cita</div><div className="conf-row"><span className="conf-label">Profesional</span><span className="conf-value">{proName}</span></div><div className="conf-row"><span className="conf-label">Fecha</span><span className="conf-value">{fechaStr}</span></div><div className="conf-row"><span className="conf-label">Hora</span><span className="conf-value">{horaStr}</span></div></div>{showTotal && <div className="conf-section" style={{background:'#fafafa'}}><div className="conf-total"><span className="conf-total-label">Total a Pagar</span><span className="conf-total-value">{fmtMoney(tratamientoSel?.valor || 0)}</span></div></div>}</div> );
+        if (form.profesionalId && profesionales.length > 0) {
+            const p = profesionales.find(pr => pr.id === parseInt(form.profesionalId));
+            if (p) proName = p.nombreCompleto;
+        }
+
+        return ( 
+            <div className="conf-card">
+                <div className="conf-section">
+                    <div className="conf-title">Paciente</div>
+                    <div className="conf-row"><span className="conf-label">Nombre</span><span className="conf-value">{form.nombre}</span></div>
+                    <div className="conf-row"><span className="conf-label">RUT</span><span className="conf-value">{form.rut}</span></div>
+                </div>
+                <div className="conf-section">
+                    <div className="conf-title">Servicio</div>
+                    <div className="conf-row"><span className="conf-label">Tratamiento</span><span className="conf-value">{currentTratamiento?.tratamiento}</span></div>
+                </div>
+                <div className="conf-section">
+                    <div className="conf-title">Cita</div>
+                    <div className="conf-row"><span className="conf-label">Profesional</span><span className="conf-value">{proName}</span></div>
+                    <div className="conf-row"><span className="conf-label">Fecha</span><span className="conf-value">{fechaStr}</span></div>
+                    <div className="conf-row"><span className="conf-label">Hora</span><span className="conf-value">{horaStr}</span></div>
+                </div>
+                {showTotal && (
+                    <div className="conf-section" style={{background:'#fafafa'}}>
+                        <div className="conf-total">
+                            <span className="conf-total-label">Total Pagado</span>
+                            <span className="conf-total-value" style={{color: '#22c55e'}}>{fmtMoney(currentTratamiento?.valor || 0)}</span>
+                        </div>
+                    </div>
+                )}
+            </div> 
+        );
     };
 
     if(bookingSuccess) {
-        return ( <div className="web-shell"><div className="web-content success-card"><span className="success-icon-big">✓</span><h1 className="web-title">¡Reserva Exitosa!</h1><p className="web-subtitle">Enviado a<br/><strong>{form.email}</strong></p><ReservaDetalleCard title="Comprobante" showTotal={true} /><button className="btn-block-action" onClick={()=>window.location.reload()}>Volver al Inicio</button></div></div> )
+        return ( 
+            <div className="web-shell">
+                <div className="web-content success-card">
+                    <span className="success-icon-big">✓</span>
+                    <h1 className="web-title">¡Reserva Exitosa!</h1>
+                    <p className="web-subtitle">Hemos enviado el comprobante a<br/><strong>{form.email}</strong></p>
+                    
+                    {/* AHORA MOSTRAMOS EL DETALLE CON PRECIO */}
+                    <ReservaDetalleCard title="Comprobante de Pago" showTotal={true} />
+                    
+                    <button className="btn-block-action" onClick={()=>window.location.href='/'}>Volver al Inicio</button>
+                </div>
+            </div> 
+        )
     }
 
     return (
