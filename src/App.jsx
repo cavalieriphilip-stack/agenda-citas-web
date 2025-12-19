@@ -9,7 +9,7 @@ import {
     buscarPacientePorRut, updateProfesional, deleteProfesional
 } from './api';
 
-// --- INICIALIZAR CON LA PUBLIC KEY DE PRUEBA (APP_USR) ---
+// --- INICIALIZAR MERCADOPAGO (PUBLIC KEY APP_USR) ---
 initMercadoPago('APP_USR-a5a67c3b-4b4b-44a1-b973-ff2fd82fe90a', { locale: 'es-CL' });
 
 // --- DATA MAESTRA ---
@@ -134,6 +134,7 @@ function App() {
     return <WebPaciente />;
 }
 
+// --- ADMIN LAYOUT COMPLETO ---
 function AdminLayout() {
     const [activeModule, setActiveModule] = useState('agenda');
     const [activeView, setActiveView] = useState('resumen');
@@ -688,6 +689,7 @@ function FinanzasReporte({total,count,reservas}){
     ) 
 }
 
+// --- WEB PACIENTE ---
 function WebPaciente() {
     const [step, setStep] = useState(0); 
     const [profesionales, setProfesionales] = useState([]);
@@ -705,23 +707,22 @@ function WebPaciente() {
 
     useEffect(()=>{ getProfesionales().then(setProfesionales) },[]);
 
-    // --- EFECTO: DETECTAR REGRESO DE MERCADOPAGO (STATUS=APPROVED) ---
+    // --- EFECTO: DETECTAR REGRESO Y CAMBIAR URL PARA ANALYTICS ---
     useEffect(() => {
         const query = new URLSearchParams(window.location.search);
         const status = query.get('status');
 
         if (status === 'approved') {
-            // Recuperamos los datos guardados antes de ir a pagar
             const savedData = localStorage.getItem('pendingReservation');
             if (savedData) {
                 const parsed = JSON.parse(savedData);
                 setForm(parsed);
                 setBookingSuccess(true);
-                // Limpiamos la memoria para que no salga de nuevo al refrescar
                 localStorage.removeItem('pendingReservation');
                 
-                // Limpiar la URL para que se vea bonita
-                window.history.replaceState({}, document.title, window.location.pathname);
+                // CAMBIAR URL VISUAL PARA ANALYTICS
+                // Esto permite que el Pixel de Meta o GA4 detecten la visita a /reserva-exitosa
+                window.history.replaceState({}, document.title, "/reserva-exitosa");
             }
         }
     }, []);
@@ -730,123 +731,20 @@ function WebPaciente() {
     const prestaciones = TRATAMIENTOS.filter(t => t.especialidad === form.especialidad);
     const tratamientoSel = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId));
     
-    const handleRutSearch = async () => {
-        if(!form.rut) return alert("Ingrese su RUT");
-        if(!validateRut(form.rut)) return alert("RUT inválido");
-        setLoading(true);
-        try {
-            const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); 
-            const paciente = await buscarPacientePorRut(rutLimpio);
-            if (paciente) { setPacienteId(paciente.id); setForm(prev => ({...prev, nombre: paciente.nombreCompleto, email: paciente.email, telefono: paciente.telefono})); setStep(2); } else { setStep(1); }
-        } catch(e) { setStep(1); } setLoading(false);
-    };
-
-    const handleTreatmentConfirm = async () => {
-        setLoading(true);
-        const prosAptos = profesionales.filter(p => p.tratamientos && p.tratamientos.includes(tratamientoSel.tratamiento));
-        if (prosAptos.length === 0) { alert("No hay profesionales."); setLoading(false); return; }
-        const promises = prosAptos.map(async p => { const horarios = await getHorariosByProfesional(p.id); return { profesional: p, slots: Array.isArray(horarios) ? horarios.filter(x => new Date(x.fecha) > new Date()) : [] }; });
-        const results = await Promise.all(promises);
-        const agendaMap = {}; const datesSet = new Set();
-        results.forEach(({profesional, slots}) => { slots.forEach(slot => { const dateKey = toDateKey(slot.fecha); datesSet.add(dateKey); if (!agendaMap[dateKey]) agendaMap[dateKey] = []; let proEntry = agendaMap[dateKey].find(entry => entry.profesional.id === profesional.id); if (!proEntry) { proEntry = { profesional, slots: [] }; agendaMap[dateKey].push(proEntry); } proEntry.slots.push(slot); }); });
-        const sortedDates = Array.from(datesSet).sort();
-        
-        if (sortedDates.length === 0) { alert("No hay horas disponibles."); setLoading(false); return; }
-
-        setMultiAgenda(agendaMap); setAvailableDates(sortedDates);
-        if (sortedDates.length > 0) setSelectedDateKey(sortedDates[0]);
-        setLoading(false); setStep(3); 
-    };
-
+    const handleRutSearch = async () => { if(!form.rut) return alert("Ingrese su RUT"); if(!validateRut(form.rut)) return alert("RUT inválido"); setLoading(true); try { const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); const paciente = await buscarPacientePorRut(rutLimpio); if (paciente) { setPacienteId(paciente.id); setForm(prev => ({...prev, nombre: paciente.nombreCompleto, email: paciente.email, telefono: paciente.telefono})); setStep(2); } else { setStep(1); } } catch(e) { setStep(1); } setLoading(false); };
+    const handleTreatmentConfirm = async () => { setLoading(true); const prosAptos = profesionales.filter(p => p.tratamientos && p.tratamientos.includes(tratamientoSel.tratamiento)); if (prosAptos.length === 0) { alert("No hay profesionales."); setLoading(false); return; } const promises = prosAptos.map(async p => { const horarios = await getHorariosByProfesional(p.id); return { profesional: p, slots: Array.isArray(horarios) ? horarios.filter(x => new Date(x.fecha) > new Date()) : [] }; }); const results = await Promise.all(promises); const agendaMap = {}; const datesSet = new Set(); results.forEach(({profesional, slots}) => { slots.forEach(slot => { const dateKey = toDateKey(slot.fecha); datesSet.add(dateKey); if (!agendaMap[dateKey]) agendaMap[dateKey] = []; let proEntry = agendaMap[dateKey].find(entry => entry.profesional.id === profesional.id); if (!proEntry) { proEntry = { profesional, slots: [] }; agendaMap[dateKey].push(proEntry); } proEntry.slots.push(slot); }); }); const sortedDates = Array.from(datesSet).sort(); if (sortedDates.length === 0) { alert("No hay horas disponibles."); setLoading(false); return; } setMultiAgenda(agendaMap); setAvailableDates(sortedDates); if (sortedDates.length > 0) setSelectedDateKey(sortedDates[0]); setLoading(false); setStep(3); };
     const selectSlot = (pid, hid) => { setForm(prev => ({ ...prev, profesionalId: pid, horarioId: hid })); setStep(4); };
-
-    // --- FUNCIÓN 1: INICIAR PAGO (LLAMA AL BACKEND) ---
-    const initPaymentProcess = async () => {
-        setLoading(true);
-        
-        // GUARDAMOS EL ESTADO ANTES DE CUALQUIER COSA
-        localStorage.setItem('pendingReservation', JSON.stringify(form));
-
-        try {
-            let pid = pacienteId;
-            if (!pid) { 
-                const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); 
-                const pac = await crearPaciente({nombreCompleto:form.nombre, email:form.email, telefono:form.telefono, rut: rutLimpio}); 
-                pid = pac.id; 
-                setPacienteId(pid);
-            }
-
-            const response = await fetch(`${API_BASE_URL}/create_preference`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    title: tratamientoSel.tratamiento,
-                    quantity: 1,
-                    unit_price: tratamientoSel.valor
-                }),
-            });
-
-            const preference = await response.json();
-            
-            if (preference.id) {
-                setPreferenceId(preference.id);
-                setShowPayModal(true);
-            } else {
-                alert("Error al iniciar el pago");
-            }
-        } catch (error) {
-            console.error(error);
-            alert("Error de conexión");
-        } finally {
-            setLoading(false);
-        }
-    };
-
+    const initPaymentProcess = async () => { setLoading(true); localStorage.setItem('pendingReservation', JSON.stringify(form)); try { let pid = pacienteId; if (!pid) { const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); const pac = await crearPaciente({nombreCompleto:form.nombre, email:form.email, telefono:form.telefono, rut: rutLimpio}); pid = pac.id; setPacienteId(pid); } const response = await fetch(`${API_BASE_URL}/create_preference`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: tratamientoSel.tratamiento, quantity: 1, unit_price: tratamientoSel.valor }), }); const preference = await response.json(); if (preference.id) { setPreferenceId(preference.id); setShowPayModal(true); } else { alert("Error al iniciar el pago"); } } catch (error) { console.error(error); alert("Error de conexión"); } finally { setLoading(false); } };
     const goBack = () => { if(step===0)return; if(step===2 && pacienteId) setStep(0); else setStep(step-1); };
-
-    const ReservaDetalleCard = ({ title, showTotal }) => {
-        const slotDate = new Date(form.horarioId || new Date());
-        const fechaStr = slotDate.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-        const horaStr = slotDate.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
-        
-        // Recalculamos el tratamiento seleccionado si venimos del localStorage
-        const currentTratamiento = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId));
-        
-        // Intentamos buscar el nombre del profesional
-        // Si no está en multiAgenda (porque venimos de un refresh), mostramos "Asignado"
-        let proName = "Asignado";
-        if (form.profesionalId && profesionales.length > 0) {
-            const p = profesionales.find(pr => pr.id === parseInt(form.profesionalId));
-            if (p) proName = p.nombreCompleto;
-        }
-
-        return ( 
-            <div className="conf-card">
-                <div className="conf-section">
-                    <div className="conf-title">Paciente</div>
-                    <div className="conf-row"><span className="conf-label">Nombre</span><span className="conf-value">{form.nombre}</span></div>
-                    <div className="conf-row"><span className="conf-label">RUT</span><span className="conf-value">{form.rut}</span></div>
-                </div>
-                <div className="conf-section">
-                    <div className="conf-title">Servicio</div>
-                    <div className="conf-row"><span className="conf-label">Tratamiento</span><span className="conf-value">{currentTratamiento?.tratamiento}</span></div>
-                </div>
-                <div className="conf-section">
-                    <div className="conf-title">Cita</div>
-                    <div className="conf-row"><span className="conf-label">Profesional</span><span className="conf-value">{proName}</span></div>
-                    <div className="conf-row"><span className="conf-label">Fecha</span><span className="conf-value">{fechaStr}</span></div>
-                    <div className="conf-row"><span className="conf-label">Hora</span><span className="conf-value">{horaStr}</span></div>
-                </div>
-                {showTotal && (
-                    <div className="conf-section" style={{background:'#fafafa'}}>
-                        <div className="conf-total">
-                            <span className="conf-total-label">Total Pagado</span>
-                            <span className="conf-total-value" style={{color: '#22c55e'}}>{fmtMoney(currentTratamiento?.valor || 0)}</span>
-                        </div>
-                    </div>
-                )}
-            </div> 
-        );
+    
+    const ReservaDetalleCard = ({ title, showTotal }) => { 
+        const slotDate = new Date(form.horarioId || new Date()); 
+        const fechaStr = slotDate.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); 
+        const horaStr = slotDate.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }); 
+        const currentTratamiento = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId)); 
+        let proName = "Asignado"; 
+        if (form.profesionalId && profesionales.length > 0) { const p = profesionales.find(pr => pr.id === parseInt(form.profesionalId)); if (p) proName = p.nombreCompleto; } 
+        return ( <div className="conf-card"> <div className="conf-section"> <div className="conf-title">Paciente</div> <div className="conf-row"><span className="conf-label">Nombre</span><span className="conf-value">{form.nombre}</span></div> <div className="conf-row"><span className="conf-label">RUT</span><span className="conf-value">{form.rut}</span></div> </div> <div className="conf-section"> <div className="conf-title">Servicio</div> <div className="conf-row"><span className="conf-label">Tratamiento</span><span className="conf-value">{currentTratamiento?.tratamiento}</span></div> </div> <div className="conf-section"> <div className="conf-title">Cita</div> <div className="conf-row"><span className="conf-label">Profesional</span><span className="conf-value">{proName}</span></div> <div className="conf-row"><span className="conf-label">Fecha</span><span className="conf-value">{fechaStr}</span></div> <div className="conf-row"><span className="conf-label">Hora</span><span className="conf-value">{horaStr}</span></div> </div> {showTotal && ( <div className="conf-section" style={{background:'#fafafa'}}> <div className="conf-total"> <span className="conf-total-label">Total Pagado</span> <span className="conf-total-value" style={{color: '#22c55e'}}>{fmtMoney(currentTratamiento?.valor || 0)}</span> </div> </div> )} </div> ); 
     };
 
     if(bookingSuccess) {
@@ -856,10 +754,7 @@ function WebPaciente() {
                     <span className="success-icon-big">✓</span>
                     <h1 className="web-title">¡Reserva Exitosa!</h1>
                     <p className="web-subtitle">Hemos enviado el comprobante a<br/><strong>{form.email}</strong></p>
-                    
-                    {/* AHORA MOSTRAMOS EL DETALLE CON PRECIO */}
                     <ReservaDetalleCard title="Comprobante de Pago" showTotal={true} />
-                    
                     <button className="btn-block-action" onClick={()=>window.location.href='/'}>Volver al Inicio</button>
                 </div>
             </div> 
@@ -885,7 +780,6 @@ function WebPaciente() {
                         <p style={{marginBottom: 20, textAlign: 'center', color: '#666'}}>
                             Serás redirigido a Mercado Pago de forma segura.
                         </p>
-                        {/* COMPONENTE WALLET REAL */}
                         <Wallet initialization={{ preferenceId: preferenceId }} />
                     </div>
                 </Modal>
