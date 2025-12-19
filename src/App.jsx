@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-// IMPORTAR LIBRERÍA DE MERCADO PAGO
 import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
 import './App.css'; 
 import {
@@ -10,8 +9,8 @@ import {
     buscarPacientePorRut, updateProfesional, deleteProfesional
 } from './api';
 
-// --- INICIALIZAR MERCADO PAGO CON TU PUBLIC KEY REAL ---
-initMercadoPago('TEST-a6568bc5-9caa-4678-abdf-023d72aa406b', { locale: 'es-CL' });
+// --- INICIALIZAR CON LA NUEVA PUBLIC KEY DE PRUEBA (APP_USR) ---
+initMercadoPago('APP_USR-a5a67c3b-4b4b-44a1-b973-ff2fd82fe90a', { locale: 'es-CL' });
 
 // --- DATA MAESTRA ---
 const TRATAMIENTOS = [
@@ -744,7 +743,6 @@ function WebPaciente() {
     const initPaymentProcess = async () => {
         setLoading(true);
         try {
-            // Creamos o actualizamos el paciente primero para asegurar que existe
             let pid = pacienteId;
             if (!pid) { 
                 const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); 
@@ -753,7 +751,6 @@ function WebPaciente() {
                 setPacienteId(pid);
             }
 
-            // Llamamos a TU backend para crear la preferencia
             const response = await fetch(`${API_BASE_URL}/create_preference`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -779,10 +776,6 @@ function WebPaciente() {
             setLoading(false);
         }
     };
-
-    // --- NOTA: EL PAGO EXITOSO SE MANEJA POR REDIRECCIÓN (BACK_URLS) O WEBHOOKS ---
-    // Pero aquí podemos tener un "fallback" si quisieras guardar la reserva antes de pagar (opcional).
-    // Por ahora, MercadoPago redirigirá a tu web tras el pago.
 
     const goBack = () => { if(step===0)return; if(step===2 && pacienteId) setStep(0); else setStep(step-1); };
 
