@@ -707,22 +707,55 @@ function WebPaciente() {
 
     useEffect(()=>{ getProfesionales().then(setProfesionales) },[]);
 
-    // --- EFECTO: DETECTAR REGRESO Y CAMBIAR URL PARA ANALYTICS ---
+    // --- EFECTO CRÍTICO: DETECTAR PAGO Y GUARDAR EN BD ---
     useEffect(() => {
         const query = new URLSearchParams(window.location.search);
         const status = query.get('status');
 
         if (status === 'approved') {
             const savedData = localStorage.getItem('pendingReservation');
+            
             if (savedData) {
                 const parsed = JSON.parse(savedData);
-                setForm(parsed);
-                setBookingSuccess(true);
-                localStorage.removeItem('pendingReservation');
                 
-                // CAMBIAR URL VISUAL PARA ANALYTICS
-                // Esto permite que el Pixel de Meta o GA4 detecten la visita a /reserva-exitosa
-                window.history.replaceState({}, document.title, "/reserva-exitosa");
+                // 1. PREPARAMOS EL GUARDADO
+                // El usuario ya pagó, ahora debemos asegurar la hora en la BD
+                const reservarHora = async () => {
+                    try {
+                        // Buscamos el objeto tratamiento para obtener el nombre exacto (motivo)
+                        // Esto es necesario porque en 'parsed' solo tenemos IDs
+                        // Nota: TRATAMIENTOS es una variable global en este archivo
+                        const trat = TRATAMIENTOS.find(t => t.id === parseInt(parsed.tratamientoId));
+                        const motivoTexto = trat ? trat.tratamiento : "Consulta General";
+
+                        // LLAMADA A LA API (Igual que cuando lo hacías manual)
+                        await crearReserva({
+                            pacienteId: parseInt(parsed.pacienteId),
+                            profesionalId: parseInt(parsed.profesionalId),
+                            horarioDisponibleId: parsed.horarioId,
+                            motivo: motivoTexto 
+                        });
+
+                        // 2. SI LA BD RESPONDE OK, MOSTRAMOS EL ÉXITO
+                        setForm(parsed);
+                        setBookingSuccess(true);
+                        
+                        // Limpiamos para que no se duplique si refresca
+                        localStorage.removeItem('pendingReservation');
+                        
+                        // Cambiamos URL para Analytics
+                        window.history.replaceState({}, document.title, "/reserva-exitosa");
+
+                    } catch (error) {
+                        console.error("Error guardando reserva post-pago:", error);
+                        // Opcional: Manejar el caso donde se pagó pero la hora se ocupó en el intertanto.
+                        // Por ahora mostraremos éxito igual porque el pago entró, 
+                        // pero idealmente aquí podrías mostrar un mensaje de "Contactar soporte".
+                        alert("Tu pago fue exitoso, pero hubo un error registrando la hora. Por favor contáctanos.");
+                    }
+                };
+
+                reservarHora();
             }
         }
     }, []);
@@ -734,16 +767,70 @@ function WebPaciente() {
     const handleRutSearch = async () => { if(!form.rut) return alert("Ingrese su RUT"); if(!validateRut(form.rut)) return alert("RUT inválido"); setLoading(true); try { const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); const paciente = await buscarPacientePorRut(rutLimpio); if (paciente) { setPacienteId(paciente.id); setForm(prev => ({...prev, nombre: paciente.nombreCompleto, email: paciente.email, telefono: paciente.telefono})); setStep(2); } else { setStep(1); } } catch(e) { setStep(1); } setLoading(false); };
     const handleTreatmentConfirm = async () => { setLoading(true); const prosAptos = profesionales.filter(p => p.tratamientos && p.tratamientos.includes(tratamientoSel.tratamiento)); if (prosAptos.length === 0) { alert("No hay profesionales."); setLoading(false); return; } const promises = prosAptos.map(async p => { const horarios = await getHorariosByProfesional(p.id); return { profesional: p, slots: Array.isArray(horarios) ? horarios.filter(x => new Date(x.fecha) > new Date()) : [] }; }); const results = await Promise.all(promises); const agendaMap = {}; const datesSet = new Set(); results.forEach(({profesional, slots}) => { slots.forEach(slot => { const dateKey = toDateKey(slot.fecha); datesSet.add(dateKey); if (!agendaMap[dateKey]) agendaMap[dateKey] = []; let proEntry = agendaMap[dateKey].find(entry => entry.profesional.id === profesional.id); if (!proEntry) { proEntry = { profesional, slots: [] }; agendaMap[dateKey].push(proEntry); } proEntry.slots.push(slot); }); }); const sortedDates = Array.from(datesSet).sort(); if (sortedDates.length === 0) { alert("No hay horas disponibles."); setLoading(false); return; } setMultiAgenda(agendaMap); setAvailableDates(sortedDates); if (sortedDates.length > 0) setSelectedDateKey(sortedDates[0]); setLoading(false); setStep(3); };
     const selectSlot = (pid, hid) => { setForm(prev => ({ ...prev, profesionalId: pid, horarioId: hid })); setStep(4); };
-    const initPaymentProcess = async () => { setLoading(true); localStorage.setItem('pendingReservation', JSON.stringify(form)); try { let pid = pacienteId; if (!pid) { const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); const pac = await crearPaciente({nombreCompleto:form.nombre, email:form.email, telefono:form.telefono, rut: rutLimpio}); pid = pac.id; setPacienteId(pid); } const response = await fetch(`${API_BASE_URL}/create_preference`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: tratamientoSel.tratamiento, quantity: 1, unit_price: tratamientoSel.valor }), }); const preference = await response.json(); if (preference.id) { setPreferenceId(preference.id); setShowPayModal(true); } else { alert("Error al iniciar el pago"); } } catch (error) { console.error(error); alert("Error de conexión"); } finally { setLoading(false); } };
+    
+    // GUARDAR DATOS ANTES DE PAGAR (LOCALSTORAGE)
+    const initPaymentProcess = async () => { 
+        setLoading(true); 
+        // Importante: Guardamos todo el formulario en localStorage
+        // Incluye pacienteId que ya se creó o buscó en pasos anteriores
+        localStorage.setItem('pendingReservation', JSON.stringify({
+            ...form,
+            pacienteId: pacienteId // Aseguramos que el ID del paciente vaya explícito
+        })); 
+        
+        try { 
+            let pid = pacienteId; 
+            if (!pid) { 
+                const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); 
+                const pac = await crearPaciente({nombreCompleto:form.nombre, email:form.email, telefono:form.telefono, rut: rutLimpio}); 
+                pid = pac.id; 
+                setPacienteId(pid);
+                // Actualizamos el storage con el ID recién creado por si acaso
+                localStorage.setItem('pendingReservation', JSON.stringify({ ...form, pacienteId: pid }));
+            } 
+            
+            const response = await fetch(`${API_BASE_URL}/create_preference`, { 
+                method: "POST", 
+                headers: { "Content-Type": "application/json" }, 
+                body: JSON.stringify({ title: tratamientoSel.tratamiento, quantity: 1, unit_price: tratamientoSel.valor }), 
+            }); 
+            
+            const preference = await response.json(); 
+            if (preference.id) { 
+                setPreferenceId(preference.id); 
+                setShowPayModal(true); 
+            } else { 
+                alert("Error al iniciar el pago"); 
+            } 
+        } catch (error) { 
+            console.error(error); 
+            alert("Error de conexión"); 
+        } finally { 
+            setLoading(false); 
+        } 
+    };
+    
     const goBack = () => { if(step===0)return; if(step===2 && pacienteId) setStep(0); else setStep(step-1); };
     
     const ReservaDetalleCard = ({ title, showTotal }) => { 
         const slotDate = new Date(form.horarioId || new Date()); 
         const fechaStr = slotDate.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); 
         const horaStr = slotDate.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }); 
+        
+        // Recuperar info completa para mostrar en tarjeta
         const currentTratamiento = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId)); 
         let proName = "Asignado"; 
-        if (form.profesionalId && profesionales.length > 0) { const p = profesionales.find(pr => pr.id === parseInt(form.profesionalId)); if (p) proName = p.nombreCompleto; } 
+        
+        // Intentar buscar profesional en la lista cargada
+        if (form.profesionalId && profesionales.length > 0) { 
+            const p = profesionales.find(pr => pr.id === parseInt(form.profesionalId)); 
+            if (p) proName = p.nombreCompleto; 
+        } else if (multiAgenda && selectedDateKey && multiAgenda[selectedDateKey]) {
+             // Fallback si venimos del flujo normal
+             const foundEntry = multiAgenda[selectedDateKey].find(e => e.profesional.id === form.profesionalId); 
+             if (foundEntry) proName = foundEntry.profesional.nombreCompleto;
+        }
+
         return ( <div className="conf-card"> <div className="conf-section"> <div className="conf-title">Paciente</div> <div className="conf-row"><span className="conf-label">Nombre</span><span className="conf-value">{form.nombre}</span></div> <div className="conf-row"><span className="conf-label">RUT</span><span className="conf-value">{form.rut}</span></div> </div> <div className="conf-section"> <div className="conf-title">Servicio</div> <div className="conf-row"><span className="conf-label">Tratamiento</span><span className="conf-value">{currentTratamiento?.tratamiento}</span></div> </div> <div className="conf-section"> <div className="conf-title">Cita</div> <div className="conf-row"><span className="conf-label">Profesional</span><span className="conf-value">{proName}</span></div> <div className="conf-row"><span className="conf-label">Fecha</span><span className="conf-value">{fechaStr}</span></div> <div className="conf-row"><span className="conf-label">Hora</span><span className="conf-value">{horaStr}</span></div> </div> {showTotal && ( <div className="conf-section" style={{background:'#fafafa'}}> <div className="conf-total"> <span className="conf-total-label">Total Pagado</span> <span className="conf-total-value" style={{color: '#22c55e'}}>{fmtMoney(currentTratamiento?.valor || 0)}</span> </div> </div> )} </div> ); 
     };
 
@@ -780,6 +867,7 @@ function WebPaciente() {
                         <p style={{marginBottom: 20, textAlign: 'center', color: '#666'}}>
                             Serás redirigido a Mercado Pago de forma segura.
                         </p>
+                        {/* COMPONENTE WALLET REAL */}
                         <Wallet initialization={{ preferenceId: preferenceId }} />
                     </div>
                 </Modal>
