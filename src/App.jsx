@@ -165,16 +165,15 @@ function DashboardContent({ module, view }) {
     }
     if (module === 'finanzas') {
         const total = reservas.reduce((acc, r) => { 
-            // Buscamos el precio en la lista dinámica o en el histórico
             const m = tratamientos.find(t => t.nombre === r.motivo) || { valor: 0 }; 
             return acc + m.valor; 
         }, 0);
-        return <FinanzasReporte total={total} count={reservas.length} reservas={reservas} />;
+        return <FinanzasReporte total={total} count={reservas.length} reservas={reservas} tratamientos={tratamientos} />;
     }
     return <div>Cargando...</div>;
 }
 
-// --- MÓDULO: GESTIÓN DE PRESTACIONES (NUEVO) ---
+// --- MÓDULO: GESTIÓN DE PRESTACIONES ---
 function AgendaTratamientos({ reload }) {
     const [items, setItems] = useState([]);
     const [form, setForm] = useState({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '' });
@@ -205,7 +204,7 @@ function AgendaTratamientos({ reload }) {
                 <form onSubmit={save}>
                     <div className="input-row">
                         <div><label className="form-label">Nombre del Tratamiento</label><input className="form-control" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} required /></div>
-                        <div><label className="form-label">Especialidad</label><input className="form-control" value={form.especialidad} onChange={e=>setForm({...form, especialidad:e.target.value})} placeholder="Ej: Fonoaudiología" required /></div>
+                        <div><label className="form-label">Especialidad (Pública)</label><input className="form-control" value={form.especialidad} onChange={e=>setForm({...form, especialidad:e.target.value})} placeholder="Ej: Matrona Adulto Teleconsulta" required /></div>
                     </div>
                     <div className="input-row">
                         <div><label className="form-label">Código (Fonasa/Isapre)</label><input className="form-control" value={form.codigo} onChange={e=>setForm({...form, codigo:e.target.value})} /></div>
@@ -243,12 +242,12 @@ function AgendaTratamientos({ reload }) {
     );
 }
 
-// --- MÓDULO: CLIENTES (MEJORADO CON HISTORIAL) ---
+// --- MÓDULO: CLIENTES ---
 function AgendaPacientes(){
     const [pacientes,setPacientes]=useState([]);
     const [form,setForm]=useState({nombreCompleto:'',email:'',telefono:'', rut:''});
     const [editingId, setEditingId] = useState(null);
-    const [historyPatient, setHistoryPatient] = useState(null); // Para el modal de historial
+    const [historyPatient, setHistoryPatient] = useState(null); 
     const [historyData, setHistoryData] = useState([]);
 
     const load=()=>getPacientes().then(setPacientes);
@@ -272,8 +271,6 @@ function AgendaPacientes(){
     return(
         <div>
             <div className="page-header"><div className="page-title"><h1>Base de Pacientes</h1></div></div>
-            
-            {/* Formulario Crear/Editar */}
             <div className="pro-card">
                 <h3 style={{marginTop:0}}>{editingId ? 'Editar Paciente' : 'Nuevo Paciente'}</h3>
                 <form onSubmit={save}>
@@ -282,8 +279,6 @@ function AgendaPacientes(){
                     <button className="btn-primary">Guardar</button>
                 </form>
             </div>
-
-            {/* Listado de Clientes */}
             <div className="pro-card">
                 <div className="data-table-container">
                     <table className="data-table">
@@ -296,7 +291,7 @@ function AgendaPacientes(){
                                 <td>{p.telefono}</td>
                                 <td>
                                     <div style={{display:'flex', gap:5}}>
-                                        <button className="btn-primary" style={{padding:'5px 10px', fontSize:'0.8rem'}} onClick={()=>viewHistory(p)}>Ver Historial</button>
+                                        <button className="btn-primary" style={{padding:'5px 10px', fontSize:'0.8rem'}} onClick={()=>viewHistory(p)}>Historial</button>
                                         <button className="btn-edit" onClick={()=>handleEdit(p)}>Editar</button>
                                         <button className="btn-danger" onClick={()=>handleDelete(p.id)}>X</button>
                                     </div>
@@ -306,8 +301,6 @@ function AgendaPacientes(){
                     </table>
                 </div>
             </div>
-
-            {/* Modal Historial */}
             {historyPatient && (
                 <Modal title={`Historial: ${historyPatient.nombreCompleto}`} onClose={()=>setHistoryPatient(null)}>
                     <div className="data-table-container">
@@ -372,10 +365,10 @@ function AgendaNuevaReserva({ reload, reservas, tratamientos }) {
     
     useEffect(() => { getPacientes().then(setPacientes); getProfesionales().then(setPros); }, []);
     
+    // Obtener la lista única de especialidades desde la DB
     const especialidades = [...new Set(tratamientos.map(t => t.especialidad))];
     const prestaciones = tratamientos.filter(t => t.especialidad === form.especialidad);
     
-    // Filtro mejorado: Solo mostrar profesionales que tengan el tratamiento en su lista (string separado por comas)
     const prosFiltrados = form.tratamientoId 
         ? pros.filter(p => {
             const trat = tratamientos.find(x => x.id === parseInt(form.tratamientoId));
@@ -403,7 +396,7 @@ function AgendaProfesionales({ tratamientos }) {
     const [form, setForm] = useState({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] });
     const [isEditing, setIsEditing] = useState(false);
     
-    // Ahora las opciones vienen de la base de datos
+    // Obtener la lista única de especialidades y tratamientos desde la DB (props)
     const especialidadesUnicas = [...new Set(tratamientos.map(t => t.especialidad))];
     const tratamientosDisponibles = tratamientos.filter(t => form.especialidades.includes(t.especialidad)).map(t=>t.nombre);
     
@@ -434,7 +427,7 @@ function AgendaHorarios(){
     return( <div> <div className="page-header"><div className="page-title"><h1>Configuración de Horarios</h1></div></div> <div className="pro-card"> <form onSubmit={save}> <div className="input-row"><div><label className="form-label">Profesional</label><select className="form-control" onChange={e=>setForm({...form,profesionalId:e.target.value})}><option>Seleccionar...</option>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div><div><label className="form-label">Fecha del Bloque</label><input type="date" className="form-control" onChange={e=>setFechaSel(e.target.value)} /></div></div> <div className="input-row"><div><label className="form-label">Inicio</label><input type="time" className="form-control" value={form.horaInicio} onChange={e=>setForm({...form,horaInicio:e.target.value})}/></div><div><label className="form-label">Fin</label><input type="time" className="form-control" value={form.horaFin} onChange={e=>setForm({...form,horaFin:e.target.value})}/></div></div> <div className="input-row"><div><label className="form-label">Duración (Min)</label><select className="form-control" value={form.duracionSlot} onChange={e=>setForm({...form, duracionSlot: e.target.value})}><option value="15">15 Min</option><option value="30">30 Min</option><option value="45">45 Min</option><option value="60">60 Min</option></select></div><div><label className="form-label">Descanso (Min)</label><input type="number" className="form-control" value={form.intervalo} onChange={e=>setForm({...form, intervalo: e.target.value})} /></div></div> <button className="btn-primary">Guardar Disponibilidad</button> </form> </div> <div className="pro-card"> <h3>Bloques Configurados</h3> <div className="data-table-container"><table className="data-table"><thead><tr><th>Profesional</th><th>Fecha</th><th>Horario</th><th>Acción</th></tr></thead><tbody>{configs.map(c=>(<tr key={c.id}><td>{c.profesional?.nombreCompleto}</td><td>{c.fecha}</td><td>{c.horaInicio} - {c.horaFin}</td><td><button className="btn-danger" onClick={()=>borrarConfig(c.id)}>Eliminar</button></td></tr>))}</tbody></table></div> </div> <div className="pro-card"> <h3>Ver Calendario Visual (Popup)</h3> <div className="data-table-container"><table className="data-table"><thead><tr><th>Profesional</th><th>Acción</th></tr></thead><tbody>{pros.map(p=>(<tr key={p.id}><td>{p.nombreCompleto}</td><td><button className="btn-edit" onClick={()=>verCalendario(p)}>Ver Horarios</button></td></tr>))}</tbody></table></div> </div> {showModal && ( <Modal title={`Horarios: ${selectedProName}`} onClose={()=>setShowModal(false)}> {events.length === 0 ? <p>No hay datos.</p> : events.sort((a,b)=>a.start-b.start).map((e, i) => ( <div key={i} style={{marginBottom:10, padding:10, borderRadius:6, background: e.type==='available'?'#f0fdf4':'#eff6ff', borderLeft: e.type==='available'?'3px solid #22c55e':'3px solid #3b82f6'}}> <strong>{e.start.toLocaleDateString()}</strong> - {e.start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} <div style={{fontSize:'0.85rem'}}>{e.title}</div> </div> )) } </Modal> )} </div> )
 }
 
-function FinanzasReporte({total,count,reservas}){ 
+function FinanzasReporte({total,count,reservas, tratamientos}){ 
     const statsPro = reservas.reduce((acc, curr) => { acc[curr.profesionalNombre] = (acc[curr.profesionalNombre] || 0) + 1; return acc; }, {});
     const statsTrat = reservas.reduce((acc, curr) => { acc[curr.motivo] = (acc[curr.motivo] || 0) + 1; return acc; }, {});
     return ( <div> <div className="page-header"><div className="page-title"><h1>Reporte Financiero</h1></div></div> <div className="kpi-grid"> <div className="kpi-box"><div className="kpi-label">Ingresos</div><div className="kpi-value">{fmtMoney(total)}</div></div> <div className="kpi-box"><div className="kpi-label">Citas</div><div className="kpi-value">{count}</div></div> </div> <div className="input-row finance-section"> <div className="pro-card"> <h3>Atenciones por Profesional</h3> <div className="data-table-container"> <table className="finance-table"><thead><tr><th>Profesional</th><th>Citas</th></tr></thead><tbody>{Object.entries(statsPro).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table> </div> </div> <div className="pro-card"> <h3>Agendas por Tratamiento</h3> <div className="data-table-container"> <table className="finance-table"><thead><tr><th>Tratamiento</th><th>Cantidad</th></tr></thead><tbody>{Object.entries(statsTrat).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table> </div> </div> </div> </div> ) 
@@ -444,7 +437,7 @@ function FinanzasReporte({total,count,reservas}){
 function WebPaciente() {
     const [step, setStep] = useState(0); 
     const [profesionales, setProfesionales] = useState([]);
-    const [tratamientos, setTratamientos] = useState([]); // Ahora dinámicos
+    const [tratamientos, setTratamientos] = useState([]);
     const [form, setForm] = useState({ rut:'', nombre:'', email:'', telefono:'', especialidad:'', tratamientoId:'', profesionalId:'', horarioId:'' });
     const [loading, setLoading] = useState(false);
     const [bookingSuccess, setBookingSuccess] = useState(false);
@@ -481,11 +474,11 @@ function WebPaciente() {
         }
     }, []);
 
+    // [IMPORTANTE] Obtener la lista única de especialidades desde la base de datos
     const especialidades = [...new Set(tratamientos.map(t => t.especialidad))];
     const prestaciones = tratamientos.filter(t => t.especialidad === form.especialidad);
     const tratamientoSel = tratamientos.find(t => t.id === parseInt(form.tratamientoId));
     
-    // Filtrar profesionales que realizan este tratamiento (usando el string de tratamientos del profesional)
     const prosAptos = form.tratamientoId 
         ? profesionales.filter(p => tratamientoSel && p.tratamientos && p.tratamientos.includes(tratamientoSel.nombre))
         : [];
