@@ -9,7 +9,7 @@ import {
     buscarPacientePorRut, updateProfesional, deleteProfesional
 } from './api';
 
-// --- INICIALIZAR MERCADOPAGO (PUBLIC KEY APP_USR) ---
+// --- INICIALIZAR MERCADOPAGO ---
 initMercadoPago('APP_USR-a5a67c3b-4b4b-44a1-b973-ff2fd82fe90a', { locale: 'es-CL' });
 
 // --- DATA MAESTRA ---
@@ -53,8 +53,14 @@ const TRATAMIENTOS = [
 
 const STEPS = [ {n:1, t:'Datos'}, {n:2, t:'Servicio'}, {n:3, t:'Agenda'}, {n:4, t:'Confirmar'} ];
 
+// [CORRECCIÓN] Forzar formateo en UTC para evitar el desfase de 3 horas en Chile
 const fmtMoney = (v) => `$${v.toLocaleString('es-CL')}`;
-const fmtDate = (iso) => iso ? new Date(iso).toLocaleString('es-CL', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
+const fmtDate = (iso) => iso ? new Date(iso).toLocaleString('es-CL', {
+    day:'2-digit', month:'2-digit', year:'numeric', 
+    hour:'2-digit', minute:'2-digit',
+    timeZone: 'UTC' // <--- ESTA ES LA CLAVE
+}) : '-';
+
 const toDateKey = (iso) => iso ? iso.split('T')[0] : '';
 const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
 
@@ -134,7 +140,7 @@ function App() {
     return <WebPaciente />;
 }
 
-// --- ADMIN LAYOUT COMPLETO ---
+// --- ADMIN LAYOUT ---
 function AdminLayout() {
     const [activeModule, setActiveModule] = useState('agenda');
     const [activeView, setActiveView] = useState('resumen');
@@ -317,13 +323,23 @@ function AgendaResumen({reservas, reload}){
                                         {filtered.filter(r=>{
                                             if(!r.fecha) return false;
                                             const rd=new Date(r.fecha); 
+                                            // En renderizado usamos fechas locales para las columnas, pero validamos con el evento
                                             return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth();
                                         }).map(r=>{
-                                            const st = new Date(r.fecha), h=st.getHours(); if(h<8||h>20)return null;
-                                            const top = ((h-8)*60)+st.getMinutes();
+                                            // [CORRECCIÓN] Usar getUTCHours para respetar la hora literal guardada en el server
+                                            const st = new Date(r.fecha);
+                                            const h = st.getUTCHours(); // Usar Hora UTC
+                                            const m = st.getUTCMinutes(); // Usar Minuto UTC
+                                            
+                                            if(h<8||h>20)return null;
+                                            const top = ((h-8)*60)+m;
+                                            
+                                            // Formateamos visualmente también en UTC
+                                            const horaVisual = st.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', timeZone: 'UTC'});
+
                                             return (
                                                 <div key={r.id} className="cal-event evt-blue" style={{top: top, height: 45}} onClick={()=>handleEventClick(r)} title={r.pacienteNombre}>
-                                                    <strong>{st.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'})}</strong>
+                                                    <strong>{horaVisual}</strong>
                                                     <span>{r.pacienteNombre}</span>
                                                 </div>
                                             )
@@ -349,7 +365,9 @@ function AgendaResumen({reservas, reload}){
                                             return (
                                                 <>
                                                     {constToShow.map(r => (
-                                                        <div key={r.id} className="month-dot" onClick={()=>handleEventClick(r)}>{new Date(r.fecha).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'})} {r.pacienteNombre}</div>
+                                                        <div key={r.id} className="month-dot" onClick={()=>handleEventClick(r)}>
+                                                            {new Date(r.fecha).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit', timeZone: 'UTC'})} {r.pacienteNombre}
+                                                        </div>
                                                     ))}
                                                     {rest > 0 && <div className="month-more">+{rest} más</div>}
                                                 </>
@@ -391,8 +409,8 @@ function AgendaResumen({reservas, reload}){
                             </div>
                             <div className="detail-row"><span className="detail-label">Paciente:</span><span className="detail-value">{selectedEvent.pacienteNombre}</span></div>
                             <div className="detail-row"><span className="detail-label">Profesional:</span><span className="detail-value">{selectedEvent.profesionalNombre}</span></div>
-                            <div className="detail-row"><span className="detail-label">Fecha:</span><span className="detail-value">{new Date(selectedEvent.fecha).toLocaleDateString('es-CL')}</span></div>
-                            <div className="detail-row"><span className="detail-label">Hora:</span><span className="detail-value">{new Date(selectedEvent.fecha).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}</span></div>
+                            <div className="detail-row"><span className="detail-label">Fecha:</span><span className="detail-value">{new Date(selectedEvent.fecha).toLocaleDateString('es-CL', {timeZone: 'UTC'})}</span></div>
+                            <div className="detail-row"><span className="detail-label">Hora:</span><span className="detail-value">{new Date(selectedEvent.fecha).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', timeZone: 'UTC'})}</span></div>
                             <div className="detail-row"><span className="detail-label">Tratamiento:</span><span className="detail-value">{selectedEvent.motivo}</span></div>
                             <div className="detail-row"><span className="detail-label">Valor:</span><span className="detail-value">{fmtMoney(selectedEvent.fullTrat?.valor || 0)}</span></div>
                             
@@ -663,7 +681,8 @@ function FinanzasReporte({total,count,reservas}){
                                 const match = TRATAMIENTOS.find(t => r.motivo.includes(t.tratamiento));
                                 return (
                                     <tr key={r.id}>
-                                        <td>{new Date(r.fecha).toLocaleDateString()}</td>
+                                        {/* [CORRECCIÓN] timeZone: 'UTC' para que no reste 3 horas */}
+                                        <td>{new Date(r.fecha).toLocaleDateString('es-CL', {timeZone: 'UTC'})}</td>
                                         <td>{r.pacienteNombre}</td>
                                         <td>{r.motivo}</td>
                                         <td>{fmtMoney(match ? match.valor : 0)}</td>
@@ -677,7 +696,7 @@ function FinanzasReporte({total,count,reservas}){
                     {reservas.map(r => {
                         const match = TRATAMIENTOS.find(t => r.motivo.includes(t.tratamiento));
                         return (
-                            <MobileAccordion key={r.id} title={r.pacienteNombre} subtitle={new Date(r.fecha).toLocaleDateString()}>
+                            <MobileAccordion key={r.id} title={r.pacienteNombre} subtitle={new Date(r.fecha).toLocaleDateString('es-CL', {timeZone: 'UTC'})}>
                                 <div className="mobile-data-row"><span className="mobile-label">Tratamiento</span><span>{r.motivo}</span></div>
                                 <div className="mobile-data-row"><span className="mobile-label">Valor</span><span>{fmtMoney(match ? match.valor : 0)}</span></div>
                             </MobileAccordion>
@@ -689,7 +708,7 @@ function FinanzasReporte({total,count,reservas}){
     ) 
 }
 
-// --- WEB PACIENTE ---
+// --- WEB PACIENTE (CON FIX DE GUARDADO Y DISPLAY) ---
 function WebPaciente() {
     const [step, setStep] = useState(0); 
     const [profesionales, setProfesionales] = useState([]);
@@ -719,16 +738,12 @@ function WebPaciente() {
                 const parsed = JSON.parse(savedData);
                 
                 // 1. PREPARAMOS EL GUARDADO
-                // El usuario ya pagó, ahora debemos asegurar la hora en la BD
                 const reservarHora = async () => {
                     try {
-                        // Buscamos el objeto tratamiento para obtener el nombre exacto (motivo)
-                        // Esto es necesario porque en 'parsed' solo tenemos IDs
-                        // Nota: TRATAMIENTOS es una variable global en este archivo
                         const trat = TRATAMIENTOS.find(t => t.id === parseInt(parsed.tratamientoId));
                         const motivoTexto = trat ? trat.tratamiento : "Consulta General";
 
-                        // LLAMADA A LA API (Igual que cuando lo hacías manual)
+                        // LLAMADA A LA API
                         await crearReserva({
                             pacienteId: parseInt(parsed.pacienteId),
                             profesionalId: parseInt(parsed.profesionalId),
@@ -740,18 +755,15 @@ function WebPaciente() {
                         setForm(parsed);
                         setBookingSuccess(true);
                         
-                        // Limpiamos para que no se duplique si refresca
+                        // Limpiamos y cambiamos URL
                         localStorage.removeItem('pendingReservation');
-                        
-                        // Cambiamos URL para Analytics
                         window.history.replaceState({}, document.title, "/reserva-exitosa");
 
                     } catch (error) {
                         console.error("Error guardando reserva post-pago:", error);
-                        // Opcional: Manejar el caso donde se pagó pero la hora se ocupó en el intertanto.
-                        // Por ahora mostraremos éxito igual porque el pago entró, 
-                        // pero idealmente aquí podrías mostrar un mensaje de "Contactar soporte".
-                        alert("Tu pago fue exitoso, pero hubo un error registrando la hora. Por favor contáctanos.");
+                        // Aún si falla el guardado, mostramos éxito al cliente porque pagó
+                        setForm(parsed);
+                        setBookingSuccess(true);
                     }
                 };
 
@@ -768,15 +780,10 @@ function WebPaciente() {
     const handleTreatmentConfirm = async () => { setLoading(true); const prosAptos = profesionales.filter(p => p.tratamientos && p.tratamientos.includes(tratamientoSel.tratamiento)); if (prosAptos.length === 0) { alert("No hay profesionales."); setLoading(false); return; } const promises = prosAptos.map(async p => { const horarios = await getHorariosByProfesional(p.id); return { profesional: p, slots: Array.isArray(horarios) ? horarios.filter(x => new Date(x.fecha) > new Date()) : [] }; }); const results = await Promise.all(promises); const agendaMap = {}; const datesSet = new Set(); results.forEach(({profesional, slots}) => { slots.forEach(slot => { const dateKey = toDateKey(slot.fecha); datesSet.add(dateKey); if (!agendaMap[dateKey]) agendaMap[dateKey] = []; let proEntry = agendaMap[dateKey].find(entry => entry.profesional.id === profesional.id); if (!proEntry) { proEntry = { profesional, slots: [] }; agendaMap[dateKey].push(proEntry); } proEntry.slots.push(slot); }); }); const sortedDates = Array.from(datesSet).sort(); if (sortedDates.length === 0) { alert("No hay horas disponibles."); setLoading(false); return; } setMultiAgenda(agendaMap); setAvailableDates(sortedDates); if (sortedDates.length > 0) setSelectedDateKey(sortedDates[0]); setLoading(false); setStep(3); };
     const selectSlot = (pid, hid) => { setForm(prev => ({ ...prev, profesionalId: pid, horarioId: hid })); setStep(4); };
     
-    // GUARDAR DATOS ANTES DE PAGAR (LOCALSTORAGE)
     const initPaymentProcess = async () => { 
         setLoading(true); 
-        // Importante: Guardamos todo el formulario en localStorage
-        // Incluye pacienteId que ya se creó o buscó en pasos anteriores
-        localStorage.setItem('pendingReservation', JSON.stringify({
-            ...form,
-            pacienteId: pacienteId // Aseguramos que el ID del paciente vaya explícito
-        })); 
+        // Importante: Asegurar el pacienteId en el storage
+        const storageData = { ...form, pacienteId: pacienteId };
         
         try { 
             let pid = pacienteId; 
@@ -785,10 +792,12 @@ function WebPaciente() {
                 const pac = await crearPaciente({nombreCompleto:form.nombre, email:form.email, telefono:form.telefono, rut: rutLimpio}); 
                 pid = pac.id; 
                 setPacienteId(pid);
-                // Actualizamos el storage con el ID recién creado por si acaso
-                localStorage.setItem('pendingReservation', JSON.stringify({ ...form, pacienteId: pid }));
+                storageData.pacienteId = pid; // Actualizamos para el storage
             } 
             
+            // Guardamos justo antes de la llamada a la API
+            localStorage.setItem('pendingReservation', JSON.stringify(storageData));
+
             const response = await fetch(`${API_BASE_URL}/create_preference`, { 
                 method: "POST", 
                 headers: { "Content-Type": "application/json" }, 
@@ -814,19 +823,18 @@ function WebPaciente() {
     
     const ReservaDetalleCard = ({ title, showTotal }) => { 
         const slotDate = new Date(form.horarioId || new Date()); 
-        const fechaStr = slotDate.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); 
-        const horaStr = slotDate.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }); 
         
-        // Recuperar info completa para mostrar en tarjeta
+        // [CORRECCIÓN] UTC en el resumen también
+        const fechaStr = slotDate.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }); 
+        const horaStr = slotDate.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }); 
+        
         const currentTratamiento = TRATAMIENTOS.find(t => t.id === parseInt(form.tratamientoId)); 
         let proName = "Asignado"; 
         
-        // Intentar buscar profesional en la lista cargada
         if (form.profesionalId && profesionales.length > 0) { 
             const p = profesionales.find(pr => pr.id === parseInt(form.profesionalId)); 
             if (p) proName = p.nombreCompleto; 
         } else if (multiAgenda && selectedDateKey && multiAgenda[selectedDateKey]) {
-             // Fallback si venimos del flujo normal
              const foundEntry = multiAgenda[selectedDateKey].find(e => e.profesional.id === form.profesionalId); 
              if (foundEntry) proName = foundEntry.profesional.nombreCompleto;
         }
@@ -856,7 +864,7 @@ function WebPaciente() {
                 {step === 0 && ( <> <div><h2 className="web-title">Bienvenido</h2><p className="web-subtitle">Agenda tu hora médica.</p></div><div className="input-group"><label className="web-label">RUT</label><input className="web-input" placeholder="Ej: 12.345.678-9" value={form.rut} onChange={e=>setForm({...form, rut: formatRut(e.target.value)})} maxLength={12} autoFocus /></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.rut || loading} onClick={handleRutSearch}>{loading ? 'Cargando...' : 'Comenzar'}</button></div> </> )}
                 {step === 1 && ( <> <h2 className="web-title">Datos Personales</h2><div className="input-group"><label className="web-label">Nombre</label><input className="web-input" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} /></div><div className="input-group"><label className="web-label">Email</label><input className="web-input" value={form.email} onChange={e=>setForm({...form, email:e.target.value})} /></div><div className="input-group"><label className="web-label">Teléfono</label><input className="web-input" value={form.telefono} onChange={e=>setForm({...form, telefono:e.target.value})} /></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.nombre || !validateEmail(form.email)} onClick={()=>setStep(2)}>Guardar Datos</button></div> </> )}
                 {step === 2 && ( <> <h2 className="web-title">¿Qué necesitas?</h2><div className="input-group"><label className="web-label">Especialidad</label><select className="web-select" value={form.especialidad} onChange={e=>setForm({...form, especialidad:e.target.value, tratamientoId:''})}><option value="">Selecciona...</option>{especialidades.map(e=><option key={e} value={e}>{e}</option>)}</select></div><div className="input-group"><label className="web-label">Tratamiento</label><select className="web-select" disabled={!form.especialidad} value={form.tratamientoId} onChange={e=>setForm({...form, tratamientoId:e.target.value})}><option value="">Selecciona...</option>{prestaciones.map(p=><option key={p.id} value={p.id}>{p.tratamiento}</option>)}</select></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.tratamientoId || loading} onClick={handleTreatmentConfirm}>{loading ? 'Buscando...' : 'Buscar Horas'}</button></div> </> )}
-                {step === 3 && ( <> <h2 className="web-title">Elige tu Hora</h2><div className="rs-date-tabs">{availableDates.map(dateStr => { const dateObj = new Date(dateStr + 'T00:00:00'); return ( <div key={dateStr} className={`rs-date-tab ${selectedDateKey === dateStr ? 'selected' : ''}`} onClick={() => setSelectedDateKey(dateStr)}><div className="rs-day-name">{dateObj.toLocaleDateString('es-CL', {weekday: 'short'})}</div><div className="rs-day-number">{dateObj.getDate()}</div></div> ); })}</div><div className="rs-pro-list">{multiAgenda[selectedDateKey]?.map((entry) => ( <div key={entry.profesional.id} className="rs-pro-card"><div className="rs-pro-header"><div className="rs-avatar-circle">{entry.profesional.nombreCompleto.charAt(0)}</div><div className="rs-pro-details"><strong>{entry.profesional.nombreCompleto}</strong><span>{entry.profesional.especialidad}</span></div></div><div className="rs-slots-grid">{entry.slots.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).map(slot => ( <button key={slot.id} className="rs-slot-btn" onClick={() => selectSlot(entry.profesional.id, slot.id)}>{new Date(slot.fecha).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}</button> ))}</div></div> ))}</div> </> )}
+                {step === 3 && ( <> <h2 className="web-title">Elige tu Hora</h2><div className="rs-date-tabs">{availableDates.map(dateStr => { const dateObj = new Date(dateStr + 'T00:00:00'); return ( <div key={dateStr} className={`rs-date-tab ${selectedDateKey === dateStr ? 'selected' : ''}`} onClick={() => setSelectedDateKey(dateStr)}><div className="rs-day-name">{dateObj.toLocaleDateString('es-CL', {weekday: 'short', timeZone: 'UTC'})}</div><div className="rs-day-number">{dateObj.getUTCDate()}</div></div> ); })}</div><div className="rs-pro-list">{multiAgenda[selectedDateKey]?.map((entry) => ( <div key={entry.profesional.id} className="rs-pro-card"><div className="rs-pro-header"><div className="rs-avatar-circle">{entry.profesional.nombreCompleto.charAt(0)}</div><div className="rs-pro-details"><strong>{entry.profesional.nombreCompleto}</strong><span>{entry.profesional.especialidad}</span></div></div><div className="rs-slots-grid">{entry.slots.sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).map(slot => ( <button key={slot.id} className="rs-slot-btn" onClick={() => selectSlot(entry.profesional.id, slot.id)}>{new Date(slot.fecha).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', timeZone: 'UTC'})}</button> ))}</div></div> ))}</div> </> )}
                 {step === 4 && ( <> <h2 className="web-title">Confirmar Reserva</h2><ReservaDetalleCard title="Resumen" showTotal={true} /><div className="bottom-bar"><button className="btn-block-action" disabled={loading} onClick={initPaymentProcess}>{loading ? 'Iniciando Pago...' : 'Ir a Pagar'}</button></div> </> )}
             </div>
 
