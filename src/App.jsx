@@ -19,8 +19,7 @@ const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString('es-CL', { hour:
 const toDateKey = (iso) => iso ? iso.split('T')[0] : '';
 const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
 
-// --- LÓGICA DE CATEGORIZACIÓN AUTOMÁTICA ---
-// Esta función agrupa las especialidades específicas en las 5 grandes categorías que pediste
+// Mapeo Inteligente: Especialidad -> Categoría
 const getCategoryFromSpecialty = (specName) => {
     const s = specName.toLowerCase();
     if (s.includes('fonoaudiología') || s.includes('fonoaudiologia')) return 'Fonoaudiología';
@@ -163,7 +162,7 @@ function DashboardContent({ module, view }) {
     if (module === 'clientes') { return <AgendaPacientes />; }
     if (module === 'finanzas') {
         const total = reservas.reduce((acc, r) => { const m = tratamientos.find(t => t.nombre === r.motivo) || { valor: 0 }; return acc + m.valor; }, 0);
-        return <FinanzasReporte total={total} count={reservas.length} reservas={reservas} />;
+        return <FinanzasReporte total={total} count={reservas.length} reservas={reservas} tratamientos={tratamientos} />;
     }
     return <div>Cargando...</div>;
 }
@@ -251,6 +250,7 @@ function AgendaProfesionales({ tratamientos }) {
     return ( <div> <div className="page-header"><div className="page-title"><h1>Gestión de Profesionales</h1></div></div> <div className="pro-card"> <h3 style={{marginTop:0}}>{isEditing ? 'Editar' : 'Nuevo'}</h3> <form onSubmit={save}> <div className="input-row"><div style={{width:'100%'}}><label className="form-label">Nombre</label><input className="form-control" value={form.nombreCompleto} onChange={e => setForm({ ...form, nombreCompleto: e.target.value })} /></div></div> <div className="input-row"><div><MultiSelectDropdown label="Especialidades" options={especialidadesUnicas} selectedValues={form.especialidades} onChange={handleSpecChange} /></div><div><MultiSelectDropdown label="Prestaciones que realiza" options={tratamientosDisponibles} selectedValues={form.tratamientos} onChange={handleTratChange} /></div></div> <button className="btn-primary">Guardar</button> </form> </div> <div className="pro-card"> <div className="data-table-container"><table className="data-table"><thead><tr><th>Nombre</th><th>Especialidades</th><th>Acciones</th></tr></thead><tbody>{pros.map(p => (<tr key={p.id}><td><strong>{p.nombreCompleto}</strong></td><td>{p.especialidad}</td><td><button className="btn-edit" onClick={() => handleEdit(p)}>Editar</button><button className="btn-danger" onClick={() => handleDelete(p.id)}>X</button></td></tr>))}</tbody></table></div> </div> </div> )
 }
 
+// *** AQUÍ ESTÁ LA CORRECCIÓN CLAVE ***
 function AgendaHorarios(){
     const [pros,setPros]=useState([]);
     const [configs, setConfigs] = useState([]);
@@ -263,7 +263,33 @@ function AgendaHorarios(){
     const loadConfigs = async () => { try { const data = await getConfiguraciones(); setConfigs(Array.isArray(data) ? data : []); } catch (e) { setConfigs([]); } };
     const save=async(e)=>{ e.preventDefault(); const payload = { ...form, fecha: fechaSel }; await fetch(`${API_BASE_URL}/configuracion`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); alert(`Guardado`); await loadConfigs(); };
     const borrarConfig = async (id) => { if(confirm("¿Eliminar?")) { await deleteConfiguracion(id); loadConfigs(); } }
-    const verCalendario = async (p) => { setSelectedProName(p.nombreCompleto); const reservas = await getReservasDetalle(); const misReservas = reservas.filter(r => r.profesionalId === p.id).map(r => { return { id: r.id, title: r.pacienteNombre, start: new Date(r.fecha), type: 'occupied' }; }); const misBloques = configs.filter(c => c.profesional?.id === p.id).map((c, i) => { const start = new Date(`${c.fecha}T${c.horaInicio}`); const end = new Date(`${c.fecha}T${c.horaFin}`); const duration = (end - start) / 60000; return { id: `block-${i}`, title: 'Disponible', start: start, duration: duration, type: 'available' }; }); setEvents([...misBloques, ...misReservas]); setShowModal(true); };
+    
+    // ESTA FUNCIÓN AHORA LLAMA A LA API EN VEZ DE USAR LA CONFIG LOCAL
+    const verCalendario = async (p) => {
+        setSelectedProName(p.nombreCompleto);
+        const [reservasData, slotsData] = await Promise.all([
+            getReservasDetalle(),
+            getHorariosByProfesional(p.id)
+        ]);
+
+        const misReservas = reservasData.filter(r => r.profesionalId === p.id).map(r => ({
+            id: r.id,
+            title: r.pacienteNombre,
+            start: new Date(r.fecha),
+            type: 'occupied'
+        }));
+
+        const misBloques = slotsData.map((s, i) => ({
+            id: `slot-${i}`,
+            title: 'Disponible',
+            start: new Date(s.fecha),
+            type: 'available'
+        }));
+
+        setEvents([...misBloques, ...misReservas]);
+        setShowModal(true);
+    };
+
     return( <div> <div className="page-header"><div className="page-title"><h1>Configuración de Horarios</h1></div></div> <div className="pro-card"> <form onSubmit={save}> <div className="input-row"><div><label className="form-label">Profesional</label><select className="form-control" onChange={e=>setForm({...form,profesionalId:e.target.value})}><option>Seleccionar...</option>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div><div><label className="form-label">Fecha del Bloque</label><input type="date" className="form-control" onChange={e=>setFechaSel(e.target.value)} /></div></div> <div className="input-row"><div><label className="form-label">Inicio</label><input type="time" className="form-control" value={form.horaInicio} onChange={e=>setForm({...form,horaInicio:e.target.value})}/></div><div><label className="form-label">Fin</label><input type="time" className="form-control" value={form.horaFin} onChange={e=>setForm({...form,horaFin:e.target.value})}/></div></div> <div className="input-row"><div><label className="form-label">Duración (Min)</label><select className="form-control" value={form.duracionSlot} onChange={e=>setForm({...form, duracionSlot: e.target.value})}><option value="15">15 Min</option><option value="30">30 Min</option><option value="45">45 Min</option><option value="60">60 Min</option></select></div><div><label className="form-label">Descanso (Min)</label><input type="number" className="form-control" value={form.intervalo} onChange={e=>setForm({...form, intervalo: e.target.value})} /></div></div> <button className="btn-primary">Guardar Disponibilidad</button> </form> </div> <div className="pro-card"> <h3>Bloques Configurados</h3> <div className="data-table-container"><table className="data-table"><thead><tr><th>Profesional</th><th>Fecha</th><th>Horario</th><th>Acción</th></tr></thead><tbody>{configs.map(c=>(<tr key={c.id}><td>{c.profesional?.nombreCompleto}</td><td>{c.fecha}</td><td>{c.horaInicio} - {c.horaFin}</td><td><button className="btn-danger" onClick={()=>borrarConfig(c.id)}>Eliminar</button></td></tr>))}</tbody></table></div> </div> <div className="pro-card"> <h3>Ver Calendario Visual (Popup)</h3> <div className="data-table-container"><table className="data-table"><thead><tr><th>Profesional</th><th>Acción</th></tr></thead><tbody>{pros.map(p=>(<tr key={p.id}><td>{p.nombreCompleto}</td><td><button className="btn-edit" onClick={()=>verCalendario(p)}>Ver Horarios</button></td></tr>))}</tbody></table></div> </div> {showModal && ( <Modal title={`Horarios: ${selectedProName}`} onClose={()=>setShowModal(false)}> {events.length === 0 ? <p>No hay datos.</p> : events.sort((a,b)=>a.start-b.start).map((e, i) => ( <div key={i} style={{marginBottom:10, padding:10, borderRadius:6, background: e.type==='available'?'#f0fdf4':'#eff6ff', borderLeft: e.type==='available'?'3px solid #22c55e':'3px solid #3b82f6'}}> <strong>{e.start.toLocaleDateString()}</strong> - {e.start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} <div style={{fontSize:'0.85rem'}}>{e.title}</div> </div> )) } </Modal> )} </div> )
 }
 
