@@ -254,7 +254,6 @@ html, body, #root {
   display: flex; align-items: center; gap: 15px; flex-wrap: wrap; 
 }
 
-/* Grupo de botones de vista (Día/Semana/Mes) */
 .view-buttons-group {
   display: flex; gap: 10px; 
 }
@@ -275,7 +274,6 @@ html, body, #root {
   min-height: 500px; 
 }
 
-/* IMPORTANTE: GRID PARA EL CALENDARIO */
 .calendar-grid, .cal-header-row, .calendar-body {
   display: grid; min-width: 100%; 
 }
@@ -312,7 +310,6 @@ html, body, #root {
 .evt-blue { background: #eff6ff; border-left: 3px solid #3b82f6; color: #1e3a8a; }
 .evt-green { background: #f0fdf4; border-left: 3px solid #22c55e; color: #14532d; opacity: 0.7; pointer-events: none; } 
 
-/* Vista Mes */
 .month-grid {
   display: grid; grid-template-columns: repeat(7, 1fr); 
   height: 100%; min-height: 600px; min-width: 800px;
@@ -333,27 +330,19 @@ html, body, #root {
 /* ============================================================
    8. AJUSTES MÓVILES FINALES
    ============================================================ */
-/* Clase Auxiliar para forzar ancho en scroll */
 .calendar-scroll-container {
   display: flex; flex-direction: column; height: 100%;
   min-width: 100%; 
 }
 
-/* ESTILOS MODAL DE PAGO */
-.pay-modal-content {
-  text-align: center;
-}
-.pay-icon {
-  font-size: 3rem; margin-bottom: 10px; color: #000;
-}
+.pay-modal-content { text-align: center; }
+.pay-icon { font-size: 3rem; margin-bottom: 10px; color: #000; }
 .pay-card-preview {
   background: linear-gradient(135deg, #111, #444); color: #fff;
   border-radius: 12px; padding: 20px; margin: 20px 0; text-align: left;
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
-.card-chip {
-  width: 40px; height: 25px; background: #d1d5db; border-radius: 4px; margin-bottom: 20px;
-}
+.card-chip { width: 40px; height: 25px; background: #d1d5db; border-radius: 4px; margin-bottom: 20px; }
 .card-number { font-size: 1.2rem; letter-spacing: 2px; margin-bottom: 15px; font-family: monospace; }
 .card-holder { font-size: 0.8rem; text-transform: uppercase; opacity: 0.8; }
 
@@ -384,7 +373,6 @@ html, body, #root {
     width: 100%; margin-bottom: 8px; text-align: center; display: block;
   }
 
-  /* Ajuste de controles calendario en móvil */
   .dashboard-controls { flex-direction: column; align-items: stretch; gap: 15px; }
   .cal-filter-group { flex-direction: column; width: 100%; }
   .view-buttons-group { width: 100%; justify-content: space-between; }
@@ -392,10 +380,133 @@ html, body, #root {
   .cal-nav-group { justify-content: space-between; margin-top: 5px; }
 
   .calendar-grid-wrapper { overflow-x: auto; }
-  
-  /* [FIX FINAL] Forzamos ancho 100% para que se adapte */
   .calendar-scroll-container { min-width: 100%; }
-  
-  /* Reset de anchos individuales */
   .month-grid, .cal-header-row, .calendar-body { min-width: auto; }
+}
+
+/* ============================================================
+   9. ESTILOS DE LOGIN Y PASSWORD EYE
+   ============================================================ */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f3f4f6; /* Gris muy suave */
+}
+
+.login-card {
+  background: white;
+  padding: 2.5rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.login-logo {
+  height: 80px;
+  width: auto;
+  margin-bottom: 1rem;
+}
+
+.login-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.login-subtitle {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.form-input {
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.2s;
+  width: 100%; /* Asegurar que ocupe el ancho en wrapper */
+}
+
+.form-input:focus {
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+}
+
+.login-btn {
+  background-color: #000;
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 0.5rem;
+}
+
+.login-btn:hover {
+  background-color: #333;
+}
+
+.error-msg {
+  color: #ef4444;
+  font-size: 0.875rem;
+  text-align: center;
+  background-color: #fef2f2;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+/* EYE ICON STYLES */
+.password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.eye-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+}
+
+.eye-btn:hover {
+  color: #000;
 }

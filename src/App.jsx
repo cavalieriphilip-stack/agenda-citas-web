@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Routes, Route, Navigate } from 'react-router-dom'; // <--- NUEVOS IMPORTS
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
-import Login from './pages/Login'; // <--- IMPORTAMOS LOGIN
+import Login from './pages/LoginPage'; 
 import './App.css'; 
 import {
     API_BASE_URL, getPacientes, getProfesionales, getHorariosByProfesional,
@@ -11,29 +11,24 @@ import {
     buscarPacientePorRut, updateProfesional, deleteProfesional
 } from './api';
 
-// Inicialización de MercadoPago
 initMercadoPago('APP_USR-a5a67c3b-4b4b-44a1-b973-ff2fd82fe90a', { locale: 'es-CL' });
 
 // --- HELPERS ---
 const fmtMoney = (v) => `$${v.toLocaleString('es-CL')}`;
-
-const parseDate = (iso) => {
-    if (!iso) return new Date();
-    return iso.endsWith('Z') ? new Date(iso) : new Date(iso + 'Z');
-};
-
+const parseDate = (iso) => iso ? (iso.endsWith('Z') ? new Date(iso) : new Date(iso + 'Z')) : new Date();
 const fmtDate = (iso) => iso ? parseDate(iso).toLocaleDateString('es-CL', { day:'2-digit', month:'2-digit', year:'numeric', timeZone: 'UTC' }) : '-';
 const fmtTime = (iso) => iso ? parseDate(iso).toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit', timeZone: 'UTC' }) : '-';
 const toDateKey = (iso) => iso ? iso.split('T')[0] : '';
 const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
 
 const getCategoryFromSpecialty = (specName) => {
-    const s = specName.toLowerCase();
+    const s = (specName || '').toLowerCase();
+    if (s.includes('pack')) return 'Packs'; 
     if (s.includes('fonoaudiología') || s.includes('fonoaudiologia')) return 'Fonoaudiología';
+    if (s.includes('psicopedagogía') || s.includes('psicopedagogia')) return 'Psicopedagogía';
     if (s.includes('psicología') || s.includes('psicologia') || s.includes('tea') || s.includes('emocional')) return 'Psicología';
     if (s.includes('matrona') || s.includes('lactancia')) return 'Matrona';
     if (s.includes('terapia ocupacional')) return 'Terapia Ocupacional';
-    if (s.includes('psicopedagogía') || s.includes('psicopedagogia')) return 'Psicopedagogía';
     return 'Otros';
 };
 
@@ -41,57 +36,61 @@ const formatRut = (rut) => {
     if (!rut) return '';
     let value = rut.replace(/[^0-9kK]/g, '').toUpperCase();
     if (value.length < 2) return value;
-    const body = value.slice(0, -1);
-    const dv = value.slice(-1);
-    const bodyDots = body.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    return `${bodyDots}-${dv}`;
+    return value.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, ".") + '-' + value.slice(-1);
 };
 
 const validateRut = (rut) => {
-    if (!rut) return false;
+    if (!rut || rut.length < 2) return false;
     const value = rut.replace(/[^0-9kK]/g, '').toUpperCase();
-    if (value.length < 2) return false;
     const body = value.slice(0, -1);
     const dv = value.slice(-1);
-    let suma = 0; let multiplo = 2;
+    let suma = 0, multiplo = 2;
     for (let i = body.length - 1; i >= 0; i--) {
         suma += multiplo * parseInt(body.charAt(i));
         multiplo = multiplo < 7 ? multiplo + 1 : 2;
     }
     const dvEsperado = 11 - (suma % 11);
-    let dvCalculado = '';
-    if (dvEsperado === 11) dvCalculado = '0'; else if (dvEsperado === 10) dvCalculado = 'K'; else dvCalculado = dvEsperado.toString();
+    const dvCalculado = dvEsperado === 11 ? '0' : dvEsperado === 10 ? 'K' : dvEsperado.toString();
     return dvCalculado === dv;
 };
 
 const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 // --- COMPONENTES UI ---
-function MobileAccordion({ title, subtitle, children }) {
+function MultiSelectDropdown({ options, selectedValues, onChange, label, disabled }) {
     const [isOpen, setIsOpen] = useState(false);
-    return (
-        <div className="mobile-card">
-            <div className={`mobile-card-header ${isOpen?'open':''}`} onClick={() => setIsOpen(!isOpen)}>
-                <div className="mobile-card-title">{title}{subtitle && <span className="mobile-card-subtitle">{subtitle}</span>}</div>
-                <div className="mobile-card-icon">{isOpen ? '−' : '+'}</div>
-            </div>
-            {isOpen && <div className="mobile-card-body">{children}</div>}
-        </div>
-    );
-}
+    const wrapperRef = useRef(null);
+    const safeSelected = Array.isArray(selectedValues) ? selectedValues : [];
 
-function MultiSelectDropdown({ options, selectedValues, onChange, label }) {
-    const [isOpen, setIsOpen] = useState(false); const wrapperRef = useRef(null);
     useEffect(() => {
         function handleClickOutside(event) { if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setIsOpen(false); }
         document.addEventListener("mousedown", handleClickOutside); return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [wrapperRef]);
-    const toggleOption = (value) => { if (selectedValues.includes(value)) onChange(selectedValues.filter(v => v !== value)); else onChange([...selectedValues, value]); };
+    }, []);
+
     return (
         <div className="dropdown-wrapper" ref={wrapperRef}>
             <label className="form-label">{label}</label>
-            <div className="dropdown-header" onClick={() => setIsOpen(!isOpen)}><span>{selectedValues.length > 0 ? `${selectedValues.length} seleccionados` : 'Seleccionar...'}</span><span>{isOpen ? '▲' : '▼'}</span></div>
-            {isOpen && <div className="dropdown-list">{options.map(opt => (<div key={opt} className="dropdown-item" onClick={() => toggleOption(opt)}><input type="checkbox" checked={selectedValues.includes(opt)} readOnly /><span>{opt}</span></div>))}</div>}
+            <div 
+                className="dropdown-header" 
+                onClick={() => !disabled && setIsOpen(!isOpen)}
+                style={{ opacity: disabled ? 0.6 : 1, cursor: disabled ? 'not-allowed' : 'pointer', background: disabled ? '#f9fafb' : '#fff' }}
+            >
+                <span>{safeSelected.length > 0 ? `${safeSelected.length} seleccionados` : 'Seleccionar...'}</span>
+                <span>{isOpen ? '▲' : '▼'}</span>
+            </div>
+            {isOpen && !disabled && (
+                <div className="dropdown-list">
+                    {options.map(opt => (
+                        <div key={opt} className="dropdown-item" onClick={() => {
+                            if (safeSelected.includes(opt)) onChange(safeSelected.filter(v => v !== opt));
+                            else onChange([...safeSelected, opt]);
+                        }}>
+                            <input type="checkbox" checked={safeSelected.includes(opt)} readOnly />
+                            <span>{opt}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
@@ -108,85 +107,509 @@ function Modal({ title, children, onClose }) {
     );
 }
 
-// --- APP PRINCIPAL CON RUTAS ---
+// ==========================================
+// 🚀 APP PRINCIPAL
+// ==========================================
 function App() {
     return (
         <Routes>
-            {/* 1. Login */}
             <Route path="/login" element={<Login />} />
-
-            {/* 2. Admin Panel */}
             <Route path="/admin/*" element={<AdminLayout />} />
-
-            {/* 3. Web Paciente (Home) */}
             <Route path="/" element={<WebPaciente />} />
-
-            {/* 4. Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );
 }
 
-// --- LAYOUTS Y COMPONENTES INTERNOS ---
-
+// ==========================================
+// 🔐 LAYOUT ADMIN (LÓGICA DE ROLES APLICADA)
+// ==========================================
 function AdminLayout() {
     const [activeModule, setActiveModule] = useState('agenda');
     const [activeView, setActiveView] = useState('resumen');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const navigate = useNavigate();
+    
+    // OBTENER USUARIO Y ROL
+    const user = JSON.parse(localStorage.getItem('usuario') || '{}');
+    const isAdmin = user.rol === 'ADMIN';
+
+    useEffect(() => {
+        if (!user.id) navigate('/login');
+    }, [navigate]);
+
     const handleNavClick = (view) => { setActiveView(view); setMobileMenuOpen(false); }
     const handleMobileModuleChange = (mod) => { setActiveModule(mod); setActiveView(mod === 'agenda' ? 'resumen' : (mod === 'clientes' ? 'listado' : 'reporte')); setMobileMenuOpen(false); }
 
     return (
         <div className="dashboard-layout">
             <nav className="top-nav">
-                <div className="brand-area"><button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>☰</button><img src={LOGO_URL} alt="Logo" className="cisd-logo-admin" /><span className="admin-title-text">CISD Admin</span></div>
-                <div className="module-switcher">
-                    <button className={`module-tab ${activeModule === 'agenda' ? 'active' : ''}`} onClick={() => {setActiveModule('agenda'); setActiveView('resumen');}}>Gestión Clínica</button>
-                    <button className={`module-tab ${activeModule === 'clientes' ? 'active' : ''}`} onClick={() => {setActiveModule('clientes'); setActiveView('listado');}}>Clientes</button>
-                    <button className={`module-tab ${activeModule === 'finanzas' ? 'active' : ''}`} onClick={() => {setActiveModule('finanzas'); setActiveView('reporte');}}>Finanzas</button>
+                <div className="brand-area">
+                    <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>☰</button>
+                    <img src={LOGO_URL} alt="Logo" className="cisd-logo-admin" />
+                    <span className="admin-title-text">CISD {isAdmin ? 'Admin' : 'Profesional'}</span>
                 </div>
-                <div className="nav-actions"><a href="/" className="btn-top-action">Web Paciente</a></div>
+                <div className="module-switcher">
+                    <button className={`module-tab ${activeModule === 'agenda' ? 'active' : ''}`} onClick={() => {setActiveModule('agenda'); setActiveView('resumen');}}>Clínica</button>
+                    <button className={`module-tab ${activeModule === 'clientes' ? 'active' : ''}`} onClick={() => {setActiveModule('clientes'); setActiveView('listado');}}>Pacientes</button>
+                    {/* SOLO ADMIN VE FINANZAS */}
+                    {isAdmin && <button className={`module-tab ${activeModule === 'finanzas' ? 'active' : ''}`} onClick={() => {setActiveModule('finanzas'); setActiveView('reporte');}}>Finanzas</button>}
+                </div>
+                <div className="nav-actions">
+                    <span style={{marginRight:10, fontSize:'0.9rem', fontWeight:'600'}}>{user.nombre}</span>
+                    <button onClick={() => {localStorage.removeItem('usuario'); navigate('/login');}} className="btn-danger" style={{padding:'5px 15px', fontSize:'0.8rem'}}>Salir</button>
+                </div>
             </nav>
             <div className="workspace">
                 {mobileMenuOpen && <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)}></div>}
                 <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
-                    <div className="mobile-view-only" style={{marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #eee'}}>
-                        <div style={{display:'flex', gap:5, flexDirection:'column'}}>
-                            <button className={`btn-edit ${activeModule === 'agenda' ? 'active-mod' : ''}`} onClick={()=>handleMobileModuleChange('agenda')}>Gestión Clínica</button>
-                            <button className={`btn-edit ${activeModule === 'clientes' ? 'active-mod' : ''}`} onClick={()=>handleMobileModuleChange('clientes')}>Clientes</button>
-                            <button className={`btn-edit ${activeModule === 'finanzas' ? 'active-mod' : ''}`} onClick={()=>handleMobileModuleChange('finanzas')}>Finanzas</button>
-                        </div>
-                    </div>
                     <div className="sidebar-header">MENÚ</div>
-                    {activeModule === 'agenda' && ( <><div className={`nav-item ${activeView==='resumen'?'active':''}`} onClick={()=>handleNavClick('resumen')}>Resumen Agendamientos</div><div className={`nav-item ${activeView==='reservas'?'active':''}`} onClick={()=>handleNavClick('reservas')}>Nueva Reserva</div><div className={`nav-item ${activeView==='profesionales'?'active':''}`} onClick={()=>handleNavClick('profesionales')}>Profesionales</div><div className={`nav-item ${activeView==='horarios'?'active':''}`} onClick={()=>handleNavClick('horarios')}>Horarios</div><div className={`nav-item ${activeView==='prestaciones'?'active':''}`} onClick={()=>handleNavClick('prestaciones')}>Prestaciones/Tratamientos</div></> )}
+                    {activeModule === 'agenda' && (
+                        <>
+                            <div className={`nav-item ${activeView==='resumen'?'active':''}`} onClick={()=>handleNavClick('resumen')}>Calendario</div>
+                            <div className={`nav-item ${activeView==='reservas'?'active':''}`} onClick={()=>handleNavClick('reservas')}>Nueva Reserva</div>
+                            <div className={`nav-item ${activeView==='horarios'?'active':''}`} onClick={()=>handleNavClick('horarios')}>Mis Horarios</div>
+                            
+                            {/* SOLO ADMIN PUEDE GESTIONAR EQUIPO Y PRESTACIONES */}
+                            {isAdmin && (
+                                <>
+                                    <div className="sidebar-header" style={{marginTop:20}}>ADMINISTRACIÓN</div>
+                                    <div className={`nav-item ${activeView==='profesionales'?'active':''}`} onClick={()=>handleNavClick('profesionales')}>Profesionales</div>
+                                    <div className={`nav-item ${activeView==='prestaciones'?'active':''}`} onClick={()=>handleNavClick('prestaciones')}>Prestaciones</div>
+                                </>
+                            )}
+                        </>
+                    )}
                     {activeModule === 'clientes' && <div className={`nav-item ${activeView==='listado'?'active':''}`} onClick={()=>handleNavClick('listado')}>Base de Pacientes</div>}
-                    {activeModule === 'finanzas' && <div className={`nav-item ${activeView==='reporte'?'active':''}`} onClick={()=>handleNavClick('reporte')}>Dashboard Financiero</div>}
+                    {isAdmin && activeModule === 'finanzas' && <div className={`nav-item ${activeView==='reporte'?'active':''}`} onClick={()=>handleNavClick('reporte')}>Reporte</div>}
                 </aside>
-                <main className="main-stage"><DashboardContent module={activeModule} view={activeView} /></main>
+                <main className="main-stage">
+                    <DashboardContent module={activeModule} view={activeView} user={user} isAdmin={isAdmin} />
+                </main>
             </div>
         </div>
     );
 }
 
-function DashboardContent({ module, view }) {
+function DashboardContent({ module, view, user, isAdmin }) {
     const [reservas, setReservas] = useState([]);
     const [tratamientos, setTratamientos] = useState([]);
-    const refreshData = async () => { try { const data = await getReservasDetalle(); setReservas(data); const trats = await fetch(`${API_BASE_URL}/tratamientos`).then(r=>r.json()); setTratamientos(trats); } catch(e) { console.error(e); } };
+    
+    const refreshData = async () => {
+        try {
+            // Pasamos ID y ROL para que el backend filtre si es necesario (seguridad extra)
+            // Pero filtraremos en frontend también por UX
+            const data = await getReservasDetalle(); 
+            setReservas(data || []);
+            const trats = await fetch(`${API_BASE_URL}/tratamientos`).then(r => r.json());
+            setTratamientos(trats || []);
+        } catch (e) { console.error(e); }
+    };
+
     useEffect(() => { refreshData(); }, []);
 
     if (module === 'agenda') {
-        if (view === 'resumen') return <AgendaResumen reservas={reservas} tratamientos={tratamientos} reload={refreshData} />;
-        if (view === 'reservas') return <AgendaNuevaReserva reload={refreshData} reservas={reservas} tratamientos={tratamientos} />;
-        if (view === 'profesionales') return <AgendaProfesionales tratamientos={tratamientos} />;
-        if (view === 'horarios') return <AgendaHorarios />;
-        if (view === 'prestaciones') return <AgendaTratamientos reload={refreshData} />;
+        if (view === 'resumen') return <AgendaResumen reservas={reservas} tratamientos={tratamientos} reload={refreshData} user={user} isAdmin={isAdmin} />;
+        if (view === 'reservas') return <AgendaNuevaReserva reload={refreshData} reservas={reservas} tratamientos={tratamientos} user={user} isAdmin={isAdmin} />;
+        if (view === 'horarios') return <AgendaHorarios user={user} isAdmin={isAdmin} />;
+        
+        // Proteccion de rutas admin
+        if (isAdmin) {
+            if (view === 'profesionales') return <AgendaProfesionales tratamientos={tratamientos} />;
+            if (view === 'prestaciones') return <AgendaTratamientos reload={refreshData} />;
+        } else {
+            // Si un profesional intenta entrar aquí, lo mandamos al calendario
+            if (view === 'profesionales' || view === 'prestaciones') return <AgendaResumen reservas={reservas} tratamientos={tratamientos} reload={refreshData} user={user} isAdmin={isAdmin} />;
+        }
     }
-    if (module === 'clientes') { return <AgendaPacientes />; }
-    if (module === 'finanzas') {
-        const total = reservas.reduce((acc, r) => { const m = tratamientos.find(t => t.nombre === r.motivo) || { valor: 0 }; return acc + m.valor; }, 0);
-        return <FinanzasReporte total={total} count={reservas.length} reservas={reservas} tratamientos={tratamientos} />;
+    if (module === 'clientes') return <AgendaPacientes />;
+    if (module === 'finanzas' && isAdmin) {
+        const total = reservas.reduce((acc, r) => { 
+            const m = tratamientos.find(t => t.nombre === r.motivo) || { valor: 0 }; 
+            return acc + m.valor; 
+        }, 0);
+        return <FinanzasReporte total={total} count={reservas.length} reservas={reservas} />;
     }
     return <div>Cargando...</div>;
+}
+
+// ==========================================
+// 📅 COMPONENTES CON LÓGICA DE ROLES
+// ==========================================
+
+function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
+    const [pros, setPros] = useState([]);
+    // Si NO es admin, forzamos el filtro a su propio ID
+    const [filterPro, setFilterPro] = useState(isAdmin ? '' : user.id);
+    
+    const [view, setView] = useState('week'); 
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [selectedEvent, setSelectedEvent] = useState(null); 
+    const [editId, setEditId] = useState(null);
+    const [editProId, setEditProId] = useState('');
+    const [editTratamiento, setEditTratamiento] = useState('');
+    const [editHorarioId, setEditHorarioId] = useState('');
+    const [horariosDisponibles, setHorariosDisponibles] = useState([]);
+    
+    useEffect(()=>{ getProfesionales().then(setPros) },[]);
+    
+    const handleNav = (dir) => { const d = new Date(currentDate); if(view === 'day') d.setDate(d.getDate() + dir); if(view === 'week') d.setDate(d.getDate() + (dir*7)); setCurrentDate(d); };
+    const getDays = () => { const d = [], start = new Date(currentDate); if(view==='day'){ d.push(new Date(start)); } else if(view==='week'){ const day = start.getDay(), diff = start.getDate() - day + (day===0?-6:1); const mon = new Date(start.setDate(diff)); for(let i=0;i<7;i++){ const x = new Date(mon); x.setDate(mon.getDate()+i); d.push(x); } } return d; };
+    const days = getDays();
+    
+    // FILTRO DE SEGURIDAD:
+    // Si es admin, usa el filtro del select. Si es profesional, usa SU id.
+    const activeFilter = isAdmin ? filterPro : user.id;
+    const filtered = reservas.filter(r => activeFilter ? r.profesionalId === parseInt(activeFilter) : true);
+
+    const handleEventClick = (r) => { 
+        // Seguridad: Un profesional no debería poder abrir citas de otros (aunque el filtro ya lo oculta)
+        if (!isAdmin && r.profesionalId !== user.id) return;
+        const match = tratamientos.find(t => t.nombre === r.motivo); setSelectedEvent({ ...r, fullTrat: match }); setEditId(null); 
+    };
+    
+    const deleteReserva = async(id) => { if(confirm('¿Eliminar?')){await cancelarReserva(id);reload(); setSelectedEvent(null);} };
+    const startEdit = async(r) => { setEditId(r.id); setEditProId(r.profesionalId.toString()); setEditTratamiento(r.motivo); const h = await getHorariosByProfesional(r.profesionalId); setHorariosDisponibles(Array.isArray(h) ? h : []); };
+    const handleProChange = async(pid) => { setEditProId(pid); setEditTratamiento(''); setEditHorarioId(''); if (pid) { const h = await getHorariosByProfesional(pid); setHorariosDisponibles(Array.isArray(h) ? h : []); } };
+    const saveEdit = async () => { if(!editHorarioId) return alert('Selecciona hora'); try{ await reagendarReserva(selectedEvent.id, editHorarioId, editProId, editTratamiento); alert('Modificado'); setSelectedEvent(null); setEditId(null); reload(); } catch(e){ alert('Error'); } };
+    
+    return ( 
+        <div style={{height:'100%', display:'flex', flexDirection:'column'}}> 
+            <div className="page-header"><div className="page-title"><h1>Calendario {isAdmin ? 'Global' : 'Personal'}</h1></div></div> 
+            <div className="dashboard-controls"> 
+                {isAdmin ? (
+                    <select className="form-control" style={{maxWidth:250}} value={filterPro} onChange={e=>setFilterPro(e.target.value)}> 
+                        <option value="">Todos los Profesionales</option> 
+                        {pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)} 
+                    </select> 
+                ) : (
+                    <div style={{padding:'10px', background:'#eee', borderRadius:'8px', fontWeight:'bold'}}>
+                        {user.nombre}
+                    </div>
+                )}
+                <div className="view-buttons-group"> <button className={`calendar-nav-btn ${view==='day'?'active':''}`} onClick={()=>setView('day')}>Día</button> <button className={`calendar-nav-btn ${view==='week'?'active':''}`} onClick={()=>setView('week')}>Semana</button> </div> 
+                <div className="cal-nav-group"> <button className="calendar-nav-btn" onClick={()=>handleNav(-1)}>‹</button> <span>{`Semana del ${days[0]?.getDate()}`}</span> <button className="calendar-nav-btn" onClick={()=>handleNav(1)}>›</button> </div> 
+            </div> 
+            <div className="calendar-grid-wrapper"> 
+                <div className="cal-header-row" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}> <div className="cal-header-cell">Hora</div> {days.map((d, i)=><div key={i} className="cal-header-cell">{d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric'})}</div>)} </div> 
+                <div className="calendar-body" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}> 
+                    <div>{Array.from({length:13},(_,i)=>i+8).map(h=><div key={h} className="cal-time-label">{h}:00</div>)}</div> 
+                    {days.map((d, i)=>( 
+                        <div key={i} className="cal-day-col"> 
+                            {filtered.filter(r=>{ const rd=parseDate(r.fecha); return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth(); }).map(r=>{ const st = parseDate(r.fecha), h=st.getUTCHours(), m=st.getUTCMinutes(); const top = ((h-8)*60)+m; return ( <div key={r.id} className="cal-event evt-blue" style={{top, height:45}} onClick={()=>handleEventClick(r)}> <strong>{st.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', timeZone: 'UTC'})}</strong> <span>{r.pacienteNombre}</span> </div> ) })} 
+                        </div> 
+                    ))} 
+                </div> 
+            </div> 
+            {selectedEvent && ( 
+                <Modal onClose={()=>setSelectedEvent(null)}> 
+                    {editId === selectedEvent.id ? ( 
+                        <div style={{padding:10}}> 
+                            <h2>Modificar Cita</h2> 
+                            {isAdmin ? (
+                                <select className="form-control" value={editProId} onChange={e=>handleProChange(e.target.value)}>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select> 
+                            ) : (
+                                <p><strong>Profesional:</strong> {user.nombre}</p>
+                            )}
+                            <select className="form-control" value={editHorarioId} onChange={e=>setEditHorarioId(e.target.value)}><option value="">Hora...</option>{horariosDisponibles.map(h=><option key={h.id} value={h.id}>{fmtDate(h.fecha)} - {fmtTime(h.fecha)}</option>)}</select> 
+                            <div className="detail-actions" style={{marginTop:10}}>
+                                <button className="btn-primary" onClick={saveEdit}>Guardar</button> 
+                                <button className="btn-edit" onClick={()=>setEditId(null)}>Cancelar</button>
+                            </div>
+                        </div> 
+                    ) : ( 
+                        <div style={{padding:10}}> 
+                            <h2>Detalle</h2> 
+                            <p>Paciente: {selectedEvent.pacienteNombre}</p> 
+                            <p>Tratamiento: {selectedEvent.motivo}</p> 
+                            <div className="detail-actions" style={{marginTop:10}}>
+                                <button className="btn-primary" onClick={()=>startEdit(selectedEvent)}>Modificar</button> 
+                                <button className="btn-danger" onClick={()=>deleteReserva(selectedEvent.id)}>Eliminar</button> 
+                            </div>
+                        </div> 
+                    )} 
+                </Modal> 
+            )} 
+        </div> 
+    )
+}
+
+function AgendaNuevaReserva({ reload, reservas, tratamientos, user, isAdmin }) {
+    const [pacientes, setPacientes] = useState([]);
+    const [pros, setPros] = useState([]);
+    const [horarios, setHorarios] = useState([]);
+    
+    // Si es profesional, se pre-asigna a sí mismo
+    const [form, setForm] = useState({ 
+        pacienteId: '', 
+        profesionalId: isAdmin ? '' : user.id, 
+        horarioId: '', 
+        especialidad: '', 
+        tratamientoId: '' 
+    });
+
+    useEffect(() => { 
+        getPacientes().then(setPacientes); 
+        getProfesionales().then(setPros); 
+        // Si no es admin, cargar horarios del profesional logueado al inicio
+        if (!isAdmin && user.id) {
+            handlePro(user.id);
+        }
+    }, []);
+
+    const especialidades = [...new Set(tratamientos.map(t => t.especialidad))];
+    const prestaciones = tratamientos.filter(t => t.especialidad === form.especialidad);
+    
+    // Filtramos lista de profesionales: si es admin, todos. Si no, solo el usuario.
+    const prosFiltrados = isAdmin 
+        ? (form.tratamientoId ? pros.filter(p => { const trat = tratamientos.find(x => x.id === parseInt(form.tratamientoId)); return trat && p.tratamientos && p.tratamientos.includes(trat.nombre); }) : [])
+        : [user]; // Si es profesional, solo se ve a si mismo
+
+    const handlePro = async (pid) => { 
+        setForm(prev => ({ ...prev, profesionalId: pid })); 
+        setHorarios([]); 
+        if (!pid) return; 
+        try { 
+            const h = await getHorariosByProfesional(pid); 
+            if (Array.isArray(h)) setHorarios(h.filter(x => new Date(x.fecha) > new Date())); 
+        } catch(e) { setHorarios([]); } 
+    }
+
+    const save = async (e) => { e.preventDefault(); if (!form.tratamientoId) return alert("Faltan datos"); const trat = tratamientos.find(t => t.id === parseInt(form.tratamientoId)); try { await crearReserva({ pacienteId: parseInt(form.pacienteId), profesionalId: parseInt(form.profesionalId), horarioDisponibleId: form.horarioId, motivo: trat.nombre }); alert('Creada'); reload(); } catch (e) { alert('Error'); } };
+    
+    return ( 
+        <div> 
+            <div className="page-header"><div className="page-title"><h1>Nueva Reserva Manual</h1></div></div> 
+            <div className="pro-card"> 
+                <form onSubmit={save}> 
+                    <div className="input-row">
+                        <div><label className="form-label">Especialidad</label><select className="form-control" value={form.especialidad} onChange={e => setForm({ ...form, especialidad: e.target.value, tratamientoId: '' })}><option>Seleccionar...</option>{especialidades.map(e => <option key={e} value={e}>{e}</option>)}</select></div>
+                        <div><label className="form-label">Tratamiento</label><select className="form-control" disabled={!form.especialidad} value={form.tratamientoId} onChange={e => setForm({ ...form, tratamientoId: e.target.value })}><option>Seleccionar...</option>{prestaciones.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}</select></div>
+                    </div> 
+                    <div className="input-row">
+                        <div><label className="form-label">Paciente</label><select className="form-control" value={form.pacienteId} onChange={e => setForm({ ...form, pacienteId: e.target.value })}><option>Seleccionar...</option>{pacientes.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto} ({formatRut(p.rut)})</option>)}</select></div>
+                        <div>
+                            <label className="form-label">Profesional</label>
+                            {isAdmin ? (
+                                <select className="form-control" disabled={!form.tratamientoId} value={form.profesionalId} onChange={e => handlePro(e.target.value)}><option>Seleccionar...</option>{prosFiltrados.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select>
+                            ) : (
+                                <input className="form-control" value={user.nombre} disabled />
+                            )}
+                        </div>
+                    </div> 
+                    <div style={{ marginBottom: 20 }}>
+                        <label className="form-label">Horario</label>
+                        <select className="form-control" onChange={e => setForm({ ...form, horarioId: e.target.value })}><option>Seleccionar...</option>{Array.isArray(horarios) && horarios.map(h => <option key={h.id} value={h.id}>{fmtDate(h.fecha)} - {fmtTime(h.fecha)}</option>)}</select>
+                    </div> 
+                    <button className="btn-primary">Crear Reserva</button> 
+                </form> 
+            </div> 
+        </div> 
+    )
+}
+
+function AgendaHorarios({ user, isAdmin }){
+    const [pros,setPros]=useState([]);
+    const [configs, setConfigs] = useState([]);
+    const [fechaSel, setFechaSel] = useState('');
+    // Si no es admin, pre-seleccionamos al usuario
+    const [form,setForm]=useState({profesionalId: isAdmin ? '' : user.id, diaSemana:'', horaInicio:'09:00', horaFin:'18:00', duracionSlot: 30, intervalo: 0});
+    const [showModal, setShowModal] = useState(false);
+    const [events, setEvents] = useState([]);
+    const [selectedProName, setSelectedProName] = useState('');
+    
+    useEffect(()=>{ getProfesionales().then(setPros); loadConfigs(); },[]);
+    
+    const loadConfigs = async () => { 
+        try { 
+            const data = await getConfiguraciones(); 
+            // Filtro de seguridad para la lista de bloques
+            if (isAdmin) {
+                setConfigs(Array.isArray(data) ? data : []); 
+            } else {
+                setConfigs(Array.isArray(data) ? data.filter(c => c.profesionalId === user.id) : []);
+            }
+        } catch (e) { setConfigs([]); } 
+    };
+    
+    const save=async(e)=>{ e.preventDefault(); const payload = { ...form, fecha: fechaSel }; await fetch(`${API_BASE_URL}/configuracion`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); alert(`Guardado`); await loadConfigs(); };
+    const borrarConfig = async (id) => { if(confirm("¿Eliminar?")) { await deleteConfiguracion(id); loadConfigs(); } }
+    
+    const verCalendario = async (p) => {
+        setSelectedProName(p.nombreCompleto);
+        const [reservasData, slotsData] = await Promise.all([
+            getReservasDetalle(),
+            getHorariosByProfesional(p.id)
+        ]);
+
+        const misReservas = reservasData.filter(r => r.profesionalId === p.id).map(r => ({
+            id: r.id, title: r.pacienteNombre, start: parseDate(r.fecha), type: 'occupied'
+        }));
+
+        const misBloques = slotsData.map((s, i) => ({
+            id: `slot-${i}`, title: 'Disponible', start: parseDate(s.fecha), type: 'available'
+        }));
+
+        setEvents([...misBloques, ...misReservas]);
+        setShowModal(true);
+    };
+
+    return( 
+        <div> 
+            <div className="page-header"><div className="page-title"><h1>Configuración de Horarios</h1></div></div> 
+            <div className="pro-card"> 
+                <form onSubmit={save}> 
+                    <div className="input-row">
+                        <div>
+                            <label className="form-label">Profesional</label>
+                            {isAdmin ? (
+                                <select className="form-control" onChange={e=>setForm({...form,profesionalId:e.target.value})}><option>Seleccionar...</option>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select>
+                            ) : (
+                                <input className="form-control" value={user.nombre} disabled />
+                            )}
+                        </div>
+                        <div><label className="form-label">Fecha del Bloque</label><input type="date" className="form-control" onChange={e=>setFechaSel(e.target.value)} /></div>
+                    </div> 
+                    <div className="input-row"><div><label className="form-label">Inicio</label><input type="time" className="form-control" value={form.horaInicio} onChange={e=>setForm({...form,horaInicio:e.target.value})}/></div><div><label className="form-label">Fin</label><input type="time" className="form-control" value={form.horaFin} onChange={e=>setForm({...form,horaFin:e.target.value})}/></div></div> 
+                    <div className="input-row"><div><label className="form-label">Duración (Min)</label><select className="form-control" value={form.duracionSlot} onChange={e=>setForm({...form, duracionSlot: e.target.value})}><option value="15">15 Min</option><option value="30">30 Min</option><option value="45">45 Min</option><option value="60">60 Min</option></select></div><div><label className="form-label">Descanso (Min)</label><input type="number" className="form-control" value={form.intervalo} onChange={e=>setForm({...form, intervalo: e.target.value})} /></div></div> 
+                    <button className="btn-primary">Guardar Disponibilidad</button> 
+                </form> 
+            </div> 
+            <div className="pro-card"> 
+                <h3>Bloques Configurados</h3> 
+                <div className="data-table-container"><table className="data-table"><thead><tr><th>Profesional</th><th>Fecha</th><th>Horario</th><th>Acción</th></tr></thead><tbody>{configs.map(c=>(<tr key={c.id}><td>{c.profesional?.nombreCompleto}</td><td>{c.fecha}</td><td>{c.horaInicio} - {c.horaFin}</td><td><button className="btn-danger" onClick={()=>borrarConfig(c.id)}>Eliminar</button></td></tr>))}</tbody></table></div> 
+            </div> 
+            <div className="pro-card"> 
+                <h3>Ver Calendario Visual (Popup)</h3> 
+                <div className="data-table-container">
+                    <table className="data-table">
+                        <thead><tr><th>Profesional</th><th>Acción</th></tr></thead>
+                        <tbody>
+                            {/* Si es Admin muestra todos, si no, solo al usuario */}
+                            {pros.filter(p => isAdmin ? true : p.id === user.id).map(p=>(
+                                <tr key={p.id}><td>{p.nombreCompleto}</td><td><button className="btn-edit" onClick={()=>verCalendario(p)}>Ver Horarios</button></td></tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div> 
+            </div> 
+            {showModal && ( <Modal title={`Horarios: ${selectedProName}`} onClose={()=>setShowModal(false)}> {events.length === 0 ? <p>No hay datos.</p> : events.sort((a,b)=>a.start-b.start).map((e, i) => ( <div key={i} style={{marginBottom:10, padding:10, borderRadius:6, background: e.type==='available'?'#f0fdf4':'#eff6ff', borderLeft: e.type==='available'?'3px solid #22c55e':'3px solid #3b82f6'}}> <strong>{fmtDate(e.start.toISOString())}</strong> - {fmtTime(e.start.toISOString())} <div style={{fontSize:'0.85rem'}}>{e.title}</div> </div> )) } </Modal> )} 
+        </div> 
+    )
+}
+
+function AgendaProfesionales({ tratamientos }) {
+    const [pros, setPros] = useState([]);
+    const [form, setForm] = useState({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] });
+    const [isEditing, setIsEditing] = useState(false);
+    
+    // Obtener listas únicas para los dropdowns
+    const especialidadesUnicas = [...new Set(tratamientos.map(t => t.especialidad))].sort();
+
+    // 2. Lista Dinámica de Tratamientos (Solo los que coinciden con las especialidades seleccionadas)
+    const tratamientosDisponibles = tratamientos
+        .filter(t => form.especialidades.includes(t.especialidad))
+        .map(t => t.nombre)
+        .sort();
+
+    const load = () => getProfesionales().then(setPros);
+    useEffect(() => { load(); }, []);
+
+    // --- LÓGICA DE ACTUALIZACIÓN DE ESPECIALIDADES ---
+    const handleSpecChange = (newSpecs) => {
+        const tratamientosValidos = tratamientos
+            .filter(t => newSpecs.includes(t.especialidad) && form.tratamientos.includes(t.nombre))
+            .map(t => t.nombre);
+
+        setForm({ ...form, especialidades: newSpecs, tratamientos: tratamientosValidos });
+    };
+
+    const save = async (e) => {
+        e.preventDefault();
+        const payload = {
+            nombreCompleto: form.nombreCompleto,
+            especialidad: form.especialidades.join(', '),
+            tratamientos: form.tratamientos.join(', ')
+        };
+        try {
+            if (isEditing) await updateProfesional(form.id, payload);
+            else await fetch(`${API_BASE_URL}/profesionales`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            alert('Guardado'); setIsEditing(false); setForm({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] }); load();
+        } catch (e) { alert("Error al guardar"); }
+    };
+
+    const handleEdit = (p) => {
+        setForm({
+            id: p.id,
+            nombreCompleto: p.nombreCompleto,
+            especialidades: p.especialidad ? p.especialidad.split(', ').map(s=>s.trim()) : [],
+            tratamientos: p.tratamientos ? p.tratamientos.split(', ').map(s=>s.trim()) : []
+        });
+        setIsEditing(true);
+        window.scrollTo(0, 0);
+    };
+
+    const handleDelete = async (id) => { if (confirm('¿Eliminar profesional?')) { await deleteProfesional(id); load(); } };
+
+    return (
+        <div>
+            <div className="page-header"><div className="page-title"><h1>Gestión de Profesionales</h1></div></div>
+            <div className="pro-card">
+                <h3>{isEditing ? 'Editar Profesional' : 'Nuevo Profesional'}</h3>
+                <form onSubmit={save}>
+                    <div className="input-row">
+                        <div style={{width: '100%'}}>
+                            <label className="form-label">Nombre Completo</label>
+                            <input className="form-control" value={form.nombreCompleto} onChange={e => setForm({ ...form, nombreCompleto: e.target.value })} required />
+                        </div>
+                    </div>
+                    <div className="input-row">
+                        {/* 1. Seleccionar Especialidad */}
+                        <div>
+                            <MultiSelectDropdown 
+                                label="1. Especialidades (Áreas)" 
+                                options={especialidadesUnicas} 
+                                selectedValues={form.especialidades} 
+                                onChange={handleSpecChange} 
+                            />
+                        </div>
+                        {/* 2. Seleccionar Tratamientos (Filtrado) */}
+                        <div>
+                            <MultiSelectDropdown 
+                                label="2. Prestaciones Habilitadas" 
+                                options={tratamientosDisponibles} 
+                                selectedValues={form.tratamientos} 
+                                onChange={v => setForm({ ...form, tratamientos: v })} 
+                                disabled={form.especialidades.length === 0} // Desactivado si no hay especialidad
+                            />
+                            {form.especialidades.length === 0 && <small style={{color:'#888'}}>Selecciona una especialidad primero</small>}
+                        </div>
+                    </div>
+                    <button className="btn-primary">Guardar</button>
+                    {isEditing && <button type="button" className="btn-edit" onClick={() => { setIsEditing(false); setForm({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] }); }} style={{marginLeft: 10}}>Cancelar</button>}
+                </form>
+            </div>
+            <div className="pro-card">
+                <div className="data-table-container">
+                    <table className="data-table">
+                        <thead><tr><th>Nombre</th><th>Especialidad</th><th>Acciones</th></tr></thead>
+                        <tbody>
+                            {pros.map(p => (
+                                <tr key={p.id}>
+                                    <td>{p.nombreCompleto}</td>
+                                    <td>{p.especialidad}</td>
+                                    <td>
+                                        <button className="btn-edit" onClick={() => handleEdit(p)}>Editar</button>
+                                        <button className="btn-danger" onClick={() => handleDelete(p.id)}>X</button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 function AgendaTratamientos({ reload }) {
@@ -198,7 +621,7 @@ function AgendaTratamientos({ reload }) {
     const save = async (e) => { e.preventDefault(); const method = isEditing ? 'PUT' : 'POST'; const url = isEditing ? `${API_BASE_URL}/tratamientos/${form.id}` : `${API_BASE_URL}/tratamientos`; await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(form) }); setForm({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '' }); setIsEditing(false); load(); if(reload) reload(); };
     const handleEdit = (it) => { setForm(it); setIsEditing(true); };
     const handleDelete = async (id) => { if(confirm('¿Eliminar?')) { await fetch(`${API_BASE_URL}/tratamientos/${id}`, { method: 'DELETE' }); load(); } };
-    return ( <div> <div className="page-header"><div className="page-title"><h1>Gestión de Prestaciones</h1></div></div> <div className="pro-card"> <h3>{isEditing ? 'Editar Prestación' : 'Nueva Prestación'}</h3> <form onSubmit={save}> <div className="input-row"> <div><label className="form-label">Nombre del Tratamiento</label><input className="form-control" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} required /></div> <div><label className="form-label">Especialidad (Pública)</label><input className="form-control" value={form.especialidad} onChange={e=>setForm({...form, especialidad:e.target.value})} placeholder="Ej: Matrona Adulto Teleconsulta" required /></div> </div> <div className="input-row"> <div><label className="form-label">Código (Fonasa/Isapre)</label><input className="form-control" value={form.codigo} onChange={e=>setForm({...form, codigo:e.target.value})} /></div> <div><label className="form-label">Valor</label><input type="number" className="form-control" value={form.valor} onChange={e=>setForm({...form, valor:e.target.value})} required /></div> </div> <div className="input-row"> <div style={{width:'100%'}}><label className="form-label">Descripción</label><input className="form-control" value={form.descripcion} onChange={e=>setForm({...form, descripcion:e.target.value})} /></div> </div> <button className="btn-primary">Guardar</button> {isEditing && <button type="button" className="btn-edit" onClick={()=>{setIsEditing(false); setForm({id:null, nombre:'', codigo:'', valor:'', descripcion:'', especialidad:''})}} style={{marginLeft:10}}>Cancelar</button>} </form> </div> <div className="pro-card"> <div className="data-table-container"> <table className="data-table"> <thead><tr><th>Código</th><th>Tratamiento</th><th>Especialidad</th><th>Valor</th><th>Acciones</th></tr></thead> <tbody> {items.map(it => ( <tr key={it.id}> <td>{it.codigo}</td> <td>{it.nombre}</td> <td>{it.especialidad}</td> <td>{fmtMoney(it.valor)}</td> <td> <button className="btn-edit" onClick={()=>handleEdit(it)}>Editar</button> <button className="btn-danger" onClick={()=>handleDelete(it.id)}>X</button> </td> </tr> ))} </tbody> </table> </div> </div> </div> );
+    return ( <div> <div className="page-header"><div className="page-title"><h1>Gestión de Prestaciones</h1></div></div> <div className="pro-card"> <h3>{isEditing ? 'Editar' : 'Nueva'}</h3> <form onSubmit={save}> <div className="input-row"> <div><label className="form-label">Nombre del Tratamiento</label><input className="form-control" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} required /></div> <div><label className="form-label">Especialidad (Pública)</label><input className="form-control" value={form.especialidad} onChange={e=>setForm({...form, especialidad:e.target.value})} required /></div> </div> <div className="input-row"> <div><label className="form-label">Código</label><input className="form-control" value={form.codigo} onChange={e=>setForm({...form, codigo:e.target.value})} /></div> <div><label className="form-label">Valor</label><input type="number" className="form-control" value={form.valor} onChange={e=>setForm({...form, valor:e.target.value})} required /></div> </div> <button className="btn-primary">Guardar</button> </form> </div> <div className="pro-card"> <div className="data-table-container"> <table className="data-table"> <thead><tr><th>Código</th><th>Tratamiento</th><th>Especialidad</th><th>Valor</th><th>Acciones</th></tr></thead> <tbody> {items.map(it => ( <tr key={it.id}> <td>{it.codigo}</td> <td>{it.nombre}</td> <td>{it.especialidad}</td> <td>{fmtMoney(it.valor)}</td> <td> <button className="btn-edit" onClick={()=>handleEdit(it)}>Edit</button> <button className="btn-danger" onClick={()=>handleDelete(it.id)}>X</button> </td> </tr> ))} </tbody> </table> </div> </div> </div> );
 }
 
 function AgendaPacientes(){
@@ -215,103 +638,6 @@ function AgendaPacientes(){
     const handleDelete = async (id) => { if(confirm('¿Seguro?')) { await deletePaciente(id); load(); } };
     const viewHistory = async (p) => { setHistoryPatient(p); const res = await fetch(`${API_BASE_URL}/pacientes/${p.id}/historial`).then(r => r.json()); setHistoryData(res); };
     return( <div> <div className="page-header"><div className="page-title"><h1>Base de Pacientes</h1></div></div> <div className="pro-card"> <h3 style={{marginTop:0}}>{editingId ? 'Editar Paciente' : 'Nuevo Paciente'}</h3> <form onSubmit={save}> <div className="input-row"><div><label className="form-label">RUT</label><input className="form-control" value={form.rut} onChange={handleRutChange} /></div><div><label className="form-label">Nombre</label><input className="form-control" value={form.nombreCompleto} onChange={e=>setForm({...form,nombreCompleto:e.target.value})}/></div></div> <div className="input-row"><div><label className="form-label">Email</label><input className="form-control" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div><div><label className="form-label">Teléfono</label><input className="form-control" value={form.telefono} onChange={e=>setForm({...form,telefono:e.target.value})}/></div></div> <button className="btn-primary">Guardar</button> </form> </div> <div className="pro-card"> <div className="data-table-container"> <table className="data-table"> <thead><tr><th>RUT</th><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Opciones</th></tr></thead> <tbody>{pacientes.map(p=>( <tr key={p.id}> <td>{formatRut(p.rut)}</td> <td><strong>{p.nombreCompleto}</strong></td> <td>{p.email}</td> <td>{p.telefono}</td> <td> <div style={{display:'flex', gap:5}}> <button className="btn-primary" style={{padding:'5px 10px', fontSize:'0.8rem'}} onClick={()=>viewHistory(p)}>Historial</button> <button className="btn-edit" onClick={()=>handleEdit(p)}>Editar</button> <button className="btn-danger" onClick={()=>handleDelete(p.id)}>X</button> </div> </td> </tr> ))}</tbody> </table> </div> </div> {historyPatient && ( <Modal title={`Historial: ${historyPatient.nombreCompleto}`} onClose={()=>setHistoryPatient(null)}> <div className="data-table-container"> <table className="data-table"> <thead><tr><th>Fecha</th><th>Tratamiento</th><th>Profesional</th><th>Estado</th></tr></thead> <tbody> {historyData.length === 0 ? <tr><td colSpan="4">Sin atenciones registradas</td></tr> : historyData.map(h => ( <tr key={h.id}> <td>{fmtDate(h.fechaHoraInicio)}</td> <td>{h.motivo}</td> <td>{h.profesional?.nombreCompleto}</td> <td><span className="badge-success">{h.estado}</span></td> </tr> ))} </tbody> </table> </div> </Modal> )} </div> )
-}
-
-function AgendaResumen({reservas, tratamientos, reload}){
-    const [pros, setPros] = useState([]);
-    const [filterPro, setFilterPro] = useState('');
-    const [view, setView] = useState('week'); 
-    const [currentDate, setCurrentDate] = useState(new Date());
-    const [selectedEvent, setSelectedEvent] = useState(null); 
-    const [editId, setEditId] = useState(null);
-    const [editProId, setEditProId] = useState('');
-    const [editEspecialidad, setEditEspecialidad] = useState('');
-    const [editTratamiento, setEditTratamiento] = useState('');
-    const [editHorarioId, setEditHorarioId] = useState('');
-    const [horariosDisponibles, setHorariosDisponibles] = useState([]);
-    useEffect(()=>{ getProfesionales().then(setPros) },[]);
-    const handleNav = (dir) => { const d = new Date(currentDate); if(view === 'day') d.setDate(d.getDate() + dir); if(view === 'week') d.setDate(d.getDate() + (dir*7)); if(view === 'month') d.setMonth(d.getMonth() + dir); setCurrentDate(d); };
-    const getDays = () => { const d = [], start = new Date(currentDate); if(view==='day'){ d.push(new Date(start)); } else if(view==='week'){ const day = start.getDay(), diff = start.getDate() - day + (day===0?-6:1); const mon = new Date(start.setDate(diff)); for(let i=0;i<7;i++){ const x = new Date(mon); x.setDate(mon.getDate()+i); d.push(x); } } else { const y = start.getFullYear(), m = start.getMonth(); const first = new Date(y, m, 1); let sDay = first.getDay(); if(sDay===0) sDay=7; const run = new Date(first); run.setDate(run.getDate() - (sDay - 1)); for(let i=0;i<42;i++){ d.push(new Date(run)); run.setDate(run.getDate()+1); } } return d; };
-    const days = getDays();
-    const filtered = reservas.filter(r => filterPro ? r.profesionalId === parseInt(filterPro) : true);
-    const handleEventClick = (r) => { const match = tratamientos.find(t => t.nombre === r.motivo); setSelectedEvent({ ...r, fullTrat: match }); setEditId(null); };
-    const deleteReserva = async(id) => { if(confirm('¿Eliminar?')){await cancelarReserva(id);reload(); setSelectedEvent(null);} };
-    const startEdit = async(r) => { setEditId(r.id); setEditProId(r.profesionalId.toString()); setEditTratamiento(r.motivo); const h = await getHorariosByProfesional(r.profesionalId); setHorariosDisponibles(Array.isArray(h) ? h : []); };
-    const handleProChange = async(pid) => { setEditProId(pid); setEditEspecialidad(''); setEditTratamiento(''); setEditHorarioId(''); if (pid) { const h = await getHorariosByProfesional(pid); setHorariosDisponibles(Array.isArray(h) ? h : []); } else { setHorariosDisponibles([]); } };
-    const saveEdit = async () => { if(!editHorarioId) return alert('Selecciona hora'); try{ await reagendarReserva(selectedEvent.id, editHorarioId, editProId, editTratamiento); alert('Modificado'); setSelectedEvent(null); setEditId(null); reload(); } catch(e){ alert('Error'); } };
-    return ( <div style={{height:'100%', display:'flex', flexDirection:'column'}}> <div className="page-header"><div className="page-title"><h1>Calendario</h1></div></div> <div className="dashboard-controls"> <div className="cal-filter-group"> <select className="form-control" style={{maxWidth:250}} value={filterPro} onChange={e=>setFilterPro(e.target.value)}> <option value="">Todos los Profesionales</option> {pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)} </select> <div className="view-buttons-group"> <button className={`calendar-nav-btn ${view==='day'?'active':''}`} onClick={()=>setView('day')}>Día</button> <button className={`calendar-nav-btn ${view==='week'?'active':''}`} onClick={()=>setView('week')}>Semana</button> <button className={`calendar-nav-btn desktop-view-only ${view==='month'?'active':''}`} onClick={()=>setView('month')}>Mes</button> </div> </div> <div className="cal-nav-group"> <button className="calendar-nav-btn" onClick={()=>handleNav(-1)}>‹</button> <span style={{fontWeight:'bold', textTransform:'capitalize'}}> {view==='month' ? currentDate.toLocaleDateString('es-CL', {month:'long', year:'numeric'}) : `Semana del ${days[0]?.getDate()}`} </span> <button className="calendar-nav-btn" onClick={()=>handleNav(1)}>›</button> <button className="calendar-nav-btn" onClick={()=>setCurrentDate(new Date())}>Hoy</button> </div> </div> <div className="calendar-grid-wrapper"> <div className="calendar-scroll-container" style={{ minWidth: view === 'week' ? '700px' : '100%' }}> {(view==='day'||view==='week') ? ( <> <div className="cal-header-row" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}> <div className="cal-header-cell">Hora</div> {days.map((d, i)=><div key={i} className={`cal-header-cell ${d.toDateString()===new Date().toDateString()?'today':''}`}>{d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric'})}</div>)} </div> <div className="calendar-body" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}> <div>{Array.from({length:13},(_,i)=>i+8).map(h=><div key={h} className="cal-time-label">{h}:00</div>)}</div> {days.map((d, i)=>( <div key={i} className="cal-day-col"> {filtered.filter(r=>{ if(!r.fecha) return false; const rd=parseDate(r.fecha); return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth(); }).map(r=>{ const st = parseDate(r.fecha), h=st.getUTCHours(), m=st.getUTCMinutes(); if(h<8||h>20)return null; const top = ((h-8)*60)+m; const horaVisual = st.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', timeZone: 'UTC'}); return ( <div key={r.id} className="cal-event evt-blue" style={{top: top, height: 45}} onClick={()=>handleEventClick(r)} title={r.pacienteNombre}> <strong>{horaVisual}</strong> <span>{r.pacienteNombre}</span> </div> ) })} </div> ))} </div> </> ) : ( <> <div className="cal-header-row" style={{gridTemplateColumns: 'repeat(7, 1fr)'}}>{['L','M','X','J','V','S','D'].map(d=><div key={d} className="cal-header-cell">{d}</div>)}</div> <div className="month-grid"> {days.map((d, i)=>( <div key={i} className="month-cell"> <div className="month-cell-header">{d.getDate()}</div> {filtered.filter(r=>{ if(!r.fecha) return false; const rd=parseDate(r.fecha); return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth(); }).slice(0,3).map(r => ( <div key={r.id} className="month-dot" onClick={()=>handleEventClick(r)}> {parseDate(r.fecha).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit', timeZone: 'UTC'})} {r.pacienteNombre} </div> ))} </div> ))} </div> </> )} </div> </div> {selectedEvent && ( <Modal onClose={()=>setSelectedEvent(null)}> {editId === selectedEvent.id ? ( <div style={{padding:10}}> <h2 style={{marginTop:0}}>Modificar Cita</h2> <div className="input-row"> <div><label className="form-label">Profesional</label><select className="form-control" value={editProId} onChange={e=>handleProChange(e.target.value)}>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div> <div><label className="form-label">Nuevo Horario</label><select className="form-control" value={editHorarioId} onChange={e=>setEditHorarioId(e.target.value)}><option value="">Selecciona hora...</option>{horariosDisponibles.map(h=><option key={h.id} value={h.id}>{fmtDate(h.fecha)} - {fmtTime(h.fecha)}</option>)}</select></div> </div> <div className="detail-actions"> <button className="btn-primary" onClick={saveEdit}>Guardar Cambios</button> <button className="btn-edit" onClick={()=>setEditId(null)}>Cancelar</button> </div> </div> ) : ( <div> <div className="detail-popup-header"> <div> <h2 className="detail-popup-title">Detalle de la Cita</h2> <p className="detail-popup-subtitle">ID Reserva: #{selectedEvent.id}</p> </div> </div> <div className="detail-row"><span className="detail-label">Paciente:</span><span className="detail-value">{selectedEvent.pacienteNombre}</span></div> <div className="detail-row"><span className="detail-label">Profesional:</span><span className="detail-value">{selectedEvent.profesionalNombre}</span></div> <div className="detail-row"><span className="detail-label">Fecha:</span><span className="detail-value">{fmtDate(selectedEvent.fecha)}</span></div> <div className="detail-row"><span className="detail-label">Hora:</span><span className="detail-value">{fmtTime(selectedEvent.fecha)}</span></div> <div className="detail-row"><span className="detail-label">Tratamiento:</span><span className="detail-value">{selectedEvent.motivo}</span></div> <div className="detail-row"><span className="detail-label">Valor:</span><span className="detail-value">{fmtMoney(selectedEvent.fullTrat?.valor || 0)}</span></div> <div className="detail-actions"> <button className="btn-primary" onClick={()=>startEdit(selectedEvent)}>Modificar</button> <button className="btn-edit" onClick={()=>setSelectedEvent(null)}>Cerrar</button> <button className="btn-danger" onClick={()=>deleteReserva(selectedEvent.id)}>Eliminar</button> </div> </div> )} </Modal> )} </div> )
-}
-
-function AgendaNuevaReserva({ reload, reservas, tratamientos }) {
-    const [pacientes, setPacientes] = useState([]);
-    const [pros, setPros] = useState([]);
-    const [horarios, setHorarios] = useState([]);
-    const [form, setForm] = useState({ pacienteId: '', profesionalId: '', horarioId: '', especialidad: '', tratamientoId: '' });
-    useEffect(() => { getPacientes().then(setPacientes); getProfesionales().then(setPros); }, []);
-    const especialidades = [...new Set(tratamientos.map(t => t.especialidad))];
-    const prestaciones = tratamientos.filter(t => t.especialidad === form.especialidad);
-    const prosFiltrados = form.tratamientoId ? pros.filter(p => { const trat = tratamientos.find(x => x.id === parseInt(form.tratamientoId)); return trat && p.tratamientos && p.tratamientos.includes(trat.nombre); }) : [];
-    const handlePro = async (pid) => { setForm({ ...form, profesionalId: pid }); setHorarios([]); if (!pid) return; try { const h = await getHorariosByProfesional(pid); if (Array.isArray(h)) setHorarios(h); } catch(e) { setHorarios([]); } }
-    const save = async (e) => { e.preventDefault(); if (!form.tratamientoId) return alert("Faltan datos"); const trat = tratamientos.find(t => t.id === parseInt(form.tratamientoId)); try { await crearReserva({ pacienteId: parseInt(form.pacienteId), profesionalId: parseInt(form.profesionalId), horarioDisponibleId: form.horarioId, motivo: trat.nombre }); alert('Creada'); reload(); } catch (e) { alert('Error'); } };
-    return ( <div> <div className="page-header"><div className="page-title"><h1>Nueva Reserva Manual</h1></div></div> <div className="pro-card"> <form onSubmit={save}> <div className="input-row"><div><label className="form-label">Especialidad</label><select className="form-control" value={form.especialidad} onChange={e => setForm({ ...form, especialidad: e.target.value, tratamientoId: '' })}><option>Seleccionar...</option>{especialidades.map(e => <option key={e} value={e}>{e}</option>)}</select></div><div><label className="form-label">Tratamiento</label><select className="form-control" disabled={!form.especialidad} value={form.tratamientoId} onChange={e => setForm({ ...form, tratamientoId: e.target.value })}><option>Seleccionar...</option>{prestaciones.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}</select></div></div> <div className="input-row"><div><label className="form-label">Paciente</label><select className="form-control" value={form.pacienteId} onChange={e => setForm({ ...form, pacienteId: e.target.value })}><option>Seleccionar...</option>{pacientes.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto} ({formatRut(p.rut)})</option>)}</select></div><div><label className="form-label">Profesional</label><select className="form-control" disabled={!form.tratamientoId} value={form.profesionalId} onChange={e => handlePro(e.target.value)}><option>Seleccionar...</option>{prosFiltrados.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div></div> <div style={{ marginBottom: 20 }}><label className="form-label">Horario</label><select className="form-control" onChange={e => setForm({ ...form, horarioId: e.target.value })}><option>Seleccionar...</option>{Array.isArray(horarios) && horarios.map(h => <option key={h.id} value={h.id}>{fmtDate(h.fecha)} - {fmtTime(h.fecha)}</option>)}</select></div> <button className="btn-primary">Crear Reserva</button> </form> </div> </div> )
-}
-
-function AgendaProfesionales({ tratamientos }) {
-    const [pros, setPros] = useState([]);
-    const [form, setForm] = useState({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] });
-    const [isEditing, setIsEditing] = useState(false);
-    const especialidadesUnicas = [...new Set(tratamientos.map(t => t.especialidad))];
-    const tratamientosDisponibles = tratamientos.filter(t => form.especialidades.includes(t.especialidad)).map(t=>t.nombre);
-    const load = () => getProfesionales().then(setPros);
-    useEffect(() => { load(); }, []);
-    const handleSpecChange = (newSpecs) => setForm({ ...form, especialidades: newSpecs });
-    const handleTratChange = (newTrats) => setForm({ ...form, tratamientos: newTrats });
-    const handleEdit = (p) => { setForm({ id: p.id, nombreCompleto: p.nombreCompleto, especialidades: p.especialidad ? p.especialidad.split(',') : [], tratamientos: p.tratamientos ? p.tratamientos.split(',') : [] }); setIsEditing(true); window.scrollTo(0,0); };
-    const save = async (e) => { e.preventDefault(); const payload = { nombreCompleto: form.nombreCompleto, especialidad: form.especialidades.join(','), tratamientos: form.tratamientos.join(',') }; try { if (isEditing) await updateProfesional(form.id, payload); else await fetch(`${API_BASE_URL}/profesionales`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); alert('Guardado'); setIsEditing(false); setForm({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] }); load(); } catch (e) { alert("Error"); } }
-    const handleDelete = async (id) => { if(confirm('¿Eliminar?')) { await deleteProfesional(id); load(); } };
-    return ( <div> <div className="page-header"><div className="page-title"><h1>Gestión de Profesionales</h1></div></div> <div className="pro-card"> <h3 style={{marginTop:0}}>{isEditing ? 'Editar' : 'Nuevo'}</h3> <form onSubmit={save}> <div className="input-row"><div style={{width:'100%'}}><label className="form-label">Nombre</label><input className="form-control" value={form.nombreCompleto} onChange={e => setForm({ ...form, nombreCompleto: e.target.value })} /></div></div> <div className="input-row"><div><MultiSelectDropdown label="Especialidades" options={especialidadesUnicas} selectedValues={form.especialidades} onChange={handleSpecChange} /></div><div><MultiSelectDropdown label="Prestaciones que realiza" options={tratamientosDisponibles} selectedValues={form.tratamientos} onChange={handleTratChange} /></div></div> <button className="btn-primary">Guardar</button> </form> </div> <div className="pro-card"> <div className="data-table-container"><table className="data-table"><thead><tr><th>Nombre</th><th>Especialidades</th><th>Acciones</th></tr></thead><tbody>{pros.map(p => (<tr key={p.id}><td><strong>{p.nombreCompleto}</strong></td><td>{p.especialidad}</td><td><button className="btn-edit" onClick={() => handleEdit(p)}>Editar</button><button className="btn-danger" onClick={() => handleDelete(p.id)}>X</button></td></tr>))}</tbody></table></div> </div> </div> )
-}
-
-function AgendaHorarios(){
-    const [pros,setPros]=useState([]);
-    const [configs, setConfigs] = useState([]);
-    const [fechaSel, setFechaSel] = useState('');
-    const [form,setForm]=useState({profesionalId:'',diaSemana:'',horaInicio:'09:00',horaFin:'18:00', duracionSlot: 30, intervalo: 0});
-    const [showModal, setShowModal] = useState(false);
-    const [events, setEvents] = useState([]);
-    const [selectedProName, setSelectedProName] = useState('');
-    useEffect(()=>{ getProfesionales().then(setPros); loadConfigs(); },[]);
-    const loadConfigs = async () => { try { const data = await getConfiguraciones(); setConfigs(Array.isArray(data) ? data : []); } catch (e) { setConfigs([]); } };
-    const save=async(e)=>{ e.preventDefault(); const payload = { ...form, fecha: fechaSel }; await fetch(`${API_BASE_URL}/configuracion`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); alert(`Guardado`); await loadConfigs(); };
-    const borrarConfig = async (id) => { if(confirm("¿Eliminar?")) { await deleteConfiguracion(id); loadConfigs(); } }
-    
-    // --- ESTA ES LA FUNCIÓN CORREGIDA ---
-    const verCalendario = async (p) => {
-        setSelectedProName(p.nombreCompleto);
-        const [reservasData, slotsData] = await Promise.all([
-            getReservasDetalle(),
-            getHorariosByProfesional(p.id)
-        ]);
-
-        const misReservas = reservasData.filter(r => r.profesionalId === p.id).map(r => ({
-            id: r.id,
-            title: r.pacienteNombre,
-            start: parseDate(r.fecha),
-            type: 'occupied'
-        }));
-
-        const misBloques = slotsData.map((s, i) => ({
-            id: `slot-${i}`,
-            title: 'Disponible',
-            start: parseDate(s.fecha),
-            type: 'available'
-        }));
-
-        setEvents([...misBloques, ...misReservas]);
-        setShowModal(true);
-    };
-
-    return( <div> <div className="page-header"><div className="page-title"><h1>Configuración de Horarios</h1></div></div> <div className="pro-card"> <form onSubmit={save}> <div className="input-row"><div><label className="form-label">Profesional</label><select className="form-control" onChange={e=>setForm({...form,profesionalId:e.target.value})}><option>Seleccionar...</option>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select></div><div><label className="form-label">Fecha del Bloque</label><input type="date" className="form-control" onChange={e=>setFechaSel(e.target.value)} /></div></div> <div className="input-row"><div><label className="form-label">Inicio</label><input type="time" className="form-control" value={form.horaInicio} onChange={e=>setForm({...form,horaInicio:e.target.value})}/></div><div><label className="form-label">Fin</label><input type="time" className="form-control" value={form.horaFin} onChange={e=>setForm({...form,horaFin:e.target.value})}/></div></div> <div className="input-row"><div><label className="form-label">Duración (Min)</label><select className="form-control" value={form.duracionSlot} onChange={e=>setForm({...form, duracionSlot: e.target.value})}><option value="15">15 Min</option><option value="30">30 Min</option><option value="45">45 Min</option><option value="60">60 Min</option></select></div><div><label className="form-label">Descanso (Min)</label><input type="number" className="form-control" value={form.intervalo} onChange={e=>setForm({...form, intervalo: e.target.value})} /></div></div> <button className="btn-primary">Guardar Disponibilidad</button> </form> </div> <div className="pro-card"> <h3>Bloques Configurados</h3> <div className="data-table-container"><table className="data-table"><thead><tr><th>Profesional</th><th>Fecha</th><th>Horario</th><th>Acción</th></tr></thead><tbody>{configs.map(c=>(<tr key={c.id}><td>{c.profesional?.nombreCompleto}</td><td>{c.fecha}</td><td>{c.horaInicio} - {c.horaFin}</td><td><button className="btn-danger" onClick={()=>borrarConfig(c.id)}>Eliminar</button></td></tr>))}</tbody></table></div> </div> <div className="pro-card"> <h3>Ver Calendario Visual (Popup)</h3> <div className="data-table-container"><table className="data-table"><thead><tr><th>Profesional</th><th>Acción</th></tr></thead><tbody>{pros.map(p=>(<tr key={p.id}><td>{p.nombreCompleto}</td><td><button className="btn-edit" onClick={()=>verCalendario(p)}>Ver Horarios</button></td></tr>))}</tbody></table></div> </div> {showModal && ( <Modal title={`Horarios: ${selectedProName}`} onClose={()=>setShowModal(false)}> {events.length === 0 ? <p>No hay datos.</p> : events.sort((a,b)=>a.start-b.start).map((e, i) => ( <div key={i} style={{marginBottom:10, padding:10, borderRadius:6, background: e.type==='available'?'#f0fdf4':'#eff6ff', borderLeft: e.type==='available'?'3px solid #22c55e':'3px solid #3b82f6'}}> <strong>{fmtDate(e.start.toISOString())}</strong> - {fmtTime(e.start.toISOString())} <div style={{fontSize:'0.85rem'}}>{e.title}</div> </div> )) } </Modal> )} </div> )
 }
 
 function FinanzasReporte({total,count,reservas, tratamientos}){ 
