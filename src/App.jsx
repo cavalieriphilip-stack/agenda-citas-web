@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { Routes, Route, Navigate } from 'react-router-dom'; // <--- NUEVOS IMPORTS
 import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
+import Login from './pages/Login'; // <--- IMPORTAMOS LOGIN
 import './App.css'; 
 import {
     API_BASE_URL, getPacientes, getProfesionales, getHorariosByProfesional,
@@ -9,15 +11,14 @@ import {
     buscarPacientePorRut, updateProfesional, deleteProfesional
 } from './api';
 
+// Inicialización de MercadoPago
 initMercadoPago('APP_USR-a5a67c3b-4b4b-44a1-b973-ff2fd82fe90a', { locale: 'es-CL' });
 
-// --- HELPERS (Visualización forzada UTC para que coincida con Backend) ---
+// --- HELPERS ---
 const fmtMoney = (v) => `$${v.toLocaleString('es-CL')}`;
 
-// Función especial para fechas que vienen SIN 'Z' (nuestro nuevo formato)
 const parseDate = (iso) => {
     if (!iso) return new Date();
-    // Si viene "2025-12-22T09:00:00", le agregamos "Z" para que sea UTC
     return iso.endsWith('Z') ? new Date(iso) : new Date(iso + 'Z');
 };
 
@@ -65,6 +66,7 @@ const validateRut = (rut) => {
 
 const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
+// --- COMPONENTES UI ---
 function MobileAccordion({ title, subtitle, children }) {
     const [isOpen, setIsOpen] = useState(false);
     return (
@@ -106,10 +108,26 @@ function Modal({ title, children, onClose }) {
     );
 }
 
+// --- APP PRINCIPAL CON RUTAS ---
 function App() {
-    if (window.location.pathname.startsWith('/centro')) return <AdminLayout />;
-    return <WebPaciente />;
+    return (
+        <Routes>
+            {/* 1. Login */}
+            <Route path="/login" element={<Login />} />
+
+            {/* 2. Admin Panel */}
+            <Route path="/admin/*" element={<AdminLayout />} />
+
+            {/* 3. Web Paciente (Home) */}
+            <Route path="/" element={<WebPaciente />} />
+
+            {/* 4. Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+    );
 }
+
+// --- LAYOUTS Y COMPONENTES INTERNOS ---
 
 function AdminLayout() {
     const [activeModule, setActiveModule] = useState('agenda');
