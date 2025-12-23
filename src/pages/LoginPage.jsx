@@ -61,7 +61,7 @@ function Login() {
                             className="form-control" 
                             value={form.usuario} 
                             onChange={handleChange} 
-                            placeholder="Ej: f.dreyse"
+                            placeholder="Ingresa tu usuario" 
                             autoFocus
                         />
                     </div>
