@@ -1,110 +1,126 @@
-// src/api.js - PRODUCCIÓN RENDER ☁️
-// Esta es la URL de tu backend en Render (copiada de tus fotos)
-export const API_BASE_URL = 'https://agenda-citas-ienp.onrender.com';
+// Detectar entorno (Local o Producción)
+export const API_BASE_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:10000' 
+    : 'https://agenda-cisd-panel.onrender.com';
 
-export async function getPacientes() {
-    const res = await fetch(`${API_BASE_URL}/pacientes`);
-    return await res.json();
-}
+// 🔐 Función auxiliar para cabeceras con Token
+const getHeaders = (isMultipart = false) => {
+    const token = localStorage.getItem('token');
+    const headers = {};
+    if (!isMultipart) headers['Content-Type'] = 'application/json';
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return headers;
+};
 
-export async function buscarPacientePorRut(rut) {
-    const rutLimpio = encodeURIComponent(rut); 
-    const res = await fetch(`${API_BASE_URL}/pacientes/buscar/${rutLimpio}`);
-    return await res.json(); 
-}
+// --- PROFESIONALES ---
+export const getProfesionales = async () => {
+    const res = await fetch(`${API_BASE_URL}/profesionales`, { headers: getHeaders() });
+    return res.json();
+};
 
-export async function getProfesionales() {
-    const res = await fetch(`${API_BASE_URL}/profesionales`);
-    return await res.json();
-}
-
-// ACTUALIZAR PROFESIONAL (PUT)
-export async function updateProfesional(id, data) {
+export const updateProfesional = async (id, data) => {
     const res = await fetch(`${API_BASE_URL}/profesionales/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify(data)
     });
-    if (!res.ok) throw new Error('Error al actualizar profesional');
-    return await res.json();
-}
+    return res.json();
+};
 
-// ELIMINAR PROFESIONAL (DELETE)
-export async function deleteProfesional(id) {
-    const res = await fetch(`${API_BASE_URL}/profesionales/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Error al eliminar profesional');
-    return true;
-}
+export const deleteProfesional = async (id) => {
+    const res = await fetch(`${API_BASE_URL}/profesionales/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+    });
+    return res.json();
+};
 
-export async function getHorariosByProfesional(id) {
+export const getHorariosByProfesional = async (id) => {
+    // Esta ruta suele ser pública para la web de pacientes, pero enviamos headers por si acaso
     const res = await fetch(`${API_BASE_URL}/profesionales/${id}/horarios`);
-    return await res.json();
-}
+    return res.json();
+};
 
-export async function getReservasDetalle() {
-    const res = await fetch(`${API_BASE_URL}/reservas/detalle`);
-    return await res.json();
-}
+// --- PACIENTES ---
+export const getPacientes = async () => {
+    const res = await fetch(`${API_BASE_URL}/pacientes`, { headers: getHeaders() });
+    return res.json();
+};
 
-export async function getConfiguraciones() {
-    const res = await fetch(`${API_BASE_URL}/configuracion`);
-    return await res.json();
-}
+export const buscarPacientePorRut = async (rut) => {
+    const res = await fetch(`${API_BASE_URL}/pacientes/search/${rut}`, { headers: getHeaders() });
+    return res.json();
+};
 
-export async function deleteConfiguracion(id) {
-    const res = await fetch(`${API_BASE_URL}/configuracion/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Error al eliminar config');
-    return true;
-}
-
-export async function crearReserva(data) {
-    const res = await fetch(`${API_BASE_URL}/reservas`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    if (!res.ok) throw new Error('Error al reservar');
-    return await res.json();
-}
-
-export async function crearPaciente(data) {
+export const crearPaciente = async (data) => {
     const res = await fetch(`${API_BASE_URL}/pacientes`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Error al crear paciente');
-    return await res.json();
-}
+    return res.json();
+};
 
-export async function updatePaciente(id, data) {
+export const updatePaciente = async (id, data) => {
     const res = await fetch(`${API_BASE_URL}/pacientes/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify(data)
     });
-    if (!res.ok) throw new Error('Error al actualizar paciente');
-    return await res.json();
-}
+    return res.json();
+};
 
-export async function deletePaciente(id) {
-    const res = await fetch(`${API_BASE_URL}/pacientes/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Error al eliminar paciente');
-    return true;
-}
+export const deletePaciente = async (id) => {
+    await fetch(`${API_BASE_URL}/pacientes/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+    });
+};
 
-export async function cancelarReserva(id) {
-    const res = await fetch(`${API_BASE_URL}/reservas/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Error al cancelar');
-    return true;
-}
+// --- RESERVAS ---
+export const getReservasDetalle = async () => {
+    const res = await fetch(`${API_BASE_URL}/reservas/detalle`, { headers: getHeaders() });
+    return res.json();
+};
 
-export async function reagendarReserva(id, nuevoHorarioId, nuevoProfesionalId, nuevoMotivo) {
-    const res = await fetch(`${API_BASE_URL}/reservas/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nuevoHorarioId, nuevoProfesionalId, nuevoMotivo })
+export const crearReserva = async (data) => {
+    // Pública o Privada dependiendo de quién la llame, el backend maneja la excepción
+    const res = await fetch(`${API_BASE_URL}/reservas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, // Las reservas públicas no llevan token
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Error al reservar');
+    return res.json();
+};
+
+export const cancelarReserva = async (id) => {
+    await fetch(`${API_BASE_URL}/reservas/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+    });
+};
+
+export const reagendarReserva = async (id, nuevoHorarioId, profesionalId, motivo) => {
+    const res = await fetch(`${API_BASE_URL}/reservas/${id}/reagendar`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ nuevoHorarioId, profesionalId, motivo })
     });
     if (!res.ok) throw new Error('Error al reagendar');
-    return await res.json();
-}
+    return res.json();
+};
+
+// --- CONFIGURACIÓN ---
+export const getConfiguraciones = async () => {
+    const res = await fetch(`${API_BASE_URL}/configuracion`, { headers: getHeaders() });
+    return res.json();
+};
+
+export const deleteConfiguracion = async (id) => {
+    await fetch(`${API_BASE_URL}/configuracion/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+    });
+};
