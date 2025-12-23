@@ -160,7 +160,7 @@ function DashboardContent({ module, view, user, isAdmin }) {
 }
 
 // ==========================================
-// 📋 COMPONENTE: FICHA CLÍNICA DINÁMICA (CON FIX VISUAL)
+// 📋 COMPONENTE: FICHA CLÍNICA DINÁMICA
 // ==========================================
 function FichaClinicaViewer({ paciente, onClose }) {
     const [fichas, setFichas] = useState([]);
@@ -245,14 +245,12 @@ function FichaClinicaViewer({ paciente, onClose }) {
         } catch (e) { alert("Error de conexión"); }
     };
 
-    // Helper visual para archivos (FIXME: Lógica mejorada)
+    // Helper visual para archivos
     const renderValor = (campo) => {
         const val = (campo.valor || '').toString();
         const valLower = val.toLowerCase();
         
-        // Detección más robusta
         const esPdf = valLower.includes('.pdf');
-        // Es imagen si NO es pdf y (es jpg/png O viene de cloudinary)
         const esImagen = !esPdf && (
             valLower.match(/\.(jpeg|jpg|gif|png|webp)$/) != null || 
             valLower.includes('cloudinary')
@@ -279,7 +277,6 @@ function FichaClinicaViewer({ paciente, onClose }) {
             );
         }
         
-        // Texto normal
         return <div style={{ whiteSpace: 'pre-wrap', color: '#4b5563', background: '#f9fafb', padding: 10, borderRadius: 8, marginTop: 5 }}>{val || '-'}</div>;
     };
 
@@ -315,7 +312,6 @@ function FichaClinicaViewer({ paciente, onClose }) {
                             <div key={idx} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'start' }}>
                                 <div style={{ flex: 1 }}>
                                     <input className="form-control" placeholder="Título (Ej: Evolución, Radiografía)" value={campo.titulo} onChange={e => handleCampoChange(idx, 'titulo', e.target.value)} style={{ fontWeight: 'bold', marginBottom: 5, background: '#f9fafb' }} />
-                                    {/* Si es archivo, renderizamos preview */}
                                     {campo.esArchivo ? renderValor(campo) : (
                                         <textarea className="form-control" placeholder="Escribe aquí..." value={campo.valor} onChange={e => handleCampoChange(idx, 'valor', e.target.value)} rows={3} />
                                     )}
@@ -369,10 +365,8 @@ function FichaClinicaViewer({ paciente, onClose }) {
 }
 
 // ==========================================
-// 📅 COMPONENTES AGENDA (Resumen, Nueva, Horarios...)
+// 📅 COMPONENTES AGENDA
 // ==========================================
-// (El resto de componentes se mantienen igual que en tu código anterior, para no cortar la respuesta 
-// he incluido la FichaClinicaViewer completa que es donde está el cambio importante).
 
 function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
     const [pros, setPros] = useState([]); const [filterPro, setFilterPro] = useState(isAdmin ? '' : user.id); const [view, setView] = useState('week'); const [currentDate, setCurrentDate] = useState(new Date()); const [selectedEvent, setSelectedEvent] = useState(null); const [editId, setEditId] = useState(null); const [editProId, setEditProId] = useState(''); const [editTratamiento, setEditTratamiento] = useState(''); const [editHorarioId, setEditHorarioId] = useState(''); const [horariosDisponibles, setHorariosDisponibles] = useState([]);
@@ -446,6 +440,9 @@ function FinanzasReporte({total,count,reservas, tratamientos}){
     return ( <div> <div className="page-header"><div className="page-title"><h1>Reporte Financiero</h1></div></div> <div className="kpi-grid"> <div className="kpi-box"><div className="kpi-label">Ingresos</div><div className="kpi-value">{fmtMoney(total)}</div></div> <div className="kpi-box"><div className="kpi-label">Citas</div><div className="kpi-value">{count}</div></div> </div> <div className="input-row finance-section"> <div className="pro-card"> <h3>Atenciones por Profesional</h3> <div className="data-table-container"> <table className="finance-table"><thead><tr><th>Profesional</th><th>Citas</th></tr></thead><tbody>{Object.entries(statsPro).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table> </div> </div> <div className="pro-card"> <h3>Agendas por Tratamiento</h3> <div className="data-table-container"> <table className="finance-table"><thead><tr><th>Tratamiento</th><th>Cantidad</th></tr></thead><tbody>{Object.entries(statsTrat).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table> </div> </div> </div> </div> ) 
 }
 
+// ==========================================
+// 🔴 FIX WEB PACIENTE (Fecha corregida)
+// ==========================================
 function WebPaciente() {
     const [step, setStep] = useState(0); 
     const [profesionales, setProfesionales] = useState([]);
@@ -516,8 +513,26 @@ function WebPaciente() {
         setMultiAgenda(agendaMap); setAvailableDates(sortedDates); if (sortedDates.length > 0) setSelectedDateKey(sortedDates[0]); setLoading(false); setStep(3); 
     };
     
-    const selectSlot = (pid, hid) => { setForm(prev => ({ ...prev, profesionalId: pid, horarioId: hid })); setStep(4); };
-    const initPaymentProcess = async () => { setLoading(true); const storageData = { ...form, pacienteId: pacienteId }; try { let pid = pacienteId; if (!pid) { const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); const pac = await crearPaciente({nombreCompleto:form.nombre, email:form.email, telefono:form.telefono, rut: rutLimpio}); pid = pac.id; setPacienteId(pid); storageData.pacienteId = pid; } localStorage.setItem('pendingReservation', JSON.stringify(storageData)); const response = await fetch(`${API_BASE_URL}/create_preference`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: tratamientoSel.nombre, quantity: 1, unit_price: tratamientoSel.valor }), }); const preference = await response.json(); if (preference.id) { setPreferenceId(preference.id); setShowPayModal(true); } else { alert("Error al iniciar el pago"); } } catch (error) { console.error(error); alert("Error de conexión"); } finally { setLoading(false); } };
+    // 🔴 CORRECCIÓN AQUÍ: Usamos slot.fecha (ISO) en vez de slot.id
+    const selectSlot = (pid, fechaIso) => { 
+        setForm(prev => ({ ...prev, profesionalId: pid, horarioId: fechaIso })); 
+        setStep(4); 
+    };
+
+    const initPaymentProcess = async () => { 
+        setLoading(true); 
+        const storageData = { ...form, pacienteId: pacienteId }; 
+        try { 
+            let pid = pacienteId; 
+            if (!pid) { const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); const pac = await crearPaciente({nombreCompleto:form.nombre, email:form.email, telefono:form.telefono, rut: rutLimpio}); pid = pac.id; setPacienteId(pid); storageData.pacienteId = pid; } 
+            localStorage.setItem('pendingReservation', JSON.stringify(storageData)); 
+            const response = await fetch(`${API_BASE_URL}/create_preference`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: tratamientoSel.nombre, quantity: 1, unit_price: tratamientoSel.valor }), }); 
+            const preference = await response.json(); 
+            if (preference.id) { setPreferenceId(preference.id); setShowPayModal(true); } 
+            else { alert("Error al iniciar el pago"); console.error(preference); } 
+        } catch (error) { console.error(error); alert("Error de conexión"); } finally { setLoading(false); } 
+    };
+    
     const goBack = () => { if(step===0)return; if(step===2 && pacienteId) setStep(0); else setStep(step-1); };
     
     const ReservaDetalleCard = ({ title, showTotal }) => { 
@@ -532,7 +547,7 @@ function WebPaciente() {
 
     if(bookingSuccess) { return ( <div className="web-shell"> <div className="web-content success-card"> <span className="success-icon-big">✓</span> <h1 className="web-title">¡Reserva Exitosa!</h1> <p className="web-subtitle">Hemos enviado el comprobante a<br/><strong>{form.email}</strong></p> <ReservaDetalleCard title="Comprobante de Pago" showTotal={true} /> <button className="btn-block-action" onClick={()=>window.location.href='/'}>Volver al Inicio</button> </div> </div> ) }
 
-    return ( <div className="web-shell"> <header className="web-header">{step > 0 && <button className="web-back-btn" onClick={goBack}>‹</button>}<img src={LOGO_URL} alt="Logo" className="cisd-logo-web" /></header> <div className="stepper-container"><div className="stepper"><div className={`step-dot ${step >= 0 ? 'active' : ''}`}></div><div className={`step-line ${step >= 1 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 1 ? 'active' : ''}`}></div><div className={`step-line ${step >= 2 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 2 ? 'active' : ''}`}></div><div className={`step-line ${step >= 3 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 3 ? 'active' : ''}`}></div></div></div> <div className="web-content"> {step === 0 && ( <> <div><h2 className="web-title">Bienvenido</h2><p className="web-subtitle">Agenda tu hora médica.</p></div><div className="input-group"><label className="web-label">RUT</label><input className="web-input" placeholder="Ej: 12.345.678-9" value={form.rut} onChange={e=>setForm({...form, rut: formatRut(e.target.value)})} maxLength={12} autoFocus /></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.rut || loading} onClick={handleRutSearch}>{loading ? 'Cargando...' : 'Comenzar'}</button></div> </> )} {step === 1 && ( <> <h2 className="web-title">Datos Personales</h2><div className="input-group"><label className="web-label">Nombre</label><input className="web-input" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} /></div><div className="input-group"><label className="web-label">Email</label><input className="web-input" value={form.email} onChange={e=>setForm({...form, email:e.target.value})} /></div><div className="input-group"><label className="web-label">Teléfono</label><input className="web-input" value={form.telefono} onChange={e=>setForm({...form, telefono:e.target.value})} /></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.nombre || !validateEmail(form.email)} onClick={()=>setStep(2)}>Guardar Datos</button></div> </> )} {step === 2 && ( <> <h2 className="web-title">¿Qué necesitas?</h2> <div className="input-group"><label className="web-label">Categoría</label><select className="web-select" value={form.categoria} onChange={e=>setForm({...form, categoria:e.target.value, especialidad:'', tratamientoId:''})}><option value="">Selecciona...</option>{categorias.map(c=><option key={c} value={c}>{c}</option>)}</select></div> <div className="input-group"><label className="web-label">Especialidad</label><select className="web-select" disabled={!form.categoria} value={form.especialidad} onChange={e=>setForm({...form, especialidad:e.target.value, tratamientoId:''})}><option value="">Selecciona...</option>{especialidadesFiltradas.map(e=><option key={e} value={e}>{e}</option>)}</select></div> <div className="input-group"><label className="web-label">Tratamiento</label><select className="web-select" disabled={!form.especialidad} value={form.tratamientoId} onChange={e=>setForm({...form, tratamientoId:e.target.value})}><option value="">Selecciona...</option>{prestacionesFiltradas.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}</select></div> <div className="bottom-bar"><button className="btn-block-action" disabled={!form.tratamientoId || loading} onClick={handleTreatmentConfirm}>{loading ? 'Buscando...' : 'Buscar Horas'}</button></div> </> )} {step === 3 && ( <> <h2 className="web-title">Elige tu Hora</h2><div className="rs-date-tabs">{availableDates.map(dateStr => { const dateObj = parseDate(dateStr + 'T00:00:00'); return ( <div key={dateStr} className={`rs-date-tab ${selectedDateKey === dateStr ? 'selected' : ''}`} onClick={() => setSelectedDateKey(dateStr)}><div className="rs-day-name">{dateObj.toLocaleDateString('es-CL', {weekday: 'short', timeZone: 'UTC'})}</div><div className="rs-day-number">{dateObj.getUTCDate()}</div></div> ); })}</div><div className="rs-pro-list">{multiAgenda[selectedDateKey]?.map((entry) => ( <div key={entry.profesional.id} className="rs-pro-card"><div className="rs-pro-header"><div className="rs-avatar-circle">{entry.profesional.nombreCompleto.charAt(0)}</div><div className="rs-pro-details"><strong>{entry.profesional.nombreCompleto}</strong><span>{entry.profesional.especialidad}</span></div></div><div className="rs-slots-grid">{entry.slots.sort((a,b)=>parseDate(a.fecha)-parseDate(b.fecha)).map(slot => ( <button key={slot.id} className="rs-slot-btn" onClick={() => selectSlot(entry.profesional.id, slot.id)}>{fmtTime(slot.fecha)}</button> ))}</div></div> ))}</div> </> )} {step === 4 && ( <> <h2 className="web-title">Confirmar Reserva</h2><ReservaDetalleCard title="Resumen" showTotal={true} /><div className="bottom-bar"><button className="btn-block-action" disabled={loading} onClick={initPaymentProcess}>{loading ? 'Iniciando Pago...' : 'Ir a Pagar'}</button></div> </> )} </div> {showPayModal && preferenceId && ( <Modal onClose={()=>setShowPayModal(false)} title="Finalizar Pago"> <div style={{padding: '10px 0'}}> <p style={{marginBottom: 20, textAlign: 'center', color: '#666'}}> Serás redirigido a Mercado Pago de forma segura. </p> <Wallet initialization={{ preferenceId: preferenceId }} /> </div> </Modal> )} </div> )
+    return ( <div className="web-shell"> <header className="web-header">{step > 0 && <button className="web-back-btn" onClick={goBack}>‹</button>}<img src={LOGO_URL} alt="Logo" className="cisd-logo-web" /></header> <div className="stepper-container"><div className="stepper"><div className={`step-dot ${step >= 0 ? 'active' : ''}`}></div><div className={`step-line ${step >= 1 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 1 ? 'active' : ''}`}></div><div className={`step-line ${step >= 2 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 2 ? 'active' : ''}`}></div><div className={`step-line ${step >= 3 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 3 ? 'active' : ''}`}></div></div></div> <div className="web-content"> {step === 0 && ( <> <div><h2 className="web-title">Bienvenido</h2><p className="web-subtitle">Agenda tu hora médica.</p></div><div className="input-group"><label className="web-label">RUT</label><input className="web-input" placeholder="Ej: 12.345.678-9" value={form.rut} onChange={e=>setForm({...form, rut: formatRut(e.target.value)})} maxLength={12} autoFocus /></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.rut || loading} onClick={handleRutSearch}>{loading ? 'Cargando...' : 'Comenzar'}</button></div> </> )} {step === 1 && ( <> <h2 className="web-title">Datos Personales</h2><div className="input-group"><label className="web-label">Nombre</label><input className="web-input" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} /></div><div className="input-group"><label className="web-label">Email</label><input className="web-input" value={form.email} onChange={e=>setForm({...form, email:e.target.value})} /></div><div className="input-group"><label className="web-label">Teléfono</label><input className="web-input" value={form.telefono} onChange={e=>setForm({...form, telefono:e.target.value})} /></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.nombre || !validateEmail(form.email)} onClick={()=>setStep(2)}>Guardar Datos</button></div> </> )} {step === 2 && ( <> <h2 className="web-title">¿Qué necesitas?</h2> <div className="input-group"><label className="web-label">Categoría</label><select className="web-select" value={form.categoria} onChange={e=>setForm({...form, categoria:e.target.value, especialidad:'', tratamientoId:''})}><option value="">Selecciona...</option>{categorias.map(c=><option key={c} value={c}>{c}</option>)}</select></div> <div className="input-group"><label className="web-label">Especialidad</label><select className="web-select" disabled={!form.categoria} value={form.especialidad} onChange={e=>setForm({...form, especialidad:e.target.value, tratamientoId:''})}><option value="">Selecciona...</option>{especialidadesFiltradas.map(e=><option key={e} value={e}>{e}</option>)}</select></div> <div className="input-group"><label className="web-label">Tratamiento</label><select className="web-select" disabled={!form.especialidad} value={form.tratamientoId} onChange={e=>setForm({...form, tratamientoId:e.target.value})}><option value="">Selecciona...</option>{prestacionesFiltradas.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}</select></div> <div className="bottom-bar"><button className="btn-block-action" disabled={!form.tratamientoId || loading} onClick={handleTreatmentConfirm}>{loading ? 'Buscando...' : 'Buscar Horas'}</button></div> </> )} {step === 3 && ( <> <h2 className="web-title">Elige tu Hora</h2><div className="rs-date-tabs">{availableDates.map(dateStr => { const dateObj = parseDate(dateStr + 'T00:00:00'); return ( <div key={dateStr} className={`rs-date-tab ${selectedDateKey === dateStr ? 'selected' : ''}`} onClick={() => setSelectedDateKey(dateStr)}><div className="rs-day-name">{dateObj.toLocaleDateString('es-CL', {weekday: 'short', timeZone: 'UTC'})}</div><div className="rs-day-number">{dateObj.getUTCDate()}</div></div> ); })}</div><div className="rs-pro-list">{multiAgenda[selectedDateKey]?.map((entry) => ( <div key={entry.profesional.id} className="rs-pro-card"><div className="rs-pro-header"><div className="rs-avatar-circle">{entry.profesional.nombreCompleto.charAt(0)}</div><div className="rs-pro-details"><strong>{entry.profesional.nombreCompleto}</strong><span>{entry.profesional.especialidad}</span></div></div><div className="rs-slots-grid">{entry.slots.sort((a,b)=>parseDate(a.fecha)-parseDate(b.fecha)).map(slot => ( <button key={slot.id} className="rs-slot-btn" onClick={() => selectSlot(entry.profesional.id, slot.fecha)}>{fmtTime(slot.fecha)}</button> ))}</div></div> ))}</div> </> )} {step === 4 && ( <> <h2 className="web-title">Confirmar Reserva</h2><ReservaDetalleCard title="Resumen" showTotal={true} /><div className="bottom-bar"><button className="btn-block-action" disabled={loading} onClick={initPaymentProcess}>{loading ? 'Iniciando Pago...' : 'Ir a Pagar'}</button></div> </> )} </div> {showPayModal && preferenceId && ( <Modal onClose={()=>setShowPayModal(false)} title="Finalizar Pago"> <div style={{padding: '10px 0'}}> <p style={{marginBottom: 20, textAlign: 'center', color: '#666'}}> Serás redirigido a Mercado Pago de forma segura. </p> <Wallet initialization={{ preferenceId: preferenceId }} /> </div> </Modal> )} </div> )
 }
 
 export default App;
