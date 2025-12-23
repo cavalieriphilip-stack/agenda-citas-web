@@ -11,6 +11,7 @@ import {
     buscarPacientePorRut, updateProfesional, deleteProfesional
 } from './api';
 
+// Inicializar MercadoPago
 initMercadoPago('APP_USR-a5a67c3b-4b4b-44a1-b973-ff2fd82fe90a', { locale: 'es-CL' });
 
 // --- HELPERS ---
@@ -122,7 +123,7 @@ function App() {
 }
 
 // ==========================================
-// 🔐 LAYOUT ADMIN
+// 🔐 LAYOUT ADMIN (Navegación Corregida)
 // ==========================================
 function AdminLayout() {
     const [activeModule, setActiveModule] = useState('agenda');
@@ -133,11 +134,10 @@ function AdminLayout() {
     const user = JSON.parse(localStorage.getItem('usuario') || '{}');
     const isAdmin = user.rol === 'ADMIN';
 
-    useEffect(() => {
-        if (!user.id) navigate('/login');
-    }, [navigate]);
+    useEffect(() => { if (!user.id) navigate('/login'); }, [navigate, user.id]);
 
     const handleNavClick = (view) => { setActiveView(view); setMobileMenuOpen(false); }
+    const handleModuleSwitch = (mod, view) => { setActiveModule(mod); setActiveView(view); setMobileMenuOpen(false); }
     
     return (
         <div className="dashboard-layout">
@@ -147,20 +147,29 @@ function AdminLayout() {
                     <img src={LOGO_URL} alt="Logo" className="cisd-logo-admin" />
                     <span className="admin-title-text">CISD {isAdmin ? 'Admin' : 'Profesional'}</span>
                 </div>
-                <div className="module-switcher">
-                    <button className={`module-tab ${activeModule === 'agenda' ? 'active' : ''}`} onClick={() => {setActiveModule('agenda'); setActiveView('resumen');}}>Clínica</button>
-                    <button className={`module-tab ${activeModule === 'clientes' ? 'active' : ''}`} onClick={() => {setActiveModule('clientes'); setActiveView('listado');}}>Pacientes</button>
-                    {isAdmin && <button className={`module-tab ${activeModule === 'finanzas' ? 'active' : ''}`} onClick={() => {setActiveModule('finanzas'); setActiveView('reporte');}}>Finanzas</button>}
+                {/* Switcher Desktop */}
+                <div className="module-switcher desktop-view-only">
+                    <button className={`module-tab ${activeModule === 'agenda' ? 'active' : ''}`} onClick={() => handleModuleSwitch('agenda', 'resumen')}>Clínica</button>
+                    <button className={`module-tab ${activeModule === 'clientes' ? 'active' : ''}`} onClick={() => handleModuleSwitch('clientes', 'listado')}>Pacientes</button>
+                    {isAdmin && <button className={`module-tab ${activeModule === 'finanzas' ? 'active' : ''}`} onClick={() => handleModuleSwitch('finanzas', 'reporte')}>Finanzas</button>}
                 </div>
                 <div className="nav-actions">
-                    <span style={{marginRight:10, fontSize:'0.9rem', fontWeight:'600'}}>{user.nombre}</span>
+                    <span className="desktop-view-only" style={{marginRight:10, fontSize:'0.9rem', fontWeight:'600'}}>{user.nombre}</span>
                     <button onClick={() => {localStorage.removeItem('usuario'); navigate('/login');}} className="btn-danger" style={{padding:'5px 15px', fontSize:'0.8rem'}}>Salir</button>
                 </div>
             </nav>
             <div className="workspace">
                 {mobileMenuOpen && <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)}></div>}
                 <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
-                    <div className="sidebar-header">MENÚ</div>
+                    {/* ✅ SECCIÓN DE MÓDULOS EN MÓVIL */}
+                    <div className="mobile-view-only" style={{marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #eee'}}>
+                        <div className="sidebar-header">MÓDULOS</div>
+                        <div className={`nav-item ${activeModule === 'agenda' ? 'active' : ''}`} onClick={() => handleModuleSwitch('agenda', 'resumen')}>🏥 Clínica</div>
+                        <div className={`nav-item ${activeModule === 'clientes' ? 'active' : ''}`} onClick={() => handleModuleSwitch('clientes', 'listado')}>👥 Pacientes</div>
+                        {isAdmin && <div className={`nav-item ${activeModule === 'finanzas' ? 'active' : ''}`} onClick={() => handleModuleSwitch('finanzas', 'reporte')}>💰 Finanzas</div>}
+                    </div>
+
+                    <div className="sidebar-header">NAVEGACIÓN</div>
                     {activeModule === 'agenda' && (
                         <>
                             <div className={`nav-item ${activeView==='resumen'?'active':''}`} onClick={()=>handleNavClick('resumen')}>Calendario</div>
@@ -175,8 +184,8 @@ function AdminLayout() {
                             )}
                         </>
                     )}
-                    {activeModule === 'clientes' && <div className={`nav-item ${activeView==='listado'?'active':''}`} onClick={()=>handleNavClick('listado')}>Base de Pacientes</div>}
-                    {isAdmin && activeModule === 'finanzas' && <div className={`nav-item ${activeView==='reporte'?'active':''}`} onClick={()=>handleNavClick('reporte')}>Reporte</div>}
+                    {activeModule === 'clientes' && <div className={`nav-item ${activeView==='listado'?'active':''}`} onClick={()=>handleNavClick('listado')}>Listado de Pacientes</div>}
+                    {isAdmin && activeModule === 'finanzas' && <div className={`nav-item ${activeView==='reporte'?'active':''}`} onClick={()=>handleNavClick('reporte')}>Ver Reportes</div>}
                 </aside>
                 <main className="main-stage">
                     <DashboardContent module={activeModule} view={activeView} user={user} isAdmin={isAdmin} />
@@ -270,7 +279,7 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
             </div> 
             {selectedEvent && ( <Modal onClose={()=>setSelectedEvent(null)}> {editId === selectedEvent.id ? ( <div style={{padding:10}}> <h2>Modificar Cita</h2> {isAdmin ? (<select className="form-control" value={editProId} onChange={e=>handleProChange(e.target.value)}>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select>) : (<p><strong>Profesional:</strong> {user.nombre}</p>)} <select className="form-control" value={editHorarioId} onChange={e=>setEditHorarioId(e.target.value)}><option value="">Hora...</option>{horariosDisponibles.map(h=><option key={h.id} value={h.id}>{fmtDate(h.fecha)} - {fmtTime(h.fecha)}</option>)}</select> <div className="detail-actions" style={{marginTop:10}}> <button className="btn-primary" onClick={saveEdit}>Guardar</button> <button className="btn-edit" onClick={()=>setEditId(null)}>Cancelar</button> </div> </div> ) : ( <div style={{padding:10}}> <h2>Detalle</h2> <p>Paciente: {selectedEvent.pacienteNombre}</p> <p>Tratamiento: {selectedEvent.motivo}</p> <div className="detail-actions" style={{marginTop:10}}> <button className="btn-primary" onClick={()=>startEdit(selectedEvent)}>Modificar</button> <button className="btn-danger" onClick={()=>deleteReserva(selectedEvent.id)}>Eliminar</button> </div> </div> )} </Modal> )} 
         </div> 
-    )
+    );
 }
 
 function AgendaNuevaReserva({ reload, reservas, tratamientos, user, isAdmin }) {
@@ -278,13 +287,17 @@ function AgendaNuevaReserva({ reload, reservas, tratamientos, user, isAdmin }) {
     const [pros, setPros] = useState([]);
     const [horarios, setHorarios] = useState([]);
     const [form, setForm] = useState({ pacienteId: '', profesionalId: isAdmin ? '' : user.id, horarioId: '', especialidad: '', tratamientoId: '' });
+    
     useEffect(() => { getPacientes().then(setPacientes); getProfesionales().then(setPros); if (!isAdmin && user.id) { handlePro(user.id); } }, []);
+    
     const especialidades = [...new Set(tratamientos.map(t => t.especialidad))];
     const prestaciones = tratamientos.filter(t => t.especialidad === form.especialidad);
     const prosFiltrados = isAdmin ? (form.tratamientoId ? pros.filter(p => { const trat = tratamientos.find(x => x.id === parseInt(form.tratamientoId)); return trat && p.tratamientos && p.tratamientos.includes(trat.nombre); }) : []) : [user];
+    
     const handlePro = async (pid) => { setForm(prev => ({ ...prev, profesionalId: pid })); setHorarios([]); if (!pid) return; try { const h = await getHorariosByProfesional(pid); if (Array.isArray(h)) setHorarios(h.filter(x => new Date(x.fecha) > new Date())); } catch(e) { setHorarios([]); } }
     const save = async (e) => { e.preventDefault(); if (!form.tratamientoId) return alert("Faltan datos"); const trat = tratamientos.find(t => t.id === parseInt(form.tratamientoId)); try { await crearReserva({ pacienteId: parseInt(form.pacienteId), profesionalId: parseInt(form.profesionalId), horarioDisponibleId: form.horarioId, motivo: trat.nombre }); alert('Creada'); reload(); } catch (e) { alert('Error'); } };
-    return ( <div> <div className="page-header"><div className="page-title"><h1>Nueva Reserva Manual</h1></div></div> <div className="pro-card"> <form onSubmit={save}> <div className="input-row"> <div><label className="form-label">Especialidad</label><select className="form-control" value={form.especialidad} onChange={e => setForm({ ...form, especialidad: e.target.value, tratamientoId: '' })}><option>Seleccionar...</option>{especialidades.map(e => <option key={e} value={e}>{e}</option>)}</select></div> <div><label className="form-label">Tratamiento</label><select className="form-control" disabled={!form.especialidad} value={form.tratamientoId} onChange={e => setForm({ ...form, tratamientoId: e.target.value })}><option>Seleccionar...</option>{prestaciones.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}</select></div> </div> <div className="input-row"> <div><label className="form-label">Paciente</label><select className="form-control" value={form.pacienteId} onChange={e => setForm({ ...form, pacienteId: e.target.value })}><option>Seleccionar...</option>{pacientes.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto} ({formatRut(p.rut)})</option>)}</select></div> <div> <label className="form-label">Profesional</label> {isAdmin ? ( <select className="form-control" disabled={!form.tratamientoId} value={form.profesionalId} onChange={e => handlePro(e.target.value)}><option>Seleccionar...</option>{prosFiltrados.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select> ) : ( <input className="form-control" value={user.nombre} disabled /> )} </div> </div> <div style={{ marginBottom: 20 }}> <label className="form-label">Horario</label> <select className="form-control" onChange={e => setForm({ ...form, horarioId: e.target.value })}><option>Seleccionar...</option>{Array.isArray(horarios) && horarios.map(h => <option key={h.id} value={h.id}>{fmtDate(h.fecha)} - {fmtTime(h.fecha)}</option>)}</select> </div> <button className="btn-primary">Crear Reserva</button> </form> </div> </div> )
+    
+    return ( <div> <div className="page-header"><div className="page-title"><h1>Nueva Reserva Manual</h1></div></div> <div className="pro-card"> <form onSubmit={save}> <div className="input-row"> <div><label className="form-label">Especialidad</label><select className="form-control" value={form.especialidad} onChange={e => setForm({ ...form, especialidad: e.target.value, tratamientoId: '' })}><option>Seleccionar...</option>{especialidades.map(e => <option key={e} value={e}>{e}</option>)}</select></div> <div><label className="form-label">Tratamiento</label><select className="form-control" disabled={!form.especialidad} value={form.tratamientoId} onChange={e => setForm({ ...form, tratamientoId: e.target.value })}><option>Seleccionar...</option>{prestaciones.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}</select></div> </div> <div className="input-row"> <div><label className="form-label">Paciente</label><select className="form-control" value={form.pacienteId} onChange={e => setForm({ ...form, pacienteId: e.target.value })}><option>Seleccionar...</option>{pacientes.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto} ({formatRut(p.rut)})</option>)}</select></div> <div> <label className="form-label">Profesional</label> {isAdmin ? ( <select className="form-control" disabled={!form.tratamientoId} value={form.profesionalId} onChange={e => handlePro(e.target.value)}><option>Seleccionar...</option>{prosFiltrados.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select> ) : ( <input className="form-control" value={user.nombre} disabled /> )} </div> </div> <div style={{ marginBottom: 20 }}> <label className="form-label">Horario</label> <select className="form-control" onChange={e => setForm({ ...form, horarioId: e.target.value })}><option>Seleccionar...</option>{Array.isArray(horarios) && horarios.map(h => <option key={h.id} value={h.id}>{fmtDate(h.fecha)} - {fmtTime(h.fecha)}</option>)}</select> </div> <button className="btn-primary">Crear Reserva</button> </form> </div> </div> );
 }
 
 function AgendaHorarios({ user, isAdmin }){
@@ -299,7 +312,6 @@ function AgendaHorarios({ user, isAdmin }){
     useEffect(()=>{ getProfesionales().then(setPros); loadConfigs(); },[]);
     
     const loadConfigs = async () => { try { const data = await getConfiguraciones(); if (isAdmin) { setConfigs(Array.isArray(data) ? data : []); } else { setConfigs(Array.isArray(data) ? data.filter(c => c.profesionalId === user.id) : []); } } catch (e) { setConfigs([]); } };
-    
     const save = async (e) => { e.preventDefault(); try { const payload = { ...form, fecha: fechaSel }; const response = await fetch(`${API_BASE_URL}/configuracion`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }); if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error || "Error desconocido al guardar"); } alert("✅ Horario guardado correctamente"); await loadConfigs(); } catch(e) { alert("❌ Error: " + e.message); } };
     const borrarConfig = async (id) => { if(confirm("¿Eliminar?")) { await deleteConfiguracion(id); loadConfigs(); } }
     const verCalendario = async (p) => { setSelectedProName(p.nombreCompleto); const [reservasData, slotsData] = await Promise.all([getReservasDetalle(), getHorariosByProfesional(p.id)]); const misReservas = reservasData.filter(r => r.profesionalId === p.id).map(r => ({ id: r.id, title: r.pacienteNombre, start: parseDate(r.fecha), type: 'occupied' })); const misBloques = slotsData.map((s, i) => ({ id: `slot-${i}`, title: 'Disponible', start: parseDate(s.fecha), type: 'available' })); setEvents([...misBloques, ...misReservas]); setShowModal(true); };
@@ -314,11 +326,11 @@ function AgendaHorarios({ user, isAdmin }){
             </div> 
             <div className="pro-card"> 
                 <h3>Bloques Configurados</h3> 
-                {/* VISTA DESKTOP (TABLA) */}
+                {/* DESKTOP */}
                 <div className="data-table-container desktop-view-only">
                     <table className="data-table"><thead><tr><th>Profesional</th><th>Fecha</th><th>Horario</th><th>Acción</th></tr></thead><tbody>{configs.map(c=>(<tr key={c.id}><td>{c.profesional?.nombreCompleto}</td><td>{c.fecha}</td><td>{c.horaInicio} - {c.horaFin}</td><td><button className="btn-danger" onClick={()=>borrarConfig(c.id)}>Eliminar</button></td></tr>))}</tbody></table>
                 </div> 
-                {/* VISTA MOVIL (TARJETAS) */}
+                {/* MOVIL */}
                 <div className="mobile-view-only">
                     {configs.map(c => (
                         <div key={c.id} className="mobile-card">
@@ -353,7 +365,7 @@ function AgendaHorarios({ user, isAdmin }){
             </div> 
             {showModal && ( <Modal title={`Horarios: ${selectedProName}`} onClose={()=>setShowModal(false)}> {events.length === 0 ? <p>No hay datos.</p> : events.sort((a,b)=>a.start-b.start).map((e, i) => ( <div key={i} style={{marginBottom:10, padding:10, borderRadius:6, background: e.type==='available'?'#f0fdf4':'#eff6ff', borderLeft: e.type==='available'?'3px solid #22c55e':'3px solid #3b82f6'}}> <strong>{fmtDate(e.start.toISOString())}</strong> - {fmtTime(e.start.toISOString())} <div style={{fontSize:'0.85rem'}}>{e.title}</div> </div> )) } </Modal> )} 
         </div> 
-    )
+    );
 }
 
 function AgendaProfesionales({ tratamientos }) {
@@ -384,13 +396,16 @@ function AgendaProfesionales({ tratamientos }) {
                 <div className="data-table-container desktop-view-only">
                     <table className="data-table"><thead><tr><th>Nombre</th><th>Especialidad</th><th>Acciones</th></tr></thead><tbody>{pros.map(p => ( <tr key={p.id}> <td>{p.nombreCompleto}</td> <td>{p.especialidad}</td> <td> <button className="btn-edit" onClick={() => handleEdit(p)}>Editar</button> <button className="btn-danger" onClick={() => handleDelete(p.id)}>X</button> </td> </tr> ))}</tbody></table>
                 </div>
-                {/* MOVIL */}
+                {/* ✅ MOVIL: BOTONES EDITAR Y ELIMINAR AGREGADOS */}
                 <div className="mobile-view-only">
                     {pros.map(p => (
                         <div key={p.id} className="mobile-card">
                             <div className="mobile-card-header" onClick={() => handleEdit(p)}>
                                 <span className="mobile-card-title">{p.nombreCompleto}</span>
-                                <div><button className="btn-danger" onClick={(e) => {e.stopPropagation(); handleDelete(p.id)}}>X</button></div>
+                                <div style={{display:'flex', gap:10}}>
+                                    <button className="btn-edit" onClick={(e) => {e.stopPropagation(); handleEdit(p)}} style={{fontSize:'0.8rem'}}>Editar</button>
+                                    <button className="btn-danger" onClick={(e) => {e.stopPropagation(); handleDelete(p.id)}} style={{fontSize:'0.8rem'}}>X</button>
+                                </div>
                             </div>
                             <div className="mobile-card-body">
                                 <div className="mobile-data-row"><span className="mobile-label">Especialidad</span>{p.especialidad}</div>
@@ -412,14 +427,18 @@ function AgendaTratamientos({ reload }) {
     const save = async (e) => { e.preventDefault(); const method = isEditing ? 'PUT' : 'POST'; const url = isEditing ? `${API_BASE_URL}/tratamientos/${form.id}` : `${API_BASE_URL}/tratamientos`; await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(form) }); setForm({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '' }); setIsEditing(false); load(); if(reload) reload(); };
     const handleEdit = (it) => { setForm(it); setIsEditing(true); window.scrollTo(0,0); };
     const handleDelete = async (id) => { if(confirm('¿Eliminar?')) { await fetch(`${API_BASE_URL}/tratamientos/${id}`, { method: 'DELETE' }); load(); } };
+    
     return ( <div> <div className="page-header"><div className="page-title"><h1>Gestión de Prestaciones</h1></div></div> <div className="pro-card"> <h3>{isEditing ? 'Editar' : 'Nueva'}</h3> <form onSubmit={save}> <div className="input-row"> <div><label className="form-label">Nombre del Tratamiento</label><input className="form-control" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} required /></div> <div><label className="form-label">Especialidad (Pública)</label><input className="form-control" value={form.especialidad} onChange={e=>setForm({...form, especialidad:e.target.value})} required /></div> </div> <div className="input-row"> <div><label className="form-label">Código</label><input className="form-control" value={form.codigo} onChange={e=>setForm({...form, codigo:e.target.value})} /></div> <div><label className="form-label">Valor</label><input type="number" className="form-control" value={form.valor} onChange={e=>setForm({...form, valor:e.target.value})} required /></div> </div> <button className="btn-primary">Guardar</button> {isEditing && <button type="button" className="btn-edit" style={{marginLeft:10}} onClick={()=>{setIsEditing(false); setForm({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '' })}}>Cancelar</button>} </form> </div> <div className="pro-card"> <div className="data-table-container desktop-view-only"> <table className="data-table"> <thead><tr><th>Código</th><th>Tratamiento</th><th>Especialidad</th><th>Valor</th><th>Acciones</th></tr></thead> <tbody> {items.map(it => ( <tr key={it.id}> <td>{it.codigo}</td> <td>{it.nombre}</td> <td>{it.especialidad}</td> <td>{fmtMoney(it.valor)}</td> <td> <button className="btn-edit" onClick={()=>handleEdit(it)}>Edit</button> <button className="btn-danger" onClick={()=>handleDelete(it.id)}>X</button> </td> </tr> ))} </tbody> </table> </div> 
-    {/* MOVIL */}
+    {/* ✅ MOVIL: BOTONES EDITAR Y ELIMINAR AGREGADOS */}
     <div className="mobile-view-only">
         {items.map(it => (
             <div key={it.id} className="mobile-card">
                 <div className="mobile-card-header" onClick={()=>handleEdit(it)}>
                     <span className="mobile-card-title">{it.nombre}</span>
-                    <button className="btn-danger" onClick={(e)=>{e.stopPropagation(); handleDelete(it.id)}}>X</button>
+                    <div style={{display:'flex', gap:10}}>
+                        <button className="btn-edit" onClick={(e)=>{e.stopPropagation(); handleEdit(it)}} style={{fontSize:'0.8rem'}}>Editar</button>
+                        <button className="btn-danger" onClick={(e)=>{e.stopPropagation(); handleDelete(it.id)}} style={{fontSize:'0.8rem'}}>X</button>
+                    </div>
                 </div>
                 <div className="mobile-card-body">
                     <div className="mobile-data-row"><span className="mobile-label">Código</span>{it.codigo}</div>
@@ -437,13 +456,16 @@ function AgendaPacientes(){
     const [editingId, setEditingId] = useState(null);
     const [historyPatient, setHistoryPatient] = useState(null); 
     const [historyData, setHistoryData] = useState([]);
+    
     const load=()=>getPacientes().then(setPacientes);
     useEffect(()=>{load()},[]);
+    
     const handleRutChange = (e) => { const raw = e.target.value; const formatted = formatRut(raw); setForm({...form, rut: formatted}); }
     const save=async(e)=>{ e.preventDefault(); if (!validateRut(form.rut)) { alert("RUT inválido"); return; } try { if(editingId) { await updatePaciente(editingId, form); alert('Actualizado'); setEditingId(null); } else { await crearPaciente(form); alert('Creado'); } setForm({nombreCompleto:'',email:'',telefono:'', rut:''}); load(); } catch(e) { alert("Error"); } };
     const handleEdit = (p) => { setForm({ nombreCompleto: p.nombreCompleto, email: p.email, telefono: p.telefono, rut: formatRut(p.rut||'') }); setEditingId(p.id); window.scrollTo(0, 0); };
     const handleDelete = async (id) => { if(confirm('¿Seguro?')) { await deletePaciente(id); load(); } };
     const viewHistory = async (p) => { setHistoryPatient(p); const res = await fetch(`${API_BASE_URL}/pacientes/${p.id}/historial`).then(r => r.json()); setHistoryData(res); };
+    
     return( <div> <div className="page-header"><div className="page-title"><h1>Base de Pacientes</h1></div></div> <div className="pro-card"> <h3 style={{marginTop:0}}>{editingId ? 'Editar Paciente' : 'Nuevo Paciente'}</h3> <form onSubmit={save}> <div className="input-row"><div><label className="form-label">RUT</label><input className="form-control" value={form.rut} onChange={handleRutChange} /></div><div><label className="form-label">Nombre</label><input className="form-control" value={form.nombreCompleto} onChange={e=>setForm({...form,nombreCompleto:e.target.value})}/></div></div> <div className="input-row"><div><label className="form-label">Email</label><input className="form-control" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div><div><label className="form-label">Teléfono</label><input className="form-control" value={form.telefono} onChange={e=>setForm({...form,telefono:e.target.value})}/></div></div> <button className="btn-primary">Guardar</button> </form> </div> <div className="pro-card"> <div className="data-table-container desktop-view-only"> <table className="data-table"> <thead><tr><th>RUT</th><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Opciones</th></tr></thead> <tbody>{pacientes.map(p=>( <tr key={p.id}> <td>{formatRut(p.rut)}</td> <td><strong>{p.nombreCompleto}</strong></td> <td>{p.email}</td> <td>{p.telefono}</td> <td> <div style={{display:'flex', gap:5}}> <button className="btn-primary" style={{padding:'5px 10px', fontSize:'0.8rem'}} onClick={()=>viewHistory(p)}>Historial</button> <button className="btn-edit" onClick={()=>handleEdit(p)}>Editar</button> <button className="btn-danger" onClick={()=>handleDelete(p.id)}>X</button> </div> </td> </tr> ))}</tbody> </table> </div> 
     {/* MOVIL */}
     <div className="mobile-view-only">
@@ -451,15 +473,17 @@ function AgendaPacientes(){
             <div key={p.id} className="mobile-card">
                 <div className="mobile-card-header">
                     <span className="mobile-card-title">{p.nombreCompleto}</span>
-                    <button className="btn-primary" onClick={()=>viewHistory(p)} style={{fontSize:'0.8rem'}}>Historial</button>
+                    <div style={{display:'flex', gap:10}}>
+                        <button className="btn-primary" onClick={()=>viewHistory(p)} style={{fontSize:'0.8rem'}}>Historial</button>
+                    </div>
                 </div>
                 <div className="mobile-card-body">
                     <div className="mobile-data-row"><span className="mobile-label">RUT</span>{formatRut(p.rut)}</div>
                     <div className="mobile-data-row"><span className="mobile-label">Email</span>{p.email}</div>
                     <div className="mobile-data-row"><span className="mobile-label">Acciones</span>
                         <div style={{display:'flex', gap:10, marginTop:5}}>
-                            <button className="btn-edit" onClick={()=>handleEdit(p)}>Editar</button>
-                            <button className="btn-danger" onClick={()=>handleDelete(p.id)}>Eliminar</button>
+                            <button className="btn-edit" onClick={()=>handleEdit(p)} style={{width: '100%'}}>Editar</button>
+                            <button className="btn-danger" onClick={()=>handleDelete(p.id)} style={{width: '100%'}}>Eliminar</button>
                         </div>
                     </div>
                 </div>
