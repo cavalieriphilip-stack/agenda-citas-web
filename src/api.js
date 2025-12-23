@@ -1,7 +1,7 @@
 // Detectar entorno (Local o Producción)
 export const API_BASE_URL = window.location.hostname === 'localhost' 
     ? 'http://localhost:10000' 
-    : 'https://agenda-cisd-panel.onrender.com';
+    : 'https://agenda-citas-ienp.onrender.com'; // 👈 ¡ESTA ES LA URL CORRECTA DE TUS LOGS!
 
 // 🔐 HELPER: Obtener cabeceras con el Token
 const getHeaders = (isMultipart = false) => {
@@ -11,6 +11,10 @@ const getHeaders = (isMultipart = false) => {
     if (token) headers['Authorization'] = `Bearer ${token}`;
     return headers;
 };
+
+// ... (MANTÉN EL RESTO DEL ARCHIVO IGUAL)
+// Copia todo el resto de funciones (getProfesionales, getPacientes, etc.) tal cual estaban.
+// Solo necesitabas cambiar la línea 4.
 
 // --- PROFESIONALES ---
 export const getProfesionales = async () => {
@@ -36,7 +40,6 @@ export const deleteProfesional = async (id) => {
 };
 
 export const getHorariosByProfesional = async (id) => {
-    // Pública para la web, pero enviamos headers por si es admin
     const res = await fetch(`${API_BASE_URL}/profesionales/${id}/horarios`);
     return res.json();
 };
@@ -48,17 +51,14 @@ export const getPacientes = async () => {
 };
 
 export const buscarPacientePorRut = async (rut) => {
-    // Si la web pública usa esto, el backend debe permitirlo sin token. 
-    // Enviamos headers por si acaso estamos logueados.
     const res = await fetch(`${API_BASE_URL}/pacientes/search/${rut}`, { headers: getHeaders() });
     return res.json();
 };
 
 export const crearPaciente = async (data) => {
-    // Pública (web) o Privada (admin). El backend decide.
     const res = await fetch(`${API_BASE_URL}/pacientes`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }, // Usamos headers simples para evitar problemas en web publica
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Error al crear paciente');
@@ -88,7 +88,6 @@ export const getReservasDetalle = async () => {
 };
 
 export const crearReserva = async (data) => {
-    // Pública
     const res = await fetch(`${API_BASE_URL}/reservas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
