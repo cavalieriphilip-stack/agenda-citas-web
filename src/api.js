@@ -3,7 +3,7 @@ export const API_BASE_URL = window.location.hostname === 'localhost'
     ? 'http://localhost:10000' 
     : 'https://agenda-cisd-panel.onrender.com';
 
-// 🔐 Función auxiliar para cabeceras con Token
+// 🔐 HELPER: Obtener cabeceras con el Token
 const getHeaders = (isMultipart = false) => {
     const token = localStorage.getItem('token');
     const headers = {};
@@ -36,7 +36,7 @@ export const deleteProfesional = async (id) => {
 };
 
 export const getHorariosByProfesional = async (id) => {
-    // Esta ruta suele ser pública para la web de pacientes, pero enviamos headers por si acaso
+    // Pública para la web, pero enviamos headers por si es admin
     const res = await fetch(`${API_BASE_URL}/profesionales/${id}/horarios`);
     return res.json();
 };
@@ -48,14 +48,17 @@ export const getPacientes = async () => {
 };
 
 export const buscarPacientePorRut = async (rut) => {
+    // Si la web pública usa esto, el backend debe permitirlo sin token. 
+    // Enviamos headers por si acaso estamos logueados.
     const res = await fetch(`${API_BASE_URL}/pacientes/search/${rut}`, { headers: getHeaders() });
     return res.json();
 };
 
 export const crearPaciente = async (data) => {
+    // Pública (web) o Privada (admin). El backend decide.
     const res = await fetch(`${API_BASE_URL}/pacientes`, {
         method: 'POST',
-        headers: getHeaders(),
+        headers: { 'Content-Type': 'application/json' }, // Usamos headers simples para evitar problemas en web publica
         body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Error al crear paciente');
@@ -85,10 +88,10 @@ export const getReservasDetalle = async () => {
 };
 
 export const crearReserva = async (data) => {
-    // Pública o Privada dependiendo de quién la llame, el backend maneja la excepción
+    // Pública
     const res = await fetch(`${API_BASE_URL}/reservas`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }, // Las reservas públicas no llevan token
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Error al reservar');
