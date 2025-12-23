@@ -11,104 +11,42 @@ html, body, #root {
 }
 
 /* ============================================================
-   2. LAYOUT GENERAL Y HEADER (Alineación Corregida)
+   2. LAYOUT GENERAL Y HEADER
    ============================================================ */
 .dashboard-layout { display: flex; flex-direction: column; width: 100%; height: 100%; }
 
 /* HEADER ADMIN */
 .top-nav {
-  height: 64px; min-height: 64px; /* Un poco más alto para mejor toque */
-  background: #fff; 
-  border-bottom: 1px solid #e5e7eb;
-  display: flex; 
-  justify-content: space-between; /* Extremos y centro */
-  align-items: center; /* Alineación Vertical Perfecta */
-  padding: 0 24px; 
-  z-index: 1000;
-  
-  /* MAGIA PARA MOBILE: SIEMPRE VISIBLE */
-  position: sticky;
-  top: 0;
-  width: 100%;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+  height: 64px; min-height: 64px; background: #fff; border-bottom: 1px solid #e5e7eb;
+  display: flex; justify-content: space-between; align-items: center; padding: 0 24px; z-index: 1000;
+  position: sticky; top: 0; width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.03);
 }
 
-.brand-area { 
-  display: flex; 
-  align-items: center; 
-  gap: 15px; /* Espacio entre logo y texto */
-  font-weight: 800; 
-  font-size: 1.2rem; 
-  color: #111;
-  flex-shrink: 0;
-}
-
-.cisd-logo-admin { 
-  height: 38px; /* Logo un poco más grande */
-  width: auto;
-  display: block;
-}
-
-.admin-title-text {
-  letter-spacing: -0.5px;
-}
-
+.brand-area { display: flex; align-items: center; gap: 15px; font-weight: 800; font-size: 1.2rem; color: #111; flex-shrink: 0; }
+.cisd-logo-admin { height: 38px; width: auto; display: block; }
+.admin-title-text { letter-spacing: -0.5px; }
 .mobile-menu-btn { display: none; }
 
-/* MENÚ CENTRAL (Pestañas) */
-.module-switcher { 
-  display: flex; 
-  gap: 8px; 
-  background: #f3f4f6;
-  padding: 4px;
-  border-radius: 10px;
-}
-
-.module-tab { 
-  padding: 8px 20px; 
-  border: none; 
-  background: transparent; 
-  cursor: pointer; 
-  color: #666; 
-  font-weight: 600; 
-  border-radius: 8px; 
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
-}
-
+/* MENÚ CENTRAL */
+.module-switcher { display: flex; gap: 8px; background: #f3f4f6; padding: 4px; border-radius: 10px; }
+.module-tab { padding: 8px 20px; border: none; background: transparent; cursor: pointer; color: #666; font-weight: 600; border-radius: 8px; transition: all 0.2s ease; font-size: 0.9rem; }
 .module-tab:hover { color: #000; background: rgba(255,255,255,0.5); }
+.module-tab.active { background: #fff; color: #000; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 
-.module-tab.active { 
-  background: #fff; 
-  color: #000; 
-  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-}
-
-/* LADO DERECHO (Usuario y Salir) */
-.nav-actions { 
-  display: flex; 
-  align-items: center; 
-  gap: 15px;
-}
+/* LADO DERECHO */
+.nav-actions { display: flex; align-items: center; gap: 15px; }
 
 .workspace { flex: 1; display: flex; overflow: hidden; position: relative; width: 100%; }
 
-/* SIDEBAR (Menú Lateral) */
-.sidebar {
-  width: 260px; min-width: 260px; background: #fff; border-right: 1px solid #e5e7eb;
-  display: flex; flex-direction: column; padding: 24px; overflow-y: auto;
-}
+/* SIDEBAR */
+.sidebar { width: 260px; min-width: 260px; background: #fff; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; padding: 24px; overflow-y: auto; }
 .sidebar-header { font-size: 0.75rem; color: #9ca3af; font-weight: 800; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; margin-top: 20px; }
 .sidebar-header:first-child { margin-top: 0; }
-
 .nav-item { padding: 12px 15px; border-radius: 10px; cursor: pointer; color: #4b5563; margin-bottom: 4px; font-size: 0.95rem; font-weight: 500; transition: 0.1s; }
 .nav-item:hover { background: #f9fafb; color: #111; }
 .nav-item.active { background: #000; color: #fff; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
 
-.main-stage {
-  flex: 1; background: #f8fafc; padding: 30px;
-  overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; display: flex; flex-direction: column;
-}
+.main-stage { flex: 1; background: #f8fafc; padding: 30px; overflow-y: auto; -webkit-overflow-scrolling: touch; width: 100%; display: flex; flex-direction: column; }
 
 /* ============================================================
    3. COMPONENTES DE TARJETAS Y FORMULARIOS
@@ -116,30 +54,19 @@ html, body, #root {
 .page-header { margin-bottom: 25px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; }
 .page-title h1 { margin: 0; font-size: 1.8rem; color: #111; font-weight: 800; letter-spacing: -0.8px; }
 
-.pro-card {
-  background: #fff; border-radius: 16px; padding: 25px; border: 1px solid #e5e7eb;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02); margin-bottom: 25px; width: 100%;
-}
-
+.pro-card { background: #fff; border-radius: 16px; padding: 25px; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02); margin-bottom: 25px; width: 100%; }
 .pro-card h3 { margin-top: 0; margin-bottom: 20px; font-size: 1.1rem; color: #111; }
 
 .input-row { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
 .input-row > div { flex: 1; min-width: 250px; }
 
 .form-label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; color: #374151; }
-.form-control {
-  width: 100%; padding: 12px 15px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 1rem;
-  outline: none; background-color: #fff !important; color: #111 !important; transition: 0.2s;
-  -webkit-appearance: none; appearance: none;
-}
+.form-control { width: 100%; padding: 12px 15px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 1rem; outline: none; background-color: #fff !important; color: #111 !important; transition: 0.2s; -webkit-appearance: none; appearance: none; }
 .form-control:focus { border-color: #000; box-shadow: 0 0 0 3px rgba(0,0,0,0.05); }
 
-.btn-primary {
-  background: #000; color: #fff; border: none; padding: 12px 24px; border-radius: 10px;
-  cursor: pointer; font-size: 1rem; font-weight: 600; width: auto; min-width: 150px;
-  transition: transform 0.1s;
-}
+.btn-primary { background: #000; color: #fff; border: none; padding: 12px 24px; border-radius: 10px; cursor: pointer; font-size: 1rem; font-weight: 600; width: auto; min-width: 150px; transition: transform 0.1s; }
 .btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { background: #ccc; cursor: not-allowed; }
 
 .btn-edit, .btn-danger { padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-right: 8px; border: none; font-size: 0.85rem; font-weight: 600; transition: 0.2s; }
 .btn-edit { background: #f3f4f6; color: #374151; }
@@ -159,51 +86,42 @@ html, body, #root {
 .kpi-box { background: #fff; padding: 25px; border-radius: 16px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; gap: 5px; }
 .kpi-label { font-size: 0.9rem; color: #6b7280; font-weight: 600; text-transform: uppercase; }
 .kpi-value { font-size: 2.2rem; font-weight: 800; color: #111; letter-spacing: -1px; }
-
 .finance-section { margin-top: 30px; }
 .finance-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
 .finance-table th { text-align: left; padding: 12px; background: #f9fafb; border-bottom: 2px solid #e5e7eb; font-size: 0.85rem; color: #6b7280; }
 .finance-table td { padding: 12px; border-bottom: 1px solid #f3f4f6; font-size: 0.9rem; }
 
 /* ============================================================
-   4. WEB PACIENTE (Estilos Públicos)
+   4. WEB PACIENTE
    ============================================================ */
 .web-shell { min-height: 100vh; height: 100dvh; width: 100%; background: #fff; display: flex; flex-direction: column; position: relative; overflow-x: hidden; }
 .web-header { display: flex; align-items: center; justify-content: center; height: 64px; padding: 0 20px; background: #fff; border-bottom: 1px solid #f3f4f6; position: sticky; top: 0; z-index: 50; flex-shrink: 0; }
 .web-back-btn { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 2rem; cursor: pointer; color: #374151; padding: 5px; line-height: 1; margin: 0; }
 .cisd-logo-web { height: 32px; width: auto; object-fit: contain; margin: 0; }
-
 .stepper-container { padding: 15px 20px; background: #fff; display: flex; justify-content: center; align-items: center; border-bottom: 1px solid #f9fafb; }
 .stepper { display: flex; align-items: center; gap: 8px; }
 .step-dot { width: 8px; height: 8px; border-radius: 50%; background: #e5e7eb; transition: all 0.3s ease; }
 .step-dot.active { background: #000; transform: scale(1.4); }
 .step-line { width: 25px; height: 2px; background: #e5e7eb; border-radius: 2px; }
 .step-line.filled { background: #000; }
-
 .web-content { flex: 1; padding: 30px 20px 100px 20px; display: flex; flex-direction: column; animation: slideUp 0.4s ease-out; max-width: 600px; margin: 0 auto; width: 100%; }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
 .web-title { font-size: 1.8rem; font-weight: 800; margin: 0 0 8px 0; color: #111; letter-spacing: -0.5px; }
 .web-subtitle { font-size: 1rem; color: #6b7280; margin: 0 0 35px 0; line-height: 1.5; }
-
 .input-group { width: 100%; margin-bottom: 25px; }
 .web-label { display: block; font-size: 0.9rem; font-weight: 700; color: #374151; margin-bottom: 10px; }
 .web-input, .web-select { width: 100%; padding: 16px; font-size: 1.05rem; border: 2px solid #f3f4f6; border-radius: 12px; background: #f9fafb; outline: none; transition: 0.2s; -webkit-appearance: none; color: #111; appearance: none; }
 .web-input:focus, .web-select:focus { border-color: #000; background: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-
 .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; padding: 15px 20px 30px 20px; border-top: 1px solid #f3f4f6; display: flex; justify-content: center; z-index: 100; box-shadow: 0 -5px 20px rgba(0,0,0,0.03); }
 .btn-block-action { width: 100%; max-width: 600px; background: #000; color: #fff; border: none; padding: 18px; border-radius: 14px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: transform 0.2s; display: flex; justify-content: center; align-items: center; gap: 10px; }
 .btn-block-action:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
 .btn-block-action:active { transform: scale(0.98); }
-
-/* Calendario Web */
 .rs-date-tabs { display: flex; gap: 12px; overflow-x: auto; padding: 5px 5px 25px 5px; width: 100%; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .rs-date-tabs::-webkit-scrollbar { display: none; }
 .rs-date-tab { flex: 0 0 75px; height: 90px; border: 1px solid #e5e7eb; border-radius: 18px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.02); scroll-snap-align: center; }
 .rs-date-tab.selected { background: #000; color: #fff; border-color: #000; transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
 .rs-day-name { font-size: 0.8rem; text-transform: uppercase; font-weight: 700; margin-bottom: 5px; letter-spacing: 1px; }
 .rs-day-number { font-size: 1.8rem; font-weight: 800; }
-
 .rs-pro-list { width: 100%; display: flex; flex-direction: column; gap: 20px; }
 .rs-pro-card { background: #fff; border: 1px solid #f3f4f6; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05); }
 .rs-pro-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #f9fafb; }
@@ -214,7 +132,6 @@ html, body, #root {
 .rs-slot-btn { background: #fff; border: 1px solid #e5e7eb; color: #111; padding: 12px 0; border-radius: 12px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
 .rs-slot-btn:hover { border-color: #000; }
 .rs-slot-btn:active { background: #000; color: #fff; transform: scale(0.96); }
-
 .conf-card { width: 100%; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 20px; }
 .conf-section { padding: 20px; border-bottom: 1px solid #f0f0f0; }
 .conf-section:last-child { border-bottom: none; }
@@ -226,7 +143,6 @@ html, body, #root {
 .conf-total { display: flex; justify-content: space-between; align-items: center; padding-top: 5px; }
 .conf-total-label { font-size: 1.1rem; font-weight: 700; color: #111; }
 .conf-total-value { font-size: 1.6rem; font-weight: 800; color: #000; }
-
 .success-card { text-align: center; padding-top: 40px; }
 .success-icon-big { font-size: 5rem; color: #10b981; margin-bottom: 20px; display: block; }
 
@@ -237,9 +153,7 @@ html, body, #root {
 .modal-content { background: #fff; padding: 30px; border-radius: 20px; width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
 .modal-close { position: absolute; top: 20px; right: 20px; background: #f3f4f6; border: none; font-size: 1.2rem; cursor: pointer; color: #666; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
 .modal-close:hover { background: #e5e7eb; color: #000; }
-
 .detail-actions { display: flex; gap: 10px; margin-top: 25px; justify-content: flex-end; }
-
 .dropdown-wrapper { position: relative; width: 100%; margin-bottom: 5px; }
 .dropdown-header { width: 100%; padding: 12px 15px; border: 1px solid #d1d5db; border-radius: 10px; background: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 1rem; user-select: none; }
 .dropdown-list { position: absolute; top: 110%; left: 0; right: 0; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; max-height: 250px; overflow-y: auto; z-index: 2000; box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 8px; }
@@ -249,15 +163,11 @@ html, body, #root {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* ============================================================
-   6. VISUALIZACIÓN MÓVIL (Acordeones y Tarjetas)
+   6. VISUALIZACIÓN MÓVIL
    ============================================================ */
 .mobile-view-only { display: none; }
 .desktop-view-only { display: block; }
-
-.mobile-card {
-  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 15px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.02); position: relative; overflow: hidden; 
-}
+.mobile-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); position: relative; overflow: hidden; }
 .mobile-card-header { padding: 15px; background: #fff; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 1px solid transparent; transition: background 0.2s; }
 .mobile-card-header:active { background: #f9fafb; }
 .mobile-card-title { font-size: 1rem; font-weight: 700; color: #111; display: flex; flex-direction: column; }
@@ -267,31 +177,21 @@ html, body, #root {
 .mobile-label { font-weight: 700; font-size: 0.75rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
 
 /* ============================================================
-   7. CALENDARIO VISUAL (Dashboard)
+   7. CALENDARIO VISUAL
    ============================================================ */
-.dashboard-controls {
-  display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; align-items: center;
-  margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 12px; border: 1px solid #e5e7eb;
-}
+.dashboard-controls { display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 12px; border: 1px solid #e5e7eb; }
 .view-buttons-group { display: flex; gap: 10px; }
 .calendar-nav-btn { background: #fff; border: 1px solid #d1d5db; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; color: #374151; }
 .calendar-nav-btn:hover { background: #f3f4f6; }
 .calendar-nav-btn.active { background: #000; color: #fff; border-color: #000; }
 .cal-nav-group { display: flex; align-items: center; gap: 15px; font-weight: 600; color: #111; }
-
-.calendar-grid-wrapper {
-  flex: 1; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 12px; position: relative;
-  display: flex; flex-direction: column; background: #fff; min-height: 500px; 
-}
+.calendar-grid-wrapper { flex: 1; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 12px; position: relative; display: flex; flex-direction: column; background: #fff; min-height: 500px; }
 .calendar-grid, .cal-header-row, .calendar-body { display: grid; min-width: 100%; }
 .cal-header-row { border-bottom: 1px solid #e5e7eb; background: #f9fafb; position: sticky; top: 0; z-index: 20; }
 .cal-header-cell { padding: 12px; text-align: center; font-size: 0.85rem; font-weight: 700; border-right: 1px solid #e5e7eb; color: #4b5563; }
 .cal-time-label { height: 60px; display: flex; align-items: start; justify-content: center; font-size: 0.75rem; color: #9ca3af; padding-top: 5px; border-bottom: 1px solid #f3f4f6; }
 .cal-day-col { border-right: 1px solid #f3f4f6; position: relative; background-image: linear-gradient(to bottom, #f3f4f6 1px, transparent 1px); background-size: 100% 60px; }
-.cal-event {
-  position: absolute; left: 4px; right: 4px; border-radius: 6px; padding: 4px 8px; font-size: 0.75rem; overflow: hidden;
-  cursor: pointer; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: center;
-}
+.cal-event { position: absolute; left: 4px; right: 4px; border-radius: 6px; padding: 4px 8px; font-size: 0.75rem; overflow: hidden; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: center; }
 .evt-blue { background: #eff6ff; border-left: 3px solid #3b82f6; color: #1e40af; }
 
 /* ============================================================
@@ -300,36 +200,84 @@ html, body, #root {
 @media (max-width: 768px) {
   .desktop-view-only { display: none !important; }
   .mobile-view-only { display: block !important; }
-  
   .top-nav { padding: 0 15px; height: 60px; }
   .brand-area { gap: 10px; }
   .brand-area span { font-size: 1.1rem; }
   .cisd-logo-admin { height: 32px; }
   .mobile-menu-btn { display: block; background: none; border: none; font-size: 24px; cursor: pointer; margin-right: 10px; color: #111; padding: 0; }
-
-  /* SIDEBAR MÓVIL */
-  .sidebar {
-    position: fixed; top: 0; left: 0; bottom: 0; z-index: 2000; width: 85%; max-width: 320px;
-    transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); border-right: none; box-shadow: 5px 0 25px rgba(0,0,0,0.2);
-  }
+  .sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 2000; width: 85%; max-width: 320px; transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); border-right: none; box-shadow: 5px 0 25px rgba(0,0,0,0.2); }
   .sidebar.open { transform: translateX(0); }
   .sidebar-overlay { display: block; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1500; backdrop-filter: blur(2px); }
-
   .main-stage { padding: 15px; padding-bottom: 100px; }
-  
   .input-row { flex-direction: column; gap: 15px; }
   .input-row > div { min-width: 100%; }
-  
   .pro-card { padding: 20px; border-radius: 12px; }
-  
   .btn-primary { width: 100%; padding: 14px; font-size: 1.05rem; }
-  
-  /* Ajuste calendario móvil */
   .dashboard-controls { flex-direction: column; align-items: stretch; gap: 15px; }
   .view-buttons-group { width: 100%; justify-content: space-between; }
   .view-buttons-group .calendar-nav-btn { flex: 1; text-align: center; } 
   .cal-nav-group { justify-content: space-between; margin-top: 5px; width: 100%; }
   .calendar-grid-wrapper { overflow-x: auto; min-height: 400px; }
-  
   .page-title h1 { font-size: 1.5rem; }
+}
+
+/* ============================================================
+   9. LOGIN PAGE (NUEVO)
+   ============================================================ */
+.login-shell {
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f4f7f6;
+    padding: 20px;
+    flex-direction: column;
+}
+
+.login-card {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px -10px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.login-logo {
+    height: 60px;
+    width: auto;
+    margin-bottom: 10px;
+}
+
+.login-title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #111;
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+.login-subtitle {
+    font-size: 1rem;
+    color: #6b7280;
+    margin: 5px 0 30px 0;
+}
+
+.login-error {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.login-footer {
+    margin-top: 30px;
+    color: #9ca3af;
+    font-size: 0.85rem;
 }

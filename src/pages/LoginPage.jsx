@@ -1,103 +1,94 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../api';
 
-const LoginPage = () => {
-  const [usuario, setUsuario] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // Estado para el ojo
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
 
-  const API_URL = 'https://agenda-citas-ienp.onrender.com'; 
-  const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
+function Login() {
+    const [form, setForm] = useState({ usuario: '', password: '' });
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+    const handleChange = (e) => {
+        setForm({ ...form, [e.target.name]: e.target.value });
+    };
 
-    try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usuario, password })
-      });
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
 
-      const data = await response.json();
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(form)
+            });
 
-      if (data.success && data.usuario && data.usuario.id) {
-        localStorage.setItem('usuario', JSON.stringify(data.usuario));
-        navigate('/admin/dashboard'); 
-      } else {
-        setError(data.message || 'Usuario o contraseña incorrectos');
-      }
-    } catch (err) {
-      setError('No se pudo conectar con el servidor');
-    } finally {
-      setLoading(false);
-    }
-  };
+            const data = await response.json();
 
-  return (
-    <div className="login-container">
-      <div className="login-card">
-        <div className="login-header">
-          <img src={LOGO_URL} alt="CISD Logo" className="login-logo" />
-          <h1 className="login-title">Acceso Portal</h1>
-          <p className="login-subtitle">Gestión Clínica y Administrativa</p>
-        </div>
+            if (data.success) {
+                // Guardar usuario y redirigir
+                localStorage.setItem('usuario', JSON.stringify(data.usuario));
+                navigate('/admin/dashboard'); // Redirige al panel principal
+            } else {
+                setError(data.message || 'Credenciales incorrectas');
+            }
+        } catch (err) {
+            setError('Error de conexión con el servidor');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        <form onSubmit={handleLogin} className="login-form">
-          <div className="form-group">
-            <label className="form-label">Usuario</label>
-            <input 
-              type="text" 
-              className="form-input"
-              value={usuario}
-              onChange={(e) => setUsuario(e.target.value)}
-              placeholder="Ej: Philip"
-              autoFocus
-            />
-          </div>
+    return (
+        <div className="login-shell">
+            <div className="login-card">
+                <div style={{textAlign: 'center', marginBottom: 20}}>
+                    <img src={LOGO_URL} alt="Logo CISD" className="login-logo" />
+                </div>
+                
+                <h1 className="login-title">Acceso Portal</h1>
+                <p className="login-subtitle">Gestión Clínica y Administrativa</p>
 
-          <div className="form-group">
-            <label className="form-label">Contraseña</label>
-            <div className="password-wrapper">
-              <input 
-                type={showPassword ? "text" : "password"} 
-                className="form-input"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                style={{ paddingRight: '40px' }} // Espacio para el ojo
-              />
-              <button 
-                type="button" 
-                className="eye-btn" 
-                onClick={() => setShowPassword(!showPassword)}
-                tabIndex="-1"
-              >
-                {showPassword ? (
-                  // Icono Ojo Abierto (SVG inline)
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                ) : (
-                  // Icono Ojo Cerrado (SVG inline)
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                )}
-              </button>
+                <form onSubmit={handleSubmit}>
+                    <div className="input-group">
+                        <label className="form-label">Usuario</label>
+                        <input 
+                            type="text" 
+                            name="usuario" 
+                            className="form-control" 
+                            value={form.usuario} 
+                            onChange={handleChange} 
+                            placeholder="Ej: f.dreyse"
+                            autoFocus
+                        />
+                    </div>
+
+                    <div className="input-group">
+                        <label className="form-label">Contraseña</label>
+                        <input 
+                            type="password" 
+                            name="password" 
+                            className="form-control" 
+                            value={form.password} 
+                            onChange={handleChange} 
+                            placeholder="••••••"
+                        />
+                    </div>
+
+                    {error && <div className="login-error">{error}</div>}
+
+                    <button type="submit" className="btn-primary" style={{width: '100%', marginTop: 10}} disabled={loading}>
+                        {loading ? 'Ingresando...' : 'Ingresar al Portal'}
+                    </button>
+                </form>
             </div>
-          </div>
+            
+            <p className="login-footer">© 2025 CISD - Centro Integral de Salud Dreyse</p>
+        </div>
+    );
+}
 
-          {error && <div className="error-msg">{error}</div>}
-
-          <button type="submit" className="login-btn" disabled={loading}>
-            {loading ? 'Ingresando...' : 'Ingresar al Portal'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-export default LoginPage;
+export default Login;
