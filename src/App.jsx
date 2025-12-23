@@ -11,6 +11,7 @@ import {
     buscarPacientePorRut, updateProfesional, deleteProfesional, uploadFile
 } from './api';
 
+// Inicialización de MercadoPago
 initMercadoPago('APP_USR-a5a67c3b-4b4b-44a1-b973-ff2fd82fe90a', { locale: 'es-CL' });
 
 // --- HELPERS ---
@@ -160,214 +161,66 @@ function DashboardContent({ module, view, user, isAdmin }) {
 }
 
 // ==========================================
-// 📋 COMPONENTE: FICHA CLÍNICA DINÁMICA
+// 📋 COMPONENTE: FICHA CLÍNICA
 // ==========================================
 function FichaClinicaViewer({ paciente, onClose }) {
     const [fichas, setFichas] = useState([]);
     const [modoNueva, setModoNueva] = useState(false);
     const [subiendo, setSubiendo] = useState(false);
     const fileInputRef = useRef(null);
-    
-    const [nuevaFicha, setNuevaFicha] = useState({
-        tipo: 'Evaluación Inicial',
-        campos: [{ titulo: 'Observaciones', valor: '' }]
-    });
-
+    const [nuevaFicha, setNuevaFicha] = useState({ tipo: 'Evaluación Inicial', campos: [{ titulo: 'Observaciones', valor: '' }] });
     const user = JSON.parse(localStorage.getItem('usuario') || '{}');
 
     useEffect(() => { loadFichas(); }, []);
 
-    const loadFichas = async () => {
-        try {
-            const res = await fetch(`${API_BASE_URL}/pacientes/${paciente.id}/fichas`, { headers: authHeader() });
-            if (res.ok) setFichas(await res.json());
-        } catch (e) { console.error(e); }
-    };
+    const loadFichas = async () => { try { const res = await fetch(`${API_BASE_URL}/pacientes/${paciente.id}/fichas`, { headers: authHeader() }); if (res.ok) setFichas(await res.json()); } catch (e) { console.error(e); } };
+    const agregarCampo = () => { setNuevaFicha({ ...nuevaFicha, campos: [...nuevaFicha.campos, { titulo: '', valor: '' }] }); };
+    const handleCampoChange = (index, key, value) => { const nuevosCampos = [...nuevaFicha.campos]; nuevosCampos[index][key] = value; setNuevaFicha({ ...nuevaFicha, campos: nuevosCampos }); };
+    const eliminarCampo = (index) => { const nuevosCampos = nuevaFicha.campos.filter((_, i) => i !== index); setNuevaFicha({ ...nuevaFicha, campos: nuevosCampos }); };
 
-    const agregarCampo = () => {
-        setNuevaFicha({ ...nuevaFicha, campos: [...nuevaFicha.campos, { titulo: '', valor: '' }] });
-    };
-
-    const handleCampoChange = (index, key, value) => {
-        const nuevosCampos = [...nuevaFicha.campos];
-        nuevosCampos[index][key] = value;
-        setNuevaFicha({ ...nuevaFicha, campos: nuevosCampos });
-    };
-
-    const eliminarCampo = (index) => {
-        const nuevosCampos = nuevaFicha.campos.filter((_, i) => i !== index);
-        setNuevaFicha({ ...nuevaFicha, campos: nuevosCampos });
-    };
-
-    // 📎 SUBIDA DE ARCHIVOS
     const handleFileSelect = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
         setSubiendo(true);
-        try {
-            const data = await uploadFile(file); 
-            setNuevaFicha(prev => ({
-                ...prev,
-                campos: [...prev.campos, { titulo: 'Archivo Adjunto', valor: data.url, esArchivo: true }]
-            }));
-        } catch (error) {
-            alert("Error al subir: " + error.message);
-        } finally {
-            setSubiendo(false);
-            if (fileInputRef.current) fileInputRef.current.value = '';
-        }
+        try { const data = await uploadFile(file); setNuevaFicha(prev => ({ ...prev, campos: [...prev.campos, { titulo: 'Archivo Adjunto', valor: data.url, esArchivo: true }] })); } catch (error) { alert("Error al subir: " + error.message); } finally { setSubiendo(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
     };
 
     const guardarFicha = async () => {
-        try {
-            const payload = {
-                pacienteId: paciente.id,
-                profesionalId: user.id,
-                tipo: nuevaFicha.tipo,
-                contenido: nuevaFicha.campos 
-            };
-
-            const res = await fetch(`${API_BASE_URL}/fichas`, {
-                method: 'POST',
-                headers: authHeader(),
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) {
-                alert("Ficha guardada correctamente");
-                setModoNueva(false);
-                setNuevaFicha({ tipo: 'Evaluación Inicial', campos: [{ titulo: 'Observaciones', valor: '' }] });
-                loadFichas();
-            } else {
-                alert("Error al guardar");
-            }
-        } catch (e) { alert("Error de conexión"); }
+        try { const payload = { pacienteId: paciente.id, profesionalId: user.id, tipo: nuevaFicha.tipo, contenido: nuevaFicha.campos }; const res = await fetch(`${API_BASE_URL}/fichas`, { method: 'POST', headers: authHeader(), body: JSON.stringify(payload) }); if (res.ok) { alert("Ficha guardada"); setModoNueva(false); setNuevaFicha({ tipo: 'Evaluación Inicial', campos: [{ titulo: 'Observaciones', valor: '' }] }); loadFichas(); } else { alert("Error al guardar"); } } catch (e) { alert("Error de conexión"); }
     };
 
-    // Helper visual para archivos
     const renderValor = (campo) => {
         const val = (campo.valor || '').toString();
         const valLower = val.toLowerCase();
-        
         const esPdf = valLower.includes('.pdf');
-        const esImagen = !esPdf && (
-            valLower.match(/\.(jpeg|jpg|gif|png|webp)$/) != null || 
-            valLower.includes('cloudinary')
-        );
-
-        if (campo.esArchivo && esPdf) {
-            return (
-                <div style={{background: '#fef2f2', padding: 15, borderRadius: 8, border: '1px solid #fee2e2', display:'flex', alignItems:'center', gap:15, marginTop:5}}>
-                    <span style={{fontSize:'2rem'}}>📄</span>
-                    <div>
-                        <div style={{fontWeight:600, color:'#b91c1c', marginBottom:2}}>Documento PDF</div>
-                        <a href={val} target="_blank" rel="noreferrer" style={{color: '#dc2626', textDecoration:'underline'}}>Ver o Descargar Documento</a>
-                    </div>
-                </div>
-            );
-        }
-
-        if (campo.esArchivo || esImagen) {
-            return (
-                <div style={{marginTop:5}}>
-                    <img src={val} alt="Adjunto" style={{maxWidth: '100%', maxHeight: '250px', borderRadius: '8px', border: '1px solid #ddd'}} />
-                    <div style={{marginTop: 5}}><a href={val} target="_blank" rel="noreferrer" style={{color: '#2563eb', fontSize: '0.9rem', fontWeight:600}}>↗ Ver imagen completa</a></div>
-                </div>
-            );
-        }
-        
+        const esImagen = !esPdf && (valLower.match(/\.(jpeg|jpg|gif|png|webp)$/) != null || valLower.includes('cloudinary'));
+        if (campo.esArchivo && esPdf) { return ( <div style={{background: '#fef2f2', padding: 15, borderRadius: 8, border: '1px solid #fee2e2', display:'flex', alignItems:'center', gap:15, marginTop:5}}> <span style={{fontSize:'2rem'}}>📄</span> <div> <div style={{fontWeight:600, color:'#b91c1c', marginBottom:2}}>Documento PDF</div> <a href={val} target="_blank" rel="noreferrer" style={{color: '#dc2626', textDecoration:'underline'}}>Ver o Descargar Documento</a> </div> </div> ); }
+        if (campo.esArchivo || esImagen) { return ( <div style={{marginTop:5}}> <img src={val} alt="Adjunto" style={{maxWidth: '100%', maxHeight: '250px', borderRadius: '8px', border: '1px solid #ddd'}} /> <div style={{marginTop: 5}}><a href={val} target="_blank" rel="noreferrer" style={{color: '#2563eb', fontSize: '0.9rem', fontWeight:600}}>↗ Ver imagen completa</a></div> </div> ); }
         return <div style={{ whiteSpace: 'pre-wrap', color: '#4b5563', background: '#f9fafb', padding: 10, borderRadius: 8, marginTop: 5 }}>{val || '-'}</div>;
     };
 
     return (
         <div style={{ animation: 'fadeIn 0.3s' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 20 }}>
-                <button className="btn-edit" onClick={onClose}>← Volver</button>
-                <h2 style={{ margin: 0 }}>Ficha: {paciente.nombreCompleto}</h2>
-            </div>
-
-            {/* VISTA DE CREACIÓN */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 20 }}><button className="btn-edit" onClick={onClose}>← Volver</button><h2 style={{ margin: 0 }}>Ficha: {paciente.nombreCompleto}</h2></div>
             {modoNueva ? (
                 <div className="pro-card" style={{ borderLeft: '5px solid #000' }}>
-                    <h3>Nueva Entrada en Historial</h3>
-                    <div className="input-row">
-                        <div>
-                            <label className="form-label">Tipo de Registro</label>
-                            <select className="form-control" value={nuevaFicha.tipo} onChange={e => setNuevaFicha({ ...nuevaFicha, tipo: e.target.value })}>
-                                <option>Evaluación Inicial</option>
-                                <option>Sesión de Tratamiento</option>
-                                <option>Entrevista Familiar / Anamnesis</option>
-                                <option>Coordinación / Reunión Clínica</option>
-                                <option>Entrega de Informe</option>
-                                <option>Visita Escolar</option>
-                                <option>Exámenes / Documentos Externos</option>
-                            </select>
-                        </div>
-                    </div>
-
+                    <h3>Nueva Entrada</h3>
+                    <div className="input-row"><div><label className="form-label">Tipo</label><select className="form-control" value={nuevaFicha.tipo} onChange={e => setNuevaFicha({ ...nuevaFicha, tipo: e.target.value })}><option>Evaluación Inicial</option><option>Sesión de Tratamiento</option><option>Entrevista Familiar</option><option>Coordinación</option><option>Informe</option><option>Visita Escolar</option><option>Exámenes</option></select></div></div>
                     <div style={{ marginTop: 20 }}>
-                        <label className="form-label" style={{marginBottom:10}}>Contenido</label>
-                        {nuevaFicha.campos.map((campo, idx) => (
-                            <div key={idx} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'start' }}>
-                                <div style={{ flex: 1 }}>
-                                    <input className="form-control" placeholder="Título (Ej: Evolución, Radiografía)" value={campo.titulo} onChange={e => handleCampoChange(idx, 'titulo', e.target.value)} style={{ fontWeight: 'bold', marginBottom: 5, background: '#f9fafb' }} />
-                                    {campo.esArchivo ? renderValor(campo) : (
-                                        <textarea className="form-control" placeholder="Escribe aquí..." value={campo.valor} onChange={e => handleCampoChange(idx, 'valor', e.target.value)} rows={3} />
-                                    )}
-                                </div>
-                                <button className="btn-danger" onClick={() => eliminarCampo(idx)} style={{ height: 40 }}>X</button>
-                            </div>
-                        ))}
-                        
-                        <div style={{ marginTop: 15, display: 'flex', gap: 10, flexWrap:'wrap' }}>
-                            <button className="btn-edit" onClick={agregarCampo}>+ Agregar Texto</button>
-                            
-                            {/* BOTÓN DE SUBIDA */}
-                            <button className="btn-edit" style={{background: '#eff6ff', color:'#1d4ed8', border:'1px solid #bfdbfe'}} onClick={() => fileInputRef.current.click()} disabled={subiendo}>
-                                {subiendo ? 'Subiendo...' : '📎 Adjuntar Archivo (Img/PDF)'}
-                            </button>
-                            <input type="file" ref={fileInputRef} style={{display: 'none'}} onChange={handleFileSelect} accept="image/*,application/pdf" />
-                        </div>
+                        {nuevaFicha.campos.map((campo, idx) => ( <div key={idx} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'start' }}><div style={{ flex: 1 }}><input className="form-control" placeholder="Título" value={campo.titulo} onChange={e => handleCampoChange(idx, 'titulo', e.target.value)} style={{ fontWeight: 'bold', marginBottom: 5 }} /> {campo.esArchivo ? renderValor(campo) : (<textarea className="form-control" placeholder="Contenido..." value={campo.valor} onChange={e => handleCampoChange(idx, 'valor', e.target.value)} rows={3} />)} </div><button className="btn-danger" onClick={() => eliminarCampo(idx)}>X</button></div> ))}
+                        <div style={{ marginTop: 15, display: 'flex', gap: 10 }}><button className="btn-edit" onClick={agregarCampo}>+ Texto</button><button className="btn-edit" onClick={() => fileInputRef.current.click()} disabled={subiendo}>{subiendo ? '...' : '📎 Adjuntar'}</button><input type="file" ref={fileInputRef} style={{display: 'none'}} onChange={handleFileSelect} accept="image/*,application/pdf" /></div>
                     </div>
-
-                    <div style={{ marginTop: 30, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                        <button className="btn-edit" onClick={() => setModoNueva(false)}>Cancelar</button>
-                        <button className="btn-primary" onClick={guardarFicha} disabled={subiendo}>Guardar en Historial</button>
-                    </div>
+                    <div style={{ marginTop: 30, display: 'flex', justifyContent: 'flex-end', gap: 10 }}><button className="btn-edit" onClick={() => setModoNueva(false)}>Cancelar</button><button className="btn-primary" onClick={guardarFicha} disabled={subiendo}>Guardar</button></div>
                 </div>
-            ) : (
-                <button className="btn-primary" style={{ marginBottom: 20, width: '100%' }} onClick={() => setModoNueva(true)}>+ Nueva Entrada</button>
-            )}
-
-            {/* HISTORIAL */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {fichas.length === 0 && !modoNueva && <p style={{ textAlign: 'center', color: '#888' }}>No hay registros clínicos aún.</p>}
-                {fichas.map(ficha => (
-                    <div key={ficha.id} className="pro-card" style={{ marginBottom: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: 10, marginBottom: 10 }}>
-                            <div><strong style={{ fontSize: '1.1rem', color: '#111' }}>{ficha.tipo}</strong><div style={{ fontSize: '0.85rem', color: '#666' }}>{new Date(ficha.fecha).toLocaleString('es-CL')}</div></div>
-                            <div style={{ textAlign: 'right' }}><span style={{ background: '#f3f4f6', color: '#111', padding: '4px 8px', borderRadius: 6, fontSize: '0.8rem', fontWeight: 'bold' }}>{ficha.profesional?.nombreCompleto || 'Profesional'}</span></div>
-                        </div>
-                        <div>
-                            {Array.isArray(ficha.contenido) ? ficha.contenido.map((campo, i) => (
-                                <div key={i} style={{ marginBottom: 12 }}>
-                                    <div style={{ fontWeight: '700', color: '#374151', fontSize: '0.9rem' }}>{campo.titulo || 'Nota'}</div>
-                                    {renderValor(campo)}
-                                </div>
-                            )) : <p>{JSON.stringify(ficha.contenido)}</p>}
-                        </div>
-                    </div>
-                ))}
-            </div>
+            ) : ( <button className="btn-primary" style={{ marginBottom: 20, width: '100%' }} onClick={() => setModoNueva(true)}>+ Nueva Entrada</button> )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>{fichas.map(ficha => ( <div key={ficha.id} className="pro-card" style={{ marginBottom: 0 }}><div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: 10, marginBottom: 10 }}><div><strong style={{ fontSize: '1.1rem' }}>{ficha.tipo}</strong><div style={{ fontSize: '0.85rem', color: '#666' }}>{new Date(ficha.fecha).toLocaleString('es-CL')}</div></div><div style={{ textAlign: 'right' }}><span style={{ background: '#f3f4f6', padding: '4px 8px', borderRadius: 6, fontSize: '0.8rem', fontWeight: 'bold' }}>{ficha.profesional?.nombreCompleto}</span></div></div><div>{Array.isArray(ficha.contenido) ? ficha.contenido.map((campo, i) => (<div key={i} style={{ marginBottom: 12 }}><div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{campo.titulo}</div>{renderValor(campo)}</div>)) : <p>{JSON.stringify(ficha.contenido)}</p>}</div></div> ))}</div>
         </div>
     );
 }
 
 // ==========================================
-// 📅 COMPONENTES AGENDA
+// 📅 AGENDA COMPONENTS
 // ==========================================
-
 function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
     const [pros, setPros] = useState([]); const [filterPro, setFilterPro] = useState(isAdmin ? '' : user.id); const [view, setView] = useState('week'); const [currentDate, setCurrentDate] = useState(new Date()); const [selectedEvent, setSelectedEvent] = useState(null); const [editId, setEditId] = useState(null); const [editProId, setEditProId] = useState(''); const [editTratamiento, setEditTratamiento] = useState(''); const [editHorarioId, setEditHorarioId] = useState(''); const [horariosDisponibles, setHorariosDisponibles] = useState([]);
     useEffect(()=>{ getProfesionales().then(setPros) },[]);
@@ -379,7 +232,7 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
     const startEdit = async(r) => { setEditId(r.id); setEditProId(r.profesionalId.toString()); setEditTratamiento(r.motivo); const h = await getHorariosByProfesional(r.profesionalId); setHorariosDisponibles(Array.isArray(h) ? h : []); };
     const handleProChange = async(pid) => { setEditProId(pid); setEditTratamiento(''); setEditHorarioId(''); if (pid) { const h = await getHorariosByProfesional(pid); setHorariosDisponibles(Array.isArray(h) ? h : []); } };
     const saveEdit = async () => { if(!editHorarioId) return alert('Selecciona hora'); try{ await reagendarReserva(selectedEvent.id, editHorarioId, editProId, editTratamiento); alert('Modificado'); setSelectedEvent(null); setEditId(null); reload(); } catch(e){ alert('Error'); } };
-    return ( <div style={{height:'100%', display:'flex', flexDirection:'column'}}> <div className="page-header"><div className="page-title"><h1>Calendario {isAdmin ? 'Global' : 'Personal'}</h1></div></div> <div className="dashboard-controls"> {isAdmin ? ( <select className="form-control" style={{maxWidth:250}} value={filterPro} onChange={e=>setFilterPro(e.target.value)}> <option value="">Todos los Profesionales</option> {pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)} </select> ) : ( <div style={{padding:'10px', background:'#eee', borderRadius:'8px', fontWeight:'bold'}}>{user.nombre}</div> )} <div className="view-buttons-group"> <button className={`calendar-nav-btn ${view==='day'?'active':''}`} onClick={()=>setView('day')}>Día</button> <button className={`calendar-nav-btn ${view==='week'?'active':''}`} onClick={()=>setView('week')}>Semana</button> </div> <div className="cal-nav-group"> <button className="calendar-nav-btn" onClick={()=>handleNav(-1)}>‹</button> <span>{`Semana del ${days[0]?.getDate()}`}</span> <button className="calendar-nav-btn" onClick={()=>handleNav(1)}>›</button> </div> </div> <div className="calendar-grid-wrapper"> <div className="cal-header-row" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}> <div className="cal-header-cell">Hora</div> {days.map((d, i)=><div key={i} className="cal-header-cell">{d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric'})}</div>)} </div> <div className="calendar-body" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}> <div>{Array.from({length:13},(_,i)=>i+8).map(h=><div key={h} className="cal-time-label">{h}:00</div>)}</div> {days.map((d, i)=>( <div key={i} className="cal-day-col"> {filtered.filter(r=>{ const rd=parseDate(r.fecha); return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth(); }).map(r=>{ const st = parseDate(r.fecha), h=st.getUTCHours(), m=st.getUTCMinutes(); const top = ((h-8)*60)+m; return ( <div key={r.id} className="cal-event evt-blue" style={{top, height:45}} onClick={()=>handleEventClick(r)}> <strong>{st.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', timeZone: 'UTC'})}</strong> <span>{r.pacienteNombre}</span> </div> ) })} </div> ))} </div> </div> {selectedEvent && ( <Modal onClose={()=>setSelectedEvent(null)}> {editId === selectedEvent.id ? ( <div style={{padding:10}}> <h2>Modificar Cita</h2> {isAdmin ? (<select className="form-control" value={editProId} onChange={e=>handleProChange(e.target.value)}>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select>) : (<p><strong>Profesional:</strong> {user.nombre}</p>)} <select className="form-control" value={editHorarioId} onChange={e=>setEditHorarioId(e.target.value)}><option value="">Hora...</option>{horariosDisponibles.map(h=><option key={h.id} value={h.id}>{fmtDate(h.fecha)} - {fmtTime(h.fecha)}</option>)}</select> <div className="detail-actions" style={{marginTop:10}}> <button className="btn-primary" onClick={saveEdit}>Guardar</button> <button className="btn-edit" onClick={()=>setEditId(null)}>Cancelar</button> </div> </div> ) : ( <div style={{padding:10}}> <h2>Detalle</h2> <p>Paciente: {selectedEvent.pacienteNombre}</p> <p>Tratamiento: {selectedEvent.motivo}</p> <div className="detail-actions" style={{marginTop:10}}> <button className="btn-primary" onClick={()=>startEdit(selectedEvent)}>Modificar</button> <button className="btn-danger" onClick={()=>deleteReserva(selectedEvent.id)}>Eliminar</button> </div> </div> )} </Modal> )} </div> )
+    return ( <div style={{height:'100%', display:'flex', flexDirection:'column'}}> <div className="page-header"><div className="page-title"><h1>Calendario</h1></div></div> <div className="dashboard-controls"> {isAdmin ? ( <select className="form-control" style={{maxWidth:250}} value={filterPro} onChange={e=>setFilterPro(e.target.value)}> <option value="">Todos</option> {pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)} </select> ) : ( <div style={{padding:'10px', background:'#eee', borderRadius:'8px', fontWeight:'bold'}}>{user.nombre}</div> )} <div className="view-buttons-group"> <button className={`calendar-nav-btn ${view==='day'?'active':''}`} onClick={()=>setView('day')}>Día</button> <button className={`calendar-nav-btn ${view==='week'?'active':''}`} onClick={()=>setView('week')}>Semana</button> </div> <div className="cal-nav-group"> <button className="calendar-nav-btn" onClick={()=>handleNav(-1)}>‹</button> <span>{`Semana del ${days[0]?.getDate()}`}</span> <button className="calendar-nav-btn" onClick={()=>handleNav(1)}>›</button> </div> </div> <div className="calendar-grid-wrapper"> <div className="cal-header-row" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}> <div className="cal-header-cell">Hora</div> {days.map((d, i)=><div key={i} className="cal-header-cell">{d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric'})}</div>)} </div> <div className="calendar-body" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}> <div>{Array.from({length:13},(_,i)=>i+8).map(h=><div key={h} className="cal-time-label">{h}:00</div>)}</div> {days.map((d, i)=>( <div key={i} className="cal-day-col"> {filtered.filter(r=>{ const rd=parseDate(r.fecha); return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth(); }).map(r=>{ const st = parseDate(r.fecha), h=st.getUTCHours(), m=st.getUTCMinutes(); const top = ((h-8)*60)+m; return ( <div key={r.id} className="cal-event evt-blue" style={{top, height:45}} onClick={()=>handleEventClick(r)}> <strong>{st.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', timeZone: 'UTC'})}</strong> <span>{r.pacienteNombre}</span> </div> ) })} </div> ))} </div> </div> {selectedEvent && ( <Modal onClose={()=>setSelectedEvent(null)}> {editId === selectedEvent.id ? ( <div style={{padding:10}}> <h2>Modificar Cita</h2> {isAdmin ? (<select className="form-control" value={editProId} onChange={e=>handleProChange(e.target.value)}>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select>) : (<p><strong>Profesional:</strong> {user.nombre}</p>)} <select className="form-control" value={editHorarioId} onChange={e=>setEditHorarioId(e.target.value)}><option value="">Hora...</option>{horariosDisponibles.map(h=><option key={h.id} value={h.id}>{fmtDate(h.fecha)} - {fmtTime(h.fecha)}</option>)}</select> <div className="detail-actions" style={{marginTop:10}}> <button className="btn-primary" onClick={saveEdit}>Guardar</button> <button className="btn-edit" onClick={()=>setEditId(null)}>Cancelar</button> </div> </div> ) : ( <div style={{padding:10}}> <h2>Detalle</h2> <p>Paciente: {selectedEvent.pacienteNombre}</p> <p>Tratamiento: {selectedEvent.motivo}</p> <div className="detail-actions" style={{marginTop:10}}> <button className="btn-primary" onClick={()=>startEdit(selectedEvent)}>Modificar</button> <button className="btn-danger" onClick={()=>deleteReserva(selectedEvent.id)}>Eliminar</button> </div> </div> )} </Modal> )} </div> )
 }
 
 function AgendaNuevaReserva({ reload, reservas, tratamientos, user, isAdmin }) {
@@ -513,7 +366,7 @@ function WebPaciente() {
         setMultiAgenda(agendaMap); setAvailableDates(sortedDates); if (sortedDates.length > 0) setSelectedDateKey(sortedDates[0]); setLoading(false); setStep(3); 
     };
     
-    // 🔴 CORRECCIÓN AQUÍ: Usamos slot.fecha (ISO) en vez de slot.id
+    // 🔴 FIX: Usamos slot.fecha en vez de slot.id para que la fecha sea válida y el pago no falle
     const selectSlot = (pid, fechaIso) => { 
         setForm(prev => ({ ...prev, profesionalId: pid, horarioId: fechaIso })); 
         setStep(4); 
@@ -526,10 +379,12 @@ function WebPaciente() {
             let pid = pacienteId; 
             if (!pid) { const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); const pac = await crearPaciente({nombreCompleto:form.nombre, email:form.email, telefono:form.telefono, rut: rutLimpio}); pid = pac.id; setPacienteId(pid); storageData.pacienteId = pid; } 
             localStorage.setItem('pendingReservation', JSON.stringify(storageData)); 
+            
             const response = await fetch(`${API_BASE_URL}/create_preference`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: tratamientoSel.nombre, quantity: 1, unit_price: tratamientoSel.valor }), }); 
             const preference = await response.json(); 
+            
             if (preference.id) { setPreferenceId(preference.id); setShowPayModal(true); } 
-            else { alert("Error al iniciar el pago"); console.error(preference); } 
+            else { alert("Error al iniciar el pago (Revisar consola)"); console.error(preference); } 
         } catch (error) { console.error(error); alert("Error de conexión"); } finally { setLoading(false); } 
     };
     
