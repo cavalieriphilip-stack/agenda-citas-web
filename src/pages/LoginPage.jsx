@@ -19,24 +19,41 @@ function Login() {
         setLoading(true);
         setError('');
 
+        const loginUrl = `${API_BASE_URL}/auth/login`;
+        console.log("🚀 Intentando Login en:", loginUrl); // ¡MIRA ESTO EN CONSOLA (F12) SI FALLA!
+
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            const response = await fetch(loginUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(form)
             });
 
+            console.log("📡 Estado respuesta:", response.status);
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Error del servidor (${response.status})`);
+            }
+
             const data = await response.json();
 
             if (data.success) {
-                // Guardar usuario y redirigir
+                // Guardar Token y Usuario
+                localStorage.setItem('token', data.token);
                 localStorage.setItem('usuario', JSON.stringify(data.usuario));
-                navigate('/admin/dashboard'); // Redirige al panel principal
+                console.log("✅ Login exitoso, redirigiendo...");
+                navigate('/admin/dashboard');
             } else {
                 setError(data.message || 'Credenciales incorrectas');
             }
         } catch (err) {
-            setError('Error de conexión con el servidor');
+            console.error("🔥 Error Catch:", err);
+            if (err.message.includes('Failed to fetch')) {
+                setError('Error de conexión: El servidor no responde o la URL es incorrecta.');
+            } else {
+                setError(err.message);
+            }
         } finally {
             setLoading(false);
         }
