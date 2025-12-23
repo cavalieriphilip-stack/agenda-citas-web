@@ -123,7 +123,7 @@ function App() {
 }
 
 // ==========================================
-// 🔐 LAYOUT ADMIN (Navegación Corregida)
+// 🔐 LAYOUT ADMIN
 // ==========================================
 function AdminLayout() {
     const [activeModule, setActiveModule] = useState('agenda');
@@ -233,7 +233,174 @@ function DashboardContent({ module, view, user, isAdmin }) {
 }
 
 // ==========================================
-// 📅 COMPONENTES
+// 📋 COMPONENTE: FICHA CLÍNICA DINÁMICA
+// ==========================================
+function FichaClinicaViewer({ paciente, onClose }) {
+    const [fichas, setFichas] = useState([]);
+    const [modoNueva, setModoNueva] = useState(false);
+    
+    // Estado para la nueva ficha DINÁMICA
+    const [nuevaFicha, setNuevaFicha] = useState({
+        tipo: 'Consulta General',
+        campos: [{ titulo: 'Anamnesis / Motivo', valor: '' }]
+    });
+
+    const user = JSON.parse(localStorage.getItem('usuario') || '{}');
+
+    useEffect(() => { loadFichas(); }, []);
+
+    const loadFichas = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/pacientes/${paciente.id}/fichas`);
+            if (res.ok) setFichas(await res.json());
+        } catch (e) { console.error(e); }
+    };
+
+    const agregarCampo = () => {
+        setNuevaFicha({
+            ...nuevaFicha,
+            campos: [...nuevaFicha.campos, { titulo: '', valor: '' }]
+        });
+    };
+
+    const handleCampoChange = (index, key, value) => {
+        const nuevosCampos = [...nuevaFicha.campos];
+        nuevosCampos[index][key] = value;
+        setNuevaFicha({ ...nuevaFicha, campos: nuevosCampos });
+    };
+
+    const eliminarCampo = (index) => {
+        const nuevosCampos = nuevaFicha.campos.filter((_, i) => i !== index);
+        setNuevaFicha({ ...nuevaFicha, campos: nuevosCampos });
+    };
+
+    const guardarFicha = async () => {
+        try {
+            const payload = {
+                pacienteId: paciente.id,
+                profesionalId: user.id,
+                tipo: nuevaFicha.tipo,
+                contenido: nuevaFicha.campos 
+            };
+
+            const res = await fetch(`${API_BASE_URL}/fichas`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                alert("Ficha guardada correctamente");
+                setModoNueva(false);
+                setNuevaFicha({ tipo: 'Consulta General', campos: [{ titulo: 'Anamnesis', valor: '' }] });
+                loadFichas();
+            } else {
+                alert("Error al guardar");
+            }
+        } catch (e) { alert("Error de conexión"); }
+    };
+
+    return (
+        <div style={{ animation: 'fadeIn 0.3s' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 20 }}>
+                <button className="btn-edit" onClick={onClose}>← Volver</button>
+                <h2 style={{ margin: 0 }}>Ficha: {paciente.nombreCompleto}</h2>
+            </div>
+
+            {/* VISTA DE CREACIÓN */}
+            {modoNueva ? (
+                <div className="pro-card" style={{ borderLeft: '5px solid #000' }}>
+                    <h3>Nueva Evolución / Consulta</h3>
+                    
+                    <div className="input-row">
+                        <div>
+                            <label className="form-label">Tipo de Atención</label>
+                            <select className="form-control" value={nuevaFicha.tipo} onChange={e => setNuevaFicha({ ...nuevaFicha, tipo: e.target.value })}>
+                                <option>Consulta General</option>
+                                <option>Sesión Psicología</option>
+                                <option>Evaluación Fonoaudiológica</option>
+                                <option>Sesión Kinesiología</option>
+                                <option>Control Médico</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style={{ marginTop: 20 }}>
+                        <label className="form-label" style={{marginBottom:10}}>Detalle de la Atención (Campos Dinámicos)</label>
+                        {nuevaFicha.campos.map((campo, idx) => (
+                            <div key={idx} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'start' }}>
+                                <div style={{ flex: 1 }}>
+                                    <input 
+                                        className="form-control" 
+                                        placeholder="Título (Ej: Diagnóstico)" 
+                                        value={campo.titulo} 
+                                        onChange={e => handleCampoChange(idx, 'titulo', e.target.value)} 
+                                        style={{ fontWeight: 'bold', marginBottom: 5, background: '#f9fafb' }}
+                                    />
+                                    <textarea 
+                                        className="form-control" 
+                                        placeholder="Escribe aquí los detalles..." 
+                                        value={campo.valor} 
+                                        onChange={e => handleCampoChange(idx, 'valor', e.target.value)}
+                                        rows={3}
+                                    />
+                                </div>
+                                <button className="btn-danger" onClick={() => eliminarCampo(idx)} style={{ height: 40 }}>X</button>
+                            </div>
+                        ))}
+                        
+                        <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
+                            <button className="btn-edit" onClick={agregarCampo}>+ Agregar Campo</button>
+                        </div>
+                    </div>
+
+                    <div style={{ marginTop: 30, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                        <button className="btn-edit" onClick={() => setModoNueva(false)}>Cancelar</button>
+                        <button className="btn-primary" onClick={guardarFicha}>Guardar en Historial</button>
+                    </div>
+                </div>
+            ) : (
+                <button className="btn-primary" style={{ marginBottom: 20, width: '100%' }} onClick={() => setModoNueva(true)}>+ Nueva Evolución</button>
+            )}
+
+            {/* HISTORIAL DE FICHAS */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {fichas.length === 0 && !modoNueva && <p style={{ textAlign: 'center', color: '#888' }}>No hay registros clínicos aún.</p>}
+                
+                {fichas.map(ficha => (
+                    <div key={ficha.id} className="pro-card" style={{ marginBottom: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: 10, marginBottom: 10 }}>
+                            <div>
+                                <strong style={{ fontSize: '1.1rem', color: '#111' }}>{ficha.tipo}</strong>
+                                <div style={{ fontSize: '0.85rem', color: '#666' }}>{new Date(ficha.fecha).toLocaleString()}</div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <span style={{ background: '#f3f4f6', color: '#111', padding: '4px 8px', borderRadius: 6, fontSize: '0.8rem', fontWeight: 'bold' }}>
+                                    {ficha.profesional?.nombreCompleto || 'Profesional'}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        {/* RENDERIZADO DEL CONTENIDO JSON */}
+                        <div>
+                            {Array.isArray(ficha.contenido) ? ficha.contenido.map((campo, i) => (
+                                <div key={i} style={{ marginBottom: 12 }}>
+                                    <div style={{ fontWeight: '700', color: '#374151', fontSize: '0.9rem' }}>{campo.titulo || 'Nota'}</div>
+                                    <div style={{ whiteSpace: 'pre-wrap', color: '#4b5563', background: '#f9fafb', padding: 8, borderRadius: 6, marginTop: 4 }}>
+                                        {campo.valor || '-'}
+                                    </div>
+                                </div>
+                            )) : <p>{JSON.stringify(ficha.contenido)}</p>}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ==========================================
+// 📅 COMPONENTES AGENDA
 // ==========================================
 
 function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
@@ -454,8 +621,7 @@ function AgendaPacientes(){
     const [pacientes,setPacientes]=useState([]);
     const [form,setForm]=useState({nombreCompleto:'',email:'',telefono:'', rut:''});
     const [editingId, setEditingId] = useState(null);
-    const [historyPatient, setHistoryPatient] = useState(null); 
-    const [historyData, setHistoryData] = useState([]);
+    const [viewingFicha, setViewingFicha] = useState(null); // Estado para abrir la ficha
     
     const load=()=>getPacientes().then(setPacientes);
     useEffect(()=>{load()},[]);
@@ -464,33 +630,63 @@ function AgendaPacientes(){
     const save=async(e)=>{ e.preventDefault(); if (!validateRut(form.rut)) { alert("RUT inválido"); return; } try { if(editingId) { await updatePaciente(editingId, form); alert('Actualizado'); setEditingId(null); } else { await crearPaciente(form); alert('Creado'); } setForm({nombreCompleto:'',email:'',telefono:'', rut:''}); load(); } catch(e) { alert("Error"); } };
     const handleEdit = (p) => { setForm({ nombreCompleto: p.nombreCompleto, email: p.email, telefono: p.telefono, rut: formatRut(p.rut||'') }); setEditingId(p.id); window.scrollTo(0, 0); };
     const handleDelete = async (id) => { if(confirm('¿Seguro?')) { await deletePaciente(id); load(); } };
-    const viewHistory = async (p) => { setHistoryPatient(p); const res = await fetch(`${API_BASE_URL}/pacientes/${p.id}/historial`).then(r => r.json()); setHistoryData(res); };
     
-    return( <div> <div className="page-header"><div className="page-title"><h1>Base de Pacientes</h1></div></div> <div className="pro-card"> <h3 style={{marginTop:0}}>{editingId ? 'Editar Paciente' : 'Nuevo Paciente'}</h3> <form onSubmit={save}> <div className="input-row"><div><label className="form-label">RUT</label><input className="form-control" value={form.rut} onChange={handleRutChange} /></div><div><label className="form-label">Nombre</label><input className="form-control" value={form.nombreCompleto} onChange={e=>setForm({...form,nombreCompleto:e.target.value})}/></div></div> <div className="input-row"><div><label className="form-label">Email</label><input className="form-control" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div><div><label className="form-label">Teléfono</label><input className="form-control" value={form.telefono} onChange={e=>setForm({...form,telefono:e.target.value})}/></div></div> <button className="btn-primary">Guardar</button> </form> </div> <div className="pro-card"> <div className="data-table-container desktop-view-only"> <table className="data-table"> <thead><tr><th>RUT</th><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Opciones</th></tr></thead> <tbody>{pacientes.map(p=>( <tr key={p.id}> <td>{formatRut(p.rut)}</td> <td><strong>{p.nombreCompleto}</strong></td> <td>{p.email}</td> <td>{p.telefono}</td> <td> <div style={{display:'flex', gap:5}}> <button className="btn-primary" style={{padding:'5px 10px', fontSize:'0.8rem'}} onClick={()=>viewHistory(p)}>Historial</button> <button className="btn-edit" onClick={()=>handleEdit(p)}>Editar</button> <button className="btn-danger" onClick={()=>handleDelete(p.id)}>X</button> </div> </td> </tr> ))}</tbody> </table> </div> 
-    {/* MOVIL */}
-    <div className="mobile-view-only">
-        {pacientes.map(p => (
-            <div key={p.id} className="mobile-card">
-                <div className="mobile-card-header">
-                    <span className="mobile-card-title">{p.nombreCompleto}</span>
-                    <div style={{display:'flex', gap:10}}>
-                        <button className="btn-primary" onClick={()=>viewHistory(p)} style={{fontSize:'0.8rem'}}>Historial</button>
-                    </div>
-                </div>
-                <div className="mobile-card-body">
-                    <div className="mobile-data-row"><span className="mobile-label">RUT</span>{formatRut(p.rut)}</div>
-                    <div className="mobile-data-row"><span className="mobile-label">Email</span>{p.email}</div>
-                    <div className="mobile-data-row"><span className="mobile-label">Acciones</span>
-                        <div style={{display:'flex', gap:10, marginTop:5}}>
-                            <button className="btn-edit" onClick={()=>handleEdit(p)} style={{width: '100%'}}>Editar</button>
-                            <button className="btn-danger" onClick={()=>handleDelete(p.id)} style={{width: '100%'}}>Eliminar</button>
+    return( 
+        <div> 
+            <div className="page-header"><div className="page-title"><h1>Base de Pacientes</h1></div></div> 
+            
+            {/* Si estamos viendo ficha, mostramos el componente de ficha, sino la tabla */}
+            {viewingFicha ? (
+                <FichaClinicaViewer paciente={viewingFicha} onClose={() => setViewingFicha(null)} />
+            ) : (
+                <>
+                    <div className="pro-card"> 
+                        <h3 style={{marginTop:0}}>{editingId ? 'Editar Paciente' : 'Nuevo Paciente'}</h3> 
+                        <form onSubmit={save}> 
+                            <div className="input-row"><div><label className="form-label">RUT</label><input className="form-control" value={form.rut} onChange={handleRutChange} /></div><div><label className="form-label">Nombre</label><input className="form-control" value={form.nombreCompleto} onChange={e=>setForm({...form,nombreCompleto:e.target.value})}/></div></div> 
+                            <div className="input-row"><div><label className="form-label">Email</label><input className="form-control" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></div><div><label className="form-label">Teléfono</label><input className="form-control" value={form.telefono} onChange={e=>setForm({...form,telefono:e.target.value})}/></div></div> 
+                            <button className="btn-primary">Guardar</button> 
+                        </form> 
+                    </div> 
+                    <div className="pro-card"> 
+                        <div className="data-table-container desktop-view-only"> 
+                            <table className="data-table"> 
+                                <thead><tr><th>RUT</th><th>Nombre</th><th>Email</th><th>Opciones</th></tr></thead> 
+                                <tbody>{pacientes.map(p=>( <tr key={p.id}> <td>{formatRut(p.rut)}</td> <td><strong>{p.nombreCompleto}</strong></td> <td>{p.email}</td> <td> 
+                                    <div style={{display:'flex', gap:5}}> 
+                                        {/* BOTÓN NUEVO: FICHA CLÍNICA */}
+                                        <button className="btn-primary" style={{padding:'5px 10px', fontSize:'0.8rem', background:'#000'}} onClick={()=>setViewingFicha(p)}>📂 Ficha</button> 
+                                        <button className="btn-edit" onClick={()=>handleEdit(p)}>Editar</button> 
+                                        <button className="btn-danger" onClick={()=>handleDelete(p.id)}>X</button> 
+                                    </div> 
+                                </td> </tr> ))}</tbody> 
+                            </table> 
                         </div>
-                    </div>
-                </div>
-            </div>
-        ))}
-    </div>
-    </div> {historyPatient && ( <Modal title={`Historial: ${historyPatient.nombreCompleto}`} onClose={()=>setHistoryPatient(null)}> <div className="data-table-container"> <table className="data-table"> <thead><tr><th>Fecha</th><th>Tratamiento</th><th>Profesional</th><th>Estado</th></tr></thead> <tbody> {historyData.length === 0 ? <tr><td colSpan="4">Sin atenciones registradas</td></tr> : historyData.map(h => ( <tr key={h.id}> <td>{fmtDate(h.fechaHoraInicio)}</td> <td>{h.motivo}</td> <td>{h.profesional?.nombreCompleto}</td> <td><span className="badge-success">{h.estado}</span></td> </tr> ))} </tbody> </table> </div> </Modal> )} </div> )
+                        {/* Mobile View */}
+                        <div className="mobile-view-only">
+                            {pacientes.map(p => (
+                                <div key={p.id} className="mobile-card">
+                                    <div className="mobile-card-header">
+                                        <span className="mobile-card-title">{p.nombreCompleto}</span>
+                                        <button className="btn-primary" onClick={()=>setViewingFicha(p)} style={{fontSize:'0.8rem', background:'#000'}}>Ficha</button>
+                                    </div>
+                                    <div className="mobile-card-body">
+                                        <div className="mobile-data-row"><span className="mobile-label">RUT</span>{formatRut(p.rut)}</div>
+                                        <div className="mobile-data-row">
+                                            <div style={{display:'flex', gap:10, marginTop:5}}>
+                                                <button className="btn-edit" onClick={()=>handleEdit(p)} style={{width:'100%'}}>Editar</button>
+                                                <button className="btn-danger" onClick={()=>handleDelete(p.id)} style={{width:'100%'}}>Eliminar</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div> 
+                </>
+            )}
+        </div> 
+    )
 }
 
 function FinanzasReporte({total,count,reservas, tratamientos}){ 
