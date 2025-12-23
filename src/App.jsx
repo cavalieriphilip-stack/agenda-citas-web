@@ -122,7 +122,7 @@ function App() {
 }
 
 // ==========================================
-// 🔐 LAYOUT ADMIN (LÓGICA DE ROLES APLICADA)
+// 🔐 LAYOUT ADMIN
 // ==========================================
 function AdminLayout() {
     const [activeModule, setActiveModule] = useState('agenda');
@@ -139,8 +139,7 @@ function AdminLayout() {
     }, [navigate]);
 
     const handleNavClick = (view) => { setActiveView(view); setMobileMenuOpen(false); }
-    const handleMobileModuleChange = (mod) => { setActiveModule(mod); setActiveView(mod === 'agenda' ? 'resumen' : (mod === 'clientes' ? 'listado' : 'reporte')); setMobileMenuOpen(false); }
-
+    
     return (
         <div className="dashboard-layout">
             <nav className="top-nav">
@@ -197,8 +196,6 @@ function DashboardContent({ module, view, user, isAdmin }) {
     
     const refreshData = async () => {
         try {
-            // Pasamos ID y ROL para que el backend filtre si es necesario (seguridad extra)
-            // Pero filtraremos en frontend también por UX
             const data = await getReservasDetalle(); 
             setReservas(data || []);
             const trats = await fetch(`${API_BASE_URL}/tratamientos`).then(r => r.json());
@@ -213,12 +210,10 @@ function DashboardContent({ module, view, user, isAdmin }) {
         if (view === 'reservas') return <AgendaNuevaReserva reload={refreshData} reservas={reservas} tratamientos={tratamientos} user={user} isAdmin={isAdmin} />;
         if (view === 'horarios') return <AgendaHorarios user={user} isAdmin={isAdmin} />;
         
-        // Proteccion de rutas admin
         if (isAdmin) {
             if (view === 'profesionales') return <AgendaProfesionales tratamientos={tratamientos} />;
             if (view === 'prestaciones') return <AgendaTratamientos reload={refreshData} />;
         } else {
-            // Si un profesional intenta entrar aquí, lo mandamos al calendario
             if (view === 'profesionales' || view === 'prestaciones') return <AgendaResumen reservas={reservas} tratamientos={tratamientos} reload={refreshData} user={user} isAdmin={isAdmin} />;
         }
     }
@@ -234,12 +229,11 @@ function DashboardContent({ module, view, user, isAdmin }) {
 }
 
 // ==========================================
-// 📅 COMPONENTES CON LÓGICA DE ROLES
+// 📅 COMPONENTES
 // ==========================================
 
 function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
     const [pros, setPros] = useState([]);
-    // Si NO es admin, forzamos el filtro a su propio ID
     const [filterPro, setFilterPro] = useState(isAdmin ? '' : user.id);
     
     const [view, setView] = useState('week'); 
@@ -257,13 +251,10 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
     const getDays = () => { const d = [], start = new Date(currentDate); if(view==='day'){ d.push(new Date(start)); } else if(view==='week'){ const day = start.getDay(), diff = start.getDate() - day + (day===0?-6:1); const mon = new Date(start.setDate(diff)); for(let i=0;i<7;i++){ const x = new Date(mon); x.setDate(mon.getDate()+i); d.push(x); } } return d; };
     const days = getDays();
     
-    // FILTRO DE SEGURIDAD:
-    // Si es admin, usa el filtro del select. Si es profesional, usa SU id.
     const activeFilter = isAdmin ? filterPro : user.id;
     const filtered = reservas.filter(r => activeFilter ? r.profesionalId === parseInt(activeFilter) : true);
 
     const handleEventClick = (r) => { 
-        // Seguridad: Un profesional no debería poder abrir citas de otros (aunque el filtro ya lo oculta)
         if (!isAdmin && r.profesionalId !== user.id) return;
         const match = tratamientos.find(t => t.nombre === r.motivo); setSelectedEvent({ ...r, fullTrat: match }); setEditId(null); 
     };
@@ -339,7 +330,6 @@ function AgendaNuevaReserva({ reload, reservas, tratamientos, user, isAdmin }) {
     const [pros, setPros] = useState([]);
     const [horarios, setHorarios] = useState([]);
     
-    // Si es profesional, se pre-asigna a sí mismo
     const [form, setForm] = useState({ 
         pacienteId: '', 
         profesionalId: isAdmin ? '' : user.id, 
@@ -351,7 +341,6 @@ function AgendaNuevaReserva({ reload, reservas, tratamientos, user, isAdmin }) {
     useEffect(() => { 
         getPacientes().then(setPacientes); 
         getProfesionales().then(setPros); 
-        // Si no es admin, cargar horarios del profesional logueado al inicio
         if (!isAdmin && user.id) {
             handlePro(user.id);
         }
@@ -360,10 +349,9 @@ function AgendaNuevaReserva({ reload, reservas, tratamientos, user, isAdmin }) {
     const especialidades = [...new Set(tratamientos.map(t => t.especialidad))];
     const prestaciones = tratamientos.filter(t => t.especialidad === form.especialidad);
     
-    // Filtramos lista de profesionales: si es admin, todos. Si no, solo el usuario.
     const prosFiltrados = isAdmin 
         ? (form.tratamientoId ? pros.filter(p => { const trat = tratamientos.find(x => x.id === parseInt(form.tratamientoId)); return trat && p.tratamientos && p.tratamientos.includes(trat.nombre); }) : [])
-        : [user]; // Si es profesional, solo se ve a si mismo
+        : [user];
 
     const handlePro = async (pid) => { 
         setForm(prev => ({ ...prev, profesionalId: pid })); 
@@ -412,7 +400,6 @@ function AgendaHorarios({ user, isAdmin }){
     const [pros,setPros]=useState([]);
     const [configs, setConfigs] = useState([]);
     const [fechaSel, setFechaSel] = useState('');
-    // Si no es admin, pre-seleccionamos al usuario
     const [form,setForm]=useState({profesionalId: isAdmin ? '' : user.id, diaSemana:'', horaInicio:'09:00', horaFin:'18:00', duracionSlot: 30, intervalo: 0});
     const [showModal, setShowModal] = useState(false);
     const [events, setEvents] = useState([]);
@@ -423,7 +410,6 @@ function AgendaHorarios({ user, isAdmin }){
     const loadConfigs = async () => { 
         try { 
             const data = await getConfiguraciones(); 
-            // Filtro de seguridad para la lista de bloques
             if (isAdmin) {
                 setConfigs(Array.isArray(data) ? data : []); 
             } else {
@@ -432,7 +418,31 @@ function AgendaHorarios({ user, isAdmin }){
         } catch (e) { setConfigs([]); } 
     };
     
-    const save=async(e)=>{ e.preventDefault(); const payload = { ...form, fecha: fechaSel }; await fetch(`${API_BASE_URL}/configuracion`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); alert(`Guardado`); await loadConfigs(); };
+    // --- FUNCIÓN CORREGIDA Y ROBUSTA ---
+    const save = async (e) => { 
+        e.preventDefault(); 
+        
+        try {
+            const payload = { ...form, fecha: fechaSel }; 
+            const response = await fetch(`${API_BASE_URL}/configuracion`, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            // 🛑 VALIDACIÓN REAL: Si el servidor dice error, lanzamos error
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Error desconocido al guardar");
+            }
+
+            alert("✅ Horario guardado correctamente");
+            await loadConfigs(); 
+        } catch(e) {
+            alert("❌ Error: " + e.message);
+        }
+    };
+
     const borrarConfig = async (id) => { if(confirm("¿Eliminar?")) { await deleteConfiguracion(id); loadConfigs(); } }
     
     const verCalendario = async (p) => {
@@ -485,7 +495,6 @@ function AgendaHorarios({ user, isAdmin }){
                     <table className="data-table">
                         <thead><tr><th>Profesional</th><th>Acción</th></tr></thead>
                         <tbody>
-                            {/* Si es Admin muestra todos, si no, solo al usuario */}
                             {pros.filter(p => isAdmin ? true : p.id === user.id).map(p=>(
                                 <tr key={p.id}><td>{p.nombreCompleto}</td><td><button className="btn-edit" onClick={()=>verCalendario(p)}>Ver Horarios</button></td></tr>
                             ))}
@@ -503,10 +512,8 @@ function AgendaProfesionales({ tratamientos }) {
     const [form, setForm] = useState({ id: null, nombreCompleto: '', especialidades: [], tratamientos: [] });
     const [isEditing, setIsEditing] = useState(false);
     
-    // Obtener listas únicas para los dropdowns
     const especialidadesUnicas = [...new Set(tratamientos.map(t => t.especialidad))].sort();
 
-    // 2. Lista Dinámica de Tratamientos (Solo los que coinciden con las especialidades seleccionadas)
     const tratamientosDisponibles = tratamientos
         .filter(t => form.especialidades.includes(t.especialidad))
         .map(t => t.nombre)
@@ -515,7 +522,6 @@ function AgendaProfesionales({ tratamientos }) {
     const load = () => getProfesionales().then(setPros);
     useEffect(() => { load(); }, []);
 
-    // --- LÓGICA DE ACTUALIZACIÓN DE ESPECIALIDADES ---
     const handleSpecChange = (newSpecs) => {
         const tratamientosValidos = tratamientos
             .filter(t => newSpecs.includes(t.especialidad) && form.tratamientos.includes(t.nombre))
@@ -564,7 +570,6 @@ function AgendaProfesionales({ tratamientos }) {
                         </div>
                     </div>
                     <div className="input-row">
-                        {/* 1. Seleccionar Especialidad */}
                         <div>
                             <MultiSelectDropdown 
                                 label="1. Especialidades (Áreas)" 
@@ -573,14 +578,13 @@ function AgendaProfesionales({ tratamientos }) {
                                 onChange={handleSpecChange} 
                             />
                         </div>
-                        {/* 2. Seleccionar Tratamientos (Filtrado) */}
                         <div>
                             <MultiSelectDropdown 
                                 label="2. Prestaciones Habilitadas" 
                                 options={tratamientosDisponibles} 
                                 selectedValues={form.tratamientos} 
                                 onChange={v => setForm({ ...form, tratamientos: v })} 
-                                disabled={form.especialidades.length === 0} // Desactivado si no hay especialidad
+                                disabled={form.especialidades.length === 0}
                             />
                             {form.especialidades.length === 0 && <small style={{color:'#888'}}>Selecciona una especialidad primero</small>}
                         </div>
@@ -646,7 +650,7 @@ function FinanzasReporte({total,count,reservas, tratamientos}){
     return ( <div> <div className="page-header"><div className="page-title"><h1>Reporte Financiero</h1></div></div> <div className="kpi-grid"> <div className="kpi-box"><div className="kpi-label">Ingresos</div><div className="kpi-value">{fmtMoney(total)}</div></div> <div className="kpi-box"><div className="kpi-label">Citas</div><div className="kpi-value">{count}</div></div> </div> <div className="input-row finance-section"> <div className="pro-card"> <h3>Atenciones por Profesional</h3> <div className="data-table-container"> <table className="finance-table"><thead><tr><th>Profesional</th><th>Citas</th></tr></thead><tbody>{Object.entries(statsPro).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table> </div> </div> <div className="pro-card"> <h3>Agendas por Tratamiento</h3> <div className="data-table-container"> <table className="finance-table"><thead><tr><th>Tratamiento</th><th>Cantidad</th></tr></thead><tbody>{Object.entries(statsTrat).map(([k,v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody></table> </div> </div> </div> </div> ) 
 }
 
-// --- WEB PACIENTE (ACTUALIZADA CON FILTRO DE CATEGORÍAS) ---
+// --- WEB PACIENTE ---
 function WebPaciente() {
     const [step, setStep] = useState(0); 
     const [profesionales, setProfesionales] = useState([]);
@@ -666,16 +670,12 @@ function WebPaciente() {
         fetch(`${API_BASE_URL}/tratamientos`).then(r=>r.json()).then(setTratamientos);
     },[]);
 
-    // Derivados: Listas filtradas para los dropdowns
-    // 1. Categorías Únicas
     const categorias = [...new Set(tratamientos.map(t => getCategoryFromSpecialty(t.especialidad)))].sort();
     
-    // 2. Especialidades según Categoría seleccionada
     const especialidadesFiltradas = form.categoria 
         ? [...new Set(tratamientos.filter(t => getCategoryFromSpecialty(t.especialidad) === form.categoria).map(t => t.especialidad))]
         : [];
 
-    // 3. Tratamientos según Especialidad seleccionada
     const prestacionesFiltradas = form.especialidad
         ? tratamientos.filter(t => t.especialidad === form.especialidad)
         : [];
