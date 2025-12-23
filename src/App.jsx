@@ -241,8 +241,8 @@ function FichaClinicaViewer({ paciente, onClose }) {
     
     // Estado para la nueva ficha DINÁMICA
     const [nuevaFicha, setNuevaFicha] = useState({
-        tipo: 'Consulta General',
-        campos: [{ titulo: 'Anamnesis / Motivo', valor: '' }]
+        tipo: 'Evaluación Inicial', // Valor por defecto útil
+        campos: [{ titulo: 'Observaciones', valor: '' }]
     });
 
     const user = JSON.parse(localStorage.getItem('usuario') || '{}');
@@ -292,7 +292,7 @@ function FichaClinicaViewer({ paciente, onClose }) {
             if (res.ok) {
                 alert("Ficha guardada correctamente");
                 setModoNueva(false);
-                setNuevaFicha({ tipo: 'Consulta General', campos: [{ titulo: 'Anamnesis', valor: '' }] });
+                setNuevaFicha({ tipo: 'Evaluación Inicial', campos: [{ titulo: 'Observaciones', valor: '' }] });
                 loadFichas();
             } else {
                 alert("Error al guardar");
@@ -310,36 +310,38 @@ function FichaClinicaViewer({ paciente, onClose }) {
             {/* VISTA DE CREACIÓN */}
             {modoNueva ? (
                 <div className="pro-card" style={{ borderLeft: '5px solid #000' }}>
-                    <h3>Nueva Evolución / Consulta</h3>
+                    <h3>Nueva Entrada en Historial</h3>
                     
                     <div className="input-row">
                         <div>
-                            <label className="form-label">Tipo de Atención</label>
+                            <label className="form-label">Tipo de Registro</label>
                             <select className="form-control" value={nuevaFicha.tipo} onChange={e => setNuevaFicha({ ...nuevaFicha, tipo: e.target.value })}>
-                                <option>Consulta General</option>
-                                <option>Sesión Psicología</option>
-                                <option>Evaluación Fonoaudiológica</option>
-                                <option>Sesión Kinesiología</option>
-                                <option>Control Médico</option>
+                                <option>Evaluación Inicial</option>
+                                <option>Sesión de Tratamiento</option>
+                                <option>Entrevista Familiar / Anamnesis</option>
+                                <option>Coordinación / Reunión Clínica</option>
+                                <option>Entrega de Informe</option>
+                                <option>Visita Escolar</option>
+                                <option>Otro</option>
                             </select>
                         </div>
                     </div>
 
                     <div style={{ marginTop: 20 }}>
-                        <label className="form-label" style={{marginBottom:10}}>Detalle de la Atención (Campos Dinámicos)</label>
+                        <label className="form-label" style={{marginBottom:10}}>Detalle del Registro (Agrega los campos necesarios)</label>
                         {nuevaFicha.campos.map((campo, idx) => (
                             <div key={idx} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'start' }}>
                                 <div style={{ flex: 1 }}>
                                     <input 
                                         className="form-control" 
-                                        placeholder="Título (Ej: Diagnóstico)" 
+                                        placeholder="Título (Ej: Evolución, Acuerdos, Tarea)" 
                                         value={campo.titulo} 
                                         onChange={e => handleCampoChange(idx, 'titulo', e.target.value)} 
                                         style={{ fontWeight: 'bold', marginBottom: 5, background: '#f9fafb' }}
                                     />
                                     <textarea 
                                         className="form-control" 
-                                        placeholder="Escribe aquí los detalles..." 
+                                        placeholder="Escribe aquí el contenido..." 
                                         value={campo.valor} 
                                         onChange={e => handleCampoChange(idx, 'valor', e.target.value)}
                                         rows={3}
@@ -350,7 +352,7 @@ function FichaClinicaViewer({ paciente, onClose }) {
                         ))}
                         
                         <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
-                            <button className="btn-edit" onClick={agregarCampo}>+ Agregar Campo</button>
+                            <button className="btn-edit" onClick={agregarCampo}>+ Agregar Sección</button>
                         </div>
                     </div>
 
@@ -360,7 +362,7 @@ function FichaClinicaViewer({ paciente, onClose }) {
                     </div>
                 </div>
             ) : (
-                <button className="btn-primary" style={{ marginBottom: 20, width: '100%' }} onClick={() => setModoNueva(true)}>+ Nueva Evolución</button>
+                <button className="btn-primary" style={{ marginBottom: 20, width: '100%' }} onClick={() => setModoNueva(true)}>+ Nueva Entrada</button>
             )}
 
             {/* HISTORIAL DE FICHAS */}
@@ -372,7 +374,7 @@ function FichaClinicaViewer({ paciente, onClose }) {
                         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: 10, marginBottom: 10 }}>
                             <div>
                                 <strong style={{ fontSize: '1.1rem', color: '#111' }}>{ficha.tipo}</strong>
-                                <div style={{ fontSize: '0.85rem', color: '#666' }}>{new Date(ficha.fecha).toLocaleString()}</div>
+                                <div style={{ fontSize: '0.85rem', color: '#666' }}>{new Date(ficha.fecha).toLocaleString('es-CL')}</div>
                             </div>
                             <div style={{ textAlign: 'right' }}>
                                 <span style={{ background: '#f3f4f6', color: '#111', padding: '4px 8px', borderRadius: 6, fontSize: '0.8rem', fontWeight: 'bold' }}>
