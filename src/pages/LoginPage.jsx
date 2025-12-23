@@ -19,41 +19,42 @@ function Login() {
         setLoading(true);
         setError('');
 
-        const loginUrl = `${API_BASE_URL}/auth/login`;
-        console.log("🚀 Intentando Login en:", loginUrl); // ¡MIRA ESTO EN CONSOLA (F12) SI FALLA!
+        console.log("🚀 Enviando login a:", `${API_BASE_URL}/auth/login`);
 
         try {
-            const response = await fetch(loginUrl, {
+            const response = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json' // Importante para que el server sepa qué queremos
+                },
                 body: JSON.stringify(form)
             });
 
-            console.log("📡 Estado respuesta:", response.status);
+            // 1. Leemos la respuesta como TEXTO primero para evitar el "Unexpected end of JSON"
+            const textResponse = await response.text();
+            console.log("📥 Respuesta cruda del servidor:", textResponse);
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `Error del servidor (${response.status})`);
+            // 2. Intentamos convertir a JSON
+            let data;
+            try {
+                data = JSON.parse(textResponse);
+            } catch (jsonError) {
+                // Si falla, es porque el server devolvió HTML o vacío
+                throw new Error(`El servidor devolvió una respuesta inválida: "${textResponse.substring(0, 50)}..."`);
             }
 
-            const data = await response.json();
-
             if (data.success) {
-                // Guardar Token y Usuario
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('usuario', JSON.stringify(data.usuario));
-                console.log("✅ Login exitoso, redirigiendo...");
-                navigate('/admin/dashboard');
+                navigate('/admin/dashboard'); 
             } else {
                 setError(data.message || 'Credenciales incorrectas');
             }
+
         } catch (err) {
-            console.error("🔥 Error Catch:", err);
-            if (err.message.includes('Failed to fetch')) {
-                setError('Error de conexión: El servidor no responde o la URL es incorrecta.');
-            } else {
-                setError(err.message);
-            }
+            console.error("🔥 Error en Login:", err);
+            setError(err.message);
         } finally {
             setLoading(false);
         }
@@ -65,44 +66,23 @@ function Login() {
                 <div style={{textAlign: 'center', marginBottom: 20}}>
                     <img src={LOGO_URL} alt="Logo CISD" className="login-logo" />
                 </div>
-                
                 <h1 className="login-title">Acceso Portal</h1>
                 <p className="login-subtitle">Gestión Clínica y Administrativa</p>
-
                 <form onSubmit={handleSubmit}>
                     <div className="input-group">
                         <label className="form-label">Usuario</label>
-                        <input 
-                            type="text" 
-                            name="usuario" 
-                            className="form-control" 
-                            value={form.usuario} 
-                            onChange={handleChange} 
-                            placeholder="Ingresa tu usuario" 
-                            autoFocus
-                        />
+                        <input type="text" name="usuario" className="form-control" value={form.usuario} onChange={handleChange} placeholder="Ingresa tu usuario" autoFocus />
                     </div>
-
                     <div className="input-group">
                         <label className="form-label">Contraseña</label>
-                        <input 
-                            type="password" 
-                            name="password" 
-                            className="form-control" 
-                            value={form.password} 
-                            onChange={handleChange} 
-                            placeholder="••••••"
-                        />
+                        <input type="password" name="password" className="form-control" value={form.password} onChange={handleChange} placeholder="••••••" />
                     </div>
-
                     {error && <div className="login-error">{error}</div>}
-
                     <button type="submit" className="btn-primary" style={{width: '100%', marginTop: 10}} disabled={loading}>
                         {loading ? 'Ingresando...' : 'Ingresar al Portal'}
                     </button>
                 </form>
             </div>
-            
             <p className="login-footer">© 2025 CISD - Centro Integral de Salud Dreyse</p>
         </div>
     );
