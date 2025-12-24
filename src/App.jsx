@@ -11,10 +11,10 @@ import {
     buscarPacientePorRut, updateProfesional, deleteProfesional, uploadFile
 } from './api';
 
-// --- CONFIGURACIÓN GLOBAL ---
+// Inicializar Mercado Pago
 initMercadoPago('APP_USR-a5a67c3b-4b4b-44a1-b973-ff2fd82fe90a', { locale: 'es-CL' });
 
-// 🔥 VARIABLE RESTAURADA (Causante del error anterior)
+// 🔥 VARIABLE GLOBAL (Evita pantalla blanca)
 const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
 
 // ==========================================
@@ -25,7 +25,9 @@ const fmtMoney = (v) => `$${(v || 0).toLocaleString('es-CL')}`;
 
 const parseDate = (iso) => {
     if (!iso) return new Date();
+    // Si viene solo fecha YYYY-MM-DD, forzamos mediodía
     if (iso.length === 10) return new Date(iso + 'T12:00:00Z');
+    // Asegurar formato ISO con Z
     const clean = iso.endsWith('Z') ? iso : iso + 'Z';
     return new Date(clean);
 };
@@ -250,7 +252,7 @@ function DashboardContent({ module, view, user, isAdmin }) {
 }
 
 // ==========================================
-// 📅 AGENDA: CALENDARIO RESUMEN
+// 📅 AGENDA: CALENDARIO RESUMEN (CON EDICIÓN FIXED)
 // ==========================================
 
 function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
@@ -339,9 +341,16 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
         }
     };
 
-    // Filtrar profesionales que pueden hacer el mismo tratamiento
+    // 🔥 LOGICA CORREGIDA: Filtro flexible por ESPECIALIDAD
     const relevantPros = selectedEvent ? pros.filter(p => {
-        return p.tratamientos && p.tratamientos.includes(selectedEvent.motivo);
+        const tratCurrent = tratamientos.find(t => t.nombre === selectedEvent.motivo);
+        if (tratCurrent) {
+            // Busca coincidencia en la Especialidad general (ej: "Fonoaudiología Adulto")
+            return p.especialidad && p.especialidad.includes(tratCurrent.especialidad);
+        } else {
+            // Fallback si no encuentra el tratamiento
+            return p.tratamientos && p.tratamientos.includes(selectedEvent.motivo);
+        }
     }) : [];
 
     return ( 
