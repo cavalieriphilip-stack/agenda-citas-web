@@ -452,7 +452,8 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                                 {(selectedEvent.motivo.toLowerCase().includes('online') || selectedEvent.motivo.toLowerCase().includes('teleconsulta')) && (
                                     <div style={{gridColumn:'1 / -1', marginTop: 10, textAlign:'center'}}>
                                         <a 
-                                            href={`https://meet.jit.si/CISD-Reserva-${selectedEvent.id}`} 
+                                            // 👇 LINK MEJORADO: Incluye el nombre del profesional automáticamente
+                                            href={`https://meet.jit.si/CISD-Reserva-${selectedEvent.id}#userInfo.displayName=${encodeURIComponent(user.nombre)}`} 
                                             target="_blank" 
                                             rel="noreferrer"
                                             className="btn-primary"
@@ -460,6 +461,10 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                                         >
                                             🎥 Conectarse a Videollamada
                                         </a>
+                                        {/* Mensaje de ayuda para el médico */}
+                                        <p style={{fontSize:'0.8rem', color:'#666', marginTop:5}}>
+                                            *Si pide autenticación, selecciona "Soy el anfitrión" e ingresa con Google.
+                                        </p>
                                     </div>
                                 )}
 
