@@ -20,23 +20,19 @@ initMercadoPago('APP_USR-a5a67c3b-4b4b-44a1-b973-ff2fd82fe90a', { locale: 'es-CL
 
 const fmtMoney = (v) => `$${(v || 0).toLocaleString('es-CL')}`;
 
-// Helper robusto para fechas (evita errores de zona horaria)
 const parseDate = (iso) => {
     if (!iso) return new Date();
-    // Si viene solo fecha (YYYY-MM-DD), forzar mediodía para evitar saltos de día
+    // Si viene solo fecha YYYY-MM-DD, forzamos mediodía
     if (iso.length === 10) return new Date(iso + 'T12:00:00Z');
     // Asegurar formato ISO con Z
     const clean = iso.endsWith('Z') ? iso : iso + 'Z';
     return new Date(clean);
 };
 
-// Formateadores visuales
 const fmtDate = (iso) => iso ? parseDate(iso).toLocaleDateString('es-CL', { day:'2-digit', month:'2-digit', year:'numeric', timeZone: 'UTC' }) : '-';
 const fmtTime = (iso) => iso ? parseDate(iso).toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit', timeZone: 'UTC' }) : '-';
 const toDateKey = (iso) => iso ? iso.split('T')[0] : '';
-const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
 
-// Formateador de RUT (12345678-9)
 const formatRut = (rut) => {
     if (!rut) return '';
     let value = rut.replace(/[^0-9kK]/g, '').toUpperCase();
@@ -44,7 +40,6 @@ const formatRut = (rut) => {
     return value.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, ".") + '-' + value.slice(-1);
 };
 
-// Validador de RUT
 const validateRut = (rut) => {
     if (!rut || rut.length < 2) return false;
     const value = rut.replace(/[^0-9kK]/g, '').toUpperCase();
@@ -254,7 +249,7 @@ function DashboardContent({ module, view, user, isAdmin }) {
 }
 
 // ==========================================
-// 📅 AGENDA: CALENDARIO RESUMEN
+// 📅 AGENDA: CALENDARIO RESUMEN (CON EDICIÓN)
 // ==========================================
 
 function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
@@ -263,6 +258,12 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
     const [view, setView] = useState('week'); 
     const [currentDate, setCurrentDate] = useState(new Date()); 
     const [selectedEvent, setSelectedEvent] = useState(null);
+
+    // Estados para Modificar Cita
+    const [isEditing, setIsEditing] = useState(false);
+    const [editProId, setEditProId] = useState('');
+    const [editSlot, setEditSlot] = useState('');
+    const [availableSlots, setAvailableSlots] = useState([]);
 
     useEffect(()=>{ getProfesionales().then(setPros) },[]);
 
@@ -290,11 +291,57 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
     const activeFilter = isAdmin ? filterPro : user.id; 
     const filtered = reservas.filter(r => activeFilter ? r.profesionalId === parseInt(activeFilter) : true);
     
+    // Al abrir el modal
+    const handleEventClick = (r) => {
+        setSelectedEvent(r);
+        setIsEditing(false); // Siempre inicia en modo "Ver"
+        setEditProId('');
+        setEditSlot('');
+        setAvailableSlots([]);
+    };
+
     const deleteReserva = async(id) => { 
         if(confirm('¿Cancelar y eliminar esta cita?')){
             await cancelarReserva(id); reload(); setSelectedEvent(null);
         } 
     };
+
+    // Funciones de Edición
+    const startEditing = async () => {
+        setIsEditing(true);
+        setEditProId(selectedEvent.profesionalId.toString());
+        await loadSlotsForPro(selectedEvent.profesionalId);
+    };
+
+    const loadSlotsForPro = async (pid) => {
+        const slots = await getHorariosByProfesional(pid);
+        // Mostrar solo slots futuros
+        const futureSlots = Array.isArray(slots) ? slots.filter(s => new Date(s.fecha) > new Date()) : [];
+        setAvailableSlots(futureSlots);
+    };
+
+    const handleProChange = async (e) => {
+        const newPid = e.target.value;
+        setEditProId(newPid);
+        await loadSlotsForPro(newPid);
+    };
+
+    const saveChanges = async () => {
+        if (!editSlot) return alert("Debes seleccionar un horario nuevo");
+        try {
+            await reagendarReserva(selectedEvent.id, editSlot, editProId);
+            alert("Cita modificada exitosamente");
+            setSelectedEvent(null);
+            reload();
+        } catch (error) {
+            alert("Error al modificar cita");
+        }
+    };
+
+    // Filtrar profesionales que pueden hacer el mismo tratamiento
+    const relevantPros = selectedEvent ? pros.filter(p => {
+        return p.tratamientos && p.tratamientos.includes(selectedEvent.motivo);
+    }) : [];
 
     return ( 
         <div style={{height:'100%', display:'flex', flexDirection:'column'}}> 
@@ -336,7 +383,7 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                                 const st = parseDate(r.fecha), h=st.getUTCHours(), m=st.getUTCMinutes(); 
                                 const top = ((h-8)*60)+m; 
                                 return ( 
-                                    <div key={r.id} className="cal-event evt-blue" style={{top, height:45}} onClick={()=>setSelectedEvent(r)}> 
+                                    <div key={r.id} className="cal-event evt-blue" style={{top, height:45}} onClick={()=>handleEventClick(r)}> 
                                         <strong>{st.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', timeZone: 'UTC'})}</strong> 
                                         <span>{r.pacienteNombre}</span> 
                                     </div> 
@@ -347,33 +394,67 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                 </div> 
             </div> 
             
-            {/* MODAL DETALLE DE CITA */}
+            {/* MODAL DETALLE DE CITA / EDICIÓN */}
             {selectedEvent && ( 
-                <Modal title="Detalle de la Sesión" onClose={()=>setSelectedEvent(null)}> 
-                    <div className="detalle-cita-grid"> 
-                        <div style={{gridColumn:'1 / -1', background:'#f8f9fa', padding:15, borderRadius:8, marginBottom:10}}> 
-                            <h3 style={{margin:'0 0 5px 0', color:'#111827'}}>{selectedEvent.pacienteNombre}</h3> 
-                            <div style={{color:'#6b7280', fontSize:'0.9rem'}}>RUT: {formatRut(selectedEvent.pacienteRut)}</div> 
-                        </div> 
-                        <div className="detalle-row"><strong>📅 Fecha:</strong> {fmtDate(selectedEvent.fecha)}</div> 
-                        <div className="detalle-row"><strong>⏰ Hora:</strong> {fmtTime(selectedEvent.fecha)}</div> 
-                        <div className="detalle-row"><strong>👨‍⚕️ Profesional:</strong> {selectedEvent.profesionalNombre}</div> 
-                        <div className="detalle-row"><strong>🩺 Tratamiento:</strong> {selectedEvent.motivo}</div> 
-                        <div style={{gridColumn:'1 / -1', marginTop:15, borderTop:'1px solid #eee', paddingTop:15}}> 
-                            <div style={{display:'flex', justifyContent:'space-between', marginBottom:5}}> 
-                                <strong>📧 Email:</strong> <span>{selectedEvent.pacienteEmail || '-'}</span> 
+                <Modal title={isEditing ? "Modificar Cita" : "Detalle de la Sesión"} onClose={()=>setSelectedEvent(null)}> 
+                    
+                    {isEditing ? (
+                        // VISTA DE EDICIÓN
+                        <div style={{padding: 10}}>
+                            <div className="input-group">
+                                <label className="form-label">Profesional (Misma especialidad)</label>
+                                <select className="form-control" value={editProId} onChange={handleProChange}>
+                                    {relevantPros.map(p => (
+                                        <option key={p.id} value={p.id}>{p.nombreCompleto}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="input-group" style={{marginTop: 15}}>
+                                <label className="form-label">Nuevo Horario Disponible</label>
+                                <select className="form-control" value={editSlot} onChange={e => setEditSlot(e.target.value)}>
+                                    <option value="">Selecciona hora...</option>
+                                    {availableSlots.map(s => (
+                                        <option key={s.id} value={s.fecha}>
+                                            {fmtDate(s.fecha)} - {fmtTime(s.fecha)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div style={{marginTop: 20, display:'flex', gap:10, justifyContent:'flex-end'}}>
+                                <button className="btn-edit" onClick={() => setIsEditing(false)}>Cancelar</button>
+                                <button className="btn-primary" onClick={saveChanges}>Guardar Cambios</button>
+                            </div>
+                        </div>
+                    ) : (
+                        // VISTA DE DETALLE
+                        <>
+                            <div className="detalle-cita-grid"> 
+                                <div style={{gridColumn:'1 / -1', background:'#f8f9fa', padding:15, borderRadius:8, marginBottom:10}}> 
+                                    <h3 style={{margin:'0 0 5px 0', color:'#111827'}}>{selectedEvent.pacienteNombre}</h3> 
+                                    <div style={{color:'#6b7280', fontSize:'0.9rem'}}>RUT: {formatRut(selectedEvent.pacienteRut)}</div> 
+                                </div> 
+                                <div className="detalle-row"><strong>📅 Fecha:</strong> {fmtDate(selectedEvent.fecha)}</div> 
+                                <div className="detalle-row"><strong>⏰ Hora:</strong> {fmtTime(selectedEvent.fecha)}</div> 
+                                <div className="detalle-row"><strong>👨‍⚕️ Profesional:</strong> {selectedEvent.profesionalNombre}</div> 
+                                <div className="detalle-row"><strong>🩺 Tratamiento:</strong> {selectedEvent.motivo}</div> 
+                                <div style={{gridColumn:'1 / -1', marginTop:15, borderTop:'1px solid #eee', paddingTop:15}}> 
+                                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:5}}> 
+                                        <strong>📧 Email:</strong> <span>{selectedEvent.pacienteEmail || '-'}</span> 
+                                    </div> 
+                                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:15}}> 
+                                        <strong>📞 Teléfono:</strong> <span>{selectedEvent.pacienteTelefono || '-'}</span> 
+                                    </div> 
+                                    <div style={{background:'#ecfdf5', color:'#065f46', padding:'10px', borderRadius:6, textAlign:'center', fontWeight:'bold', border:'1px solid #a7f3d0'}}> 
+                                        ESTADO: CONFIRMADA Y PAGADA ({fmtMoney(selectedEvent.valor || 0)}) 
+                                    </div> 
+                                </div> 
                             </div> 
-                            <div style={{display:'flex', justifyContent:'space-between', marginBottom:15}}> 
-                                <strong>📞 Teléfono:</strong> <span>{selectedEvent.pacienteTelefono || '-'}</span> 
+                            <div className="detail-actions" style={{marginTop:20, display:'flex', gap:10}}> 
+                                <button className="btn-edit" onClick={startEditing} style={{flex:1}}>Modificar Cita</button>
+                                <button className="btn-danger" onClick={()=>deleteReserva(selectedEvent.id)} style={{flex:1}}>Cancelar Cita</button> 
                             </div> 
-                            <div style={{background:'#ecfdf5', color:'#065f46', padding:'10px', borderRadius:6, textAlign:'center', fontWeight:'bold', border:'1px solid #a7f3d0'}}> 
-                                ESTADO: CONFIRMADA Y PAGADA ({fmtMoney(selectedEvent.valor || 0)}) 
-                            </div> 
-                        </div> 
-                    </div> 
-                    <div className="detail-actions" style={{marginTop:20}}> 
-                        <button className="btn-danger" onClick={()=>deleteReserva(selectedEvent.id)} style={{width:'100%'}}>Cancelar Cita</button> 
-                    </div> 
+                        </>
+                    )}
                 </Modal> 
             )} 
         </div> 
