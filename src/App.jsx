@@ -14,7 +14,7 @@ import {
 // Inicializar Mercado Pago
 initMercadoPago('APP_USR-a5a67c3b-4b4b-44a1-b973-ff2fd82fe90a', { locale: 'es-CL' });
 
-// 🔥 VARIABLE GLOBAL
+// 🔥 VARIABLE GLOBAL (Evita pantalla blanca)
 const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
 
 // ==========================================
@@ -25,7 +25,9 @@ const fmtMoney = (v) => `$${(v || 0).toLocaleString('es-CL')}`;
 
 const parseDate = (iso) => {
     if (!iso) return new Date();
+    // Si viene solo fecha YYYY-MM-DD, forzamos mediodía
     if (iso.length === 10) return new Date(iso + 'T12:00:00Z');
+    // Asegurar formato ISO con Z
     const clean = iso.endsWith('Z') ? iso : iso + 'Z';
     return new Date(clean);
 };
@@ -514,106 +516,165 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
 }
 
 // ==========================================
-// 📅 AGENDA: CONFIGURACIÓN DE HORARIOS
+// 📅 AGENDA: CONFIGURACIÓN DE HORARIOS (MEJORADA TIPO RESERVO)
 // ==========================================
 
-function AgendaHorarios({ user, isAdmin }){
-    const [pros,setPros]=useState([]); 
-    const [configs, setConfigs] = useState([]); 
-    const [fechaSel, setFechaSel] = useState(''); 
-    const [form,setForm]=useState({profesionalId: isAdmin ? '' : user.id, diaSemana:'', horaInicio:'09:00', horaFin:'18:00', duracionSlot: 30, intervalo: 0}); 
-    const [showModal, setShowModal] = useState(false); 
-    const [events, setEvents] = useState([]); 
-    const [selectedProName, setSelectedProName] = useState('');
+function AgendaHorarios({ user, isAdmin }) {
+    const [pros, setPros] = useState([]);
+    const [rango, setRango] = useState({ inicio: new Date().toISOString().split('T')[0], fin: '' });
+    const [configBase, setConfigBase] = useState({ duracionSlot: 45, intervalo: 0 });
+    const [profesionalSel, setProfesionalSel] = useState(isAdmin ? '' : user.id);
+    const [loading, setLoading] = useState(false);
 
-    useEffect(()=>{ getProfesionales().then(setPros); loadConfigs(); },[]);
+    // Estado del Patrón Semanal (Lunes a Domingo)
+    // Por defecto: 9:00 a 19:00 con colación de 13:00 a 14:00
+    const [patron, setPatron] = useState({
+        1: { id: 1, label: 'Lunes', activo: true, horaInicio: '09:00', horaFin: '19:00', breakInicio: '13:00', breakFin: '14:00' },
+        2: { id: 2, label: 'Martes', activo: true, horaInicio: '09:00', horaFin: '19:00', breakInicio: '13:00', breakFin: '14:00' },
+        3: { id: 3, label: 'Miércoles', activo: true, horaInicio: '09:00', horaFin: '19:00', breakInicio: '13:00', breakFin: '14:00' },
+        4: { id: 4, label: 'Jueves', activo: true, horaInicio: '09:00', horaFin: '19:00', breakInicio: '13:00', breakFin: '14:00' },
+        5: { id: 5, label: 'Viernes', activo: true, horaInicio: '09:00', horaFin: '19:00', breakInicio: '13:00', breakFin: '14:00' },
+        6: { id: 6, label: 'Sábado', activo: false, horaInicio: '10:00', horaFin: '14:00', breakInicio: '12:00', breakFin: '12:00' }, // Sábado medio día
+        7: { id: 7, label: 'Domingo', activo: false, horaInicio: '00:00', horaFin: '00:00', breakInicio: '00:00', breakFin: '00:00' },
+    });
 
-    const loadConfigs = async () => { 
-        try { 
-            const data = await getConfiguraciones(); 
-            if (isAdmin) { setConfigs(Array.isArray(data) ? data : []); } 
-            else { setConfigs(Array.isArray(data) ? data.filter(c => c.profesionalId === user.id) : []); } 
-        } catch (e) { setConfigs([]); } 
+    useEffect(() => { getProfesionales().then(setPros); }, []);
+
+    const handlePatronChange = (diaId, field, value) => {
+        setPatron(prev => ({
+            ...prev,
+            [diaId]: { ...prev[diaId], [field]: value }
+        }));
     };
 
-    const save = async (e) => { 
-        e.preventDefault(); 
-        try { 
-            const payload = { ...form, fecha: fechaSel }; 
-            await fetch(`${API_BASE_URL}/configuracion`, { method: 'POST', headers: authHeader(), body: JSON.stringify(payload) }); 
-            alert("✅ Horario guardado"); await loadConfigs(); 
-        } catch(e) { alert("Error"); } 
+    const toggleDia = (diaId) => {
+        setPatron(prev => ({
+            ...prev,
+            [diaId]: { ...prev[diaId], activo: !prev[diaId].activo }
+        }));
     };
 
-    const borrarConfig = async (id) => { if(confirm("¿Eliminar?")) { await deleteConfiguracion(id); loadConfigs(); } }
-    
-    // 🔥 POPUP SINCRONIZADO
-    const verCalendario = async (p) => { 
-        setSelectedProName(p.nombreCompleto); 
-        try { 
-            let misReservas = []; 
-            let misBloques = []; 
-            
-            try { 
-                const rData = await getReservasDetalle(); 
-                if(Array.isArray(rData)) misReservas = rData.filter(r => r.profesionalId === p.id).map(r => ({ id: r.id, title: r.pacienteNombre || 'Ocupado', start: parseDate(r.fecha), type: 'occupied' })); 
-            } catch(e){} 
-            
-            try { 
-                const sData = await getHorariosByProfesional(p.id); 
-                if(Array.isArray(sData)) misBloques = sData.map((s, i) => ({ id: `slot-${i}`, title: 'Disponible', start: parseDate(s.fecha), type: 'available' })); 
-            } catch(e){} 
-            
-            setEvents([...misBloques, ...misReservas]); 
-            setShowModal(true); 
-        } catch (error) { alert("Error al cargar calendario."); } 
+    const generarHorarioMasivo = async () => {
+        if (!profesionalSel) return alert("Selecciona un profesional");
+        if (!rango.inicio || !rango.fin) return alert("Selecciona fecha inicio y fin");
+        if (new Date(rango.fin) < new Date(rango.inicio)) return alert("La fecha fin debe ser mayor a la de inicio");
+
+        if (!confirm(`⚠️ ATENCIÓN:\n\nEsto generará horarios para todos los días seleccionados entre ${rango.inicio} y ${rango.fin}.\n\nSi ya existían horarios en esos días, serán REEMPLAZADOS por esta nueva configuración.\n\n¿Deseas continuar?`)) return;
+
+        setLoading(true);
+        try {
+            const payload = {
+                profesionalId: profesionalSel,
+                fechaInicio: rango.inicio,
+                fechaFin: rango.fin,
+                duracionSlot: configBase.duracionSlot,
+                intervalo: configBase.intervalo,
+                patronSemanal: patron
+            };
+
+            const response = await fetch(`${API_BASE_URL}/configuracion/masiva`, {
+                method: 'POST',
+                headers: authHeader(),
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                alert(`✅ Éxito: ${data.message}`);
+            } else {
+                alert("❌ Error al generar horarios");
+            }
+        } catch (error) {
+            alert("Error de conexión");
+        } finally {
+            setLoading(false);
+        }
     };
 
-    return( 
-        <div> 
-            <div className="page-header"><div className="page-title"><h1>Configuración de Horarios</h1></div></div> 
-            
-            <div className="pro-card"> 
-                <form onSubmit={save}> 
-                    <div className="input-row"> 
-                        <div> 
-                            <label className="form-label">Profesional</label> 
-                            {isAdmin ? ( <select className="form-control" onChange={e=>setForm({...form,profesionalId:e.target.value})}><option>Seleccionar...</option>{pros.map(p=><option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select> ) : ( <input className="form-control" value={user.nombre} disabled /> )} 
-                        </div> 
-                        <div><label className="form-label">Fecha del Bloque</label><input type="date" className="form-control" onChange={e=>setFechaSel(e.target.value)} /></div> 
-                    </div> 
+    return (
+        <div>
+            <div className="page-header"><div className="page-title"><h1>Gestor de Disponibilidad Masiva</h1></div></div>
+
+            <div className="pro-card" style={{ maxWidth: 1000, margin: '0 auto' }}>
+                {/* 1. SELECCIÓN GLOBAL */}
+                <div style={{ background: '#f3f4f6', padding: 15, borderRadius: 8, marginBottom: 20 }}>
+                    <h3 style={{ marginTop: 0, fontSize: '1rem', color: '#374151' }}>1. Configuración General</h3>
                     <div className="input-row">
-                        <div><label className="form-label">Inicio</label><input type="time" className="form-control" value={form.horaInicio} onChange={e=>setForm({...form,horaInicio:e.target.value})}/></div>
-                        <div><label className="form-label">Fin</label><input type="time" className="form-control" value={form.horaFin} onChange={e=>setForm({...form,horaFin:e.target.value})}/></div>
-                    </div> 
+                        <div>
+                            <label className="form-label">Profesional</label>
+                            {isAdmin ? (
+                                <select className="form-control" value={profesionalSel} onChange={e => setProfesionalSel(e.target.value)}>
+                                    <option value="">Seleccionar...</option>
+                                    {pros.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}
+                                </select>
+                            ) : (
+                                <input className="form-control" value={user.nombre} disabled />
+                            )}
+                        </div>
+                        <div>
+                            <label className="form-label">Duración Atención (Min)</label>
+                            <select className="form-control" value={configBase.duracionSlot} onChange={e => setConfigBase({ ...configBase, duracionSlot: e.target.value })}>
+                                <option value="15">15 Min</option>
+                                <option value="30">30 Min</option>
+                                <option value="45">45 Min (Estándar)</option>
+                                <option value="60">60 Min</option>
+                            </select>
+                        </div>
+                    </div>
                     <div className="input-row">
-                        <div><label className="form-label">Duración (Min)</label><select className="form-control" value={form.duracionSlot} onChange={e=>setForm({...form, duracionSlot: e.target.value})}><option value="15">15 Min</option><option value="30">30 Min</option><option value="45">45 Min</option><option value="60">60 Min</option></select></div>
-                        <div><label className="form-label">Descanso (Min)</label><input type="number" className="form-control" value={form.intervalo} onChange={e=>setForm({...form, intervalo: e.target.value})} /></div>
-                    </div> 
-                    <button className="btn-primary">Guardar Disponibilidad</button> 
-                </form> 
-            </div> 
-            
-            <div className="pro-card"> 
-                <h3>Bloques Configurados</h3> 
-                <div className="data-table-container"> 
-                    <table className="data-table"><thead><tr><th>Profesional</th><th>Fecha</th><th>Horario</th><th>Acción</th></tr></thead><tbody>{configs.map(c=>(<tr key={c.id}><td>{c.profesional?.nombreCompleto}</td><td>{c.fecha}</td><td>{c.horaInicio} - {c.horaFin}</td><td><button className="btn-danger" onClick={()=>borrarConfig(c.id)}>Eliminar</button></td></tr>))}</tbody></table> 
-                </div> 
-            </div> 
-            
-            <div className="pro-card"> 
-                <h3>Ver Calendario Visual (Popup)</h3> 
-                <div className="data-table-container"> 
-                    <table className="data-table"><thead><tr><th>Profesional</th><th>Acción</th></tr></thead><tbody>{pros.filter(p => isAdmin ? true : p.id === user.id).map(p=>(<tr key={p.id}><td>{p.nombreCompleto}</td><td><button className="btn-edit" onClick={()=>verCalendario(p)}>Ver Horarios</button></td></tr>))}</tbody></table> 
-                </div> 
-            </div> 
-            
-            {showModal && ( 
-                <Modal title={`Horarios: ${selectedProName}`} onClose={()=>setShowModal(false)}> 
-                    {events.length === 0 ? <p>No hay datos.</p> : events.sort((a,b)=>a.start-b.start).map((e, i) => ( <div key={i} style={{marginBottom:10, padding:10, borderRadius:6, background: e.type==='available'?'#f0fdf4':'#eff6ff', borderLeft: e.type==='available'?'3px solid #22c55e':'3px solid #3b82f6'}}> <strong>{fmtDate(e.start.toISOString())}</strong> - {fmtTime(e.start.toISOString())} <div style={{fontSize:'0.85rem'}}>{e.title}</div> </div> )) } 
-                </Modal> 
-            )} 
-        </div> 
+                        <div><label className="form-label">Desde (Fecha)</label><input type="date" className="form-control" value={rango.inicio} onChange={e => setRango({ ...rango, inicio: e.target.value })} /></div>
+                        <div><label className="form-label">Hasta (Fecha)</label><input type="date" className="form-control" value={rango.fin} onChange={e => setRango({ ...rango, fin: e.target.value })} /></div>
+                    </div>
+                </div>
+
+                {/* 2. GRILLA SEMANAL */}
+                <h3 style={{ marginTop: 0, fontSize: '1rem', color: '#374151', marginBottom: 10 }}>2. Define tu Semana Tipo</h3>
+                <div style={{ overflowX: 'auto' }}>
+                    <table className="data-table" style={{ fontSize: '0.9rem' }}>
+                        <thead>
+                            <tr style={{ background: '#111827', color: 'white' }}>
+                                <th style={{ width: 50 }}>Activo</th>
+                                <th style={{ width: 100 }}>Día</th>
+                                <th>Entrada</th>
+                                <th>Inicio Colación 🍎</th>
+                                <th>Fin Colación</th>
+                                <th>Salida</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {Object.values(patron).map(dia => (
+                                <tr key={dia.id} style={{ background: dia.activo ? '#fff' : '#f9fafb', opacity: dia.activo ? 1 : 0.5 }}>
+                                    <td style={{ textAlign: 'center' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={dia.activo}
+                                            onChange={() => toggleDia(dia.id)}
+                                            style={{ width: 18, height: 18, cursor: 'pointer' }}
+                                        />
+                                    </td>
+                                    <td><strong>{dia.label}</strong></td>
+                                    <td><input type="time" className="form-control" disabled={!dia.activo} value={dia.horaInicio} onChange={e => handlePatronChange(dia.id, 'horaInicio', e.target.value)} /></td>
+                                    <td><input type="time" className="form-control" disabled={!dia.activo} value={dia.breakInicio} onChange={e => handlePatronChange(dia.id, 'breakInicio', e.target.value)} style={{ borderColor: '#fca5a5' }} /></td>
+                                    <td><input type="time" className="form-control" disabled={!dia.activo} value={dia.breakFin} onChange={e => handlePatronChange(dia.id, 'breakFin', e.target.value)} style={{ borderColor: '#fca5a5' }} /></td>
+                                    <td><input type="time" className="form-control" disabled={!dia.activo} value={dia.horaFin} onChange={e => handlePatronChange(dia.id, 'horaFin', e.target.value)} /></td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style={{ marginTop: 25, textAlign: 'right' }}>
+                    <button
+                        className="btn-primary"
+                        style={{ padding: '15px 30px', fontSize: '1rem', opacity: loading ? 0.7 : 1 }}
+                        disabled={loading}
+                        onClick={generarHorarioMasivo}
+                    >
+                        {loading ? 'Generando Agenda...' : '🚀 Generar Agenda Masiva'}
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 }
 
