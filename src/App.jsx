@@ -14,7 +14,7 @@ import {
 // Inicializar Mercado Pago
 initMercadoPago('APP_USR-a5a67c3b-4b4b-44a1-b973-ff2fd82fe90a', { locale: 'es-CL' });
 
-// 🔥 VARIABLE GLOBAL (Evita pantalla blanca)
+// 🔥 VARIABLE GLOBAL
 const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
 
 // ==========================================
@@ -25,9 +25,7 @@ const fmtMoney = (v) => `$${(v || 0).toLocaleString('es-CL')}`;
 
 const parseDate = (iso) => {
     if (!iso) return new Date();
-    // Si viene solo fecha YYYY-MM-DD, forzamos mediodía
     if (iso.length === 10) return new Date(iso + 'T12:00:00Z');
-    // Asegurar formato ISO con Z
     const clean = iso.endsWith('Z') ? iso : iso + 'Z';
     return new Date(clean);
 };
@@ -252,7 +250,7 @@ function DashboardContent({ module, view, user, isAdmin }) {
 }
 
 // ==========================================
-// 📅 AGENDA: CALENDARIO RESUMEN (CON EDICIÓN Y VIDEO)
+// 📅 AGENDA: CALENDARIO RESUMEN (DISEÑO SOBRIO)
 // ==========================================
 
 function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
@@ -345,10 +343,8 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
     const relevantPros = selectedEvent ? pros.filter(p => {
         const tratCurrent = tratamientos.find(t => t.nombre === selectedEvent.motivo);
         if (tratCurrent) {
-            // Busca coincidencia en la Especialidad general (ej: "Fonoaudiología Adulto")
             return p.especialidad && p.especialidad.includes(tratCurrent.especialidad);
         } else {
-            // Fallback si no encuentra el tratamiento
             return p.tratamientos && p.tratamientos.includes(selectedEvent.motivo);
         }
     }) : [];
@@ -436,53 +432,78 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                             </div>
                         </div>
                     ) : (
-                        // VISTA DE DETALLE
+                        // VISTA DE DETALLE MEJORADA (PROFESIONAL Y SOBRIA)
                         <>
-                            <div className="detalle-cita-grid"> 
-                                <div style={{gridColumn:'1 / -1', background:'#f8f9fa', padding:15, borderRadius:8, marginBottom:10}}> 
-                                    <h3 style={{margin:'0 0 5px 0', color:'#111827'}}>{selectedEvent.pacienteNombre}</h3> 
-                                    <div style={{color:'#6b7280', fontSize:'0.9rem'}}>RUT: {formatRut(selectedEvent.pacienteRut)}</div> 
-                                </div> 
-                                <div className="detalle-row"><strong>📅 Fecha:</strong> {fmtDate(selectedEvent.fecha)}</div> 
-                                <div className="detalle-row"><strong>⏰ Hora:</strong> {fmtTime(selectedEvent.fecha)}</div> 
-                                <div className="detalle-row"><strong>👨‍⚕️ Profesional:</strong> {selectedEvent.profesionalNombre}</div> 
-                                <div className="detalle-row"><strong>🩺 Tratamiento:</strong> {selectedEvent.motivo}</div> 
-                                
-                                {/* BOTÓN DE VIDEOLLAMADA */}
-                                {(selectedEvent.motivo.toLowerCase().includes('online') || selectedEvent.motivo.toLowerCase().includes('teleconsulta')) && (
-                                    <div style={{gridColumn:'1 / -1', marginTop: 10, textAlign:'center'}}>
-                                        <a 
-                                            // 👇 LINK MEJORADO: Incluye el nombre del profesional automáticamente
-                                            href={`https://meet.jit.si/CISD-Reserva-${selectedEvent.id}#userInfo.displayName=${encodeURIComponent(user.nombre)}`} 
-                                            target="_blank" 
-                                            rel="noreferrer"
-                                            className="btn-primary"
-                                            style={{display:'block', textDecoration:'none', padding:'12px', background:'#2563eb', fontSize:'1rem'}}
-                                        >
-                                            🎥 Conectarse a Videollamada
-                                        </a>
-                                        {/* Mensaje de ayuda para el médico */}
-                                        <p style={{fontSize:'0.8rem', color:'#666', marginTop:5}}>
-                                            *Si pide autenticación, selecciona "Soy el anfitrión" e ingresa con Google.
-                                        </p>
-                                    </div>
-                                )}
+                            <div style={{marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee', display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
+                                <div>
+                                    <h2 style={{margin:0, fontSize:'1.4rem', color:'#1f2937'}}>{selectedEvent.pacienteNombre}</h2>
+                                    <div style={{color:'#6b7280', fontSize:'0.9rem', marginTop:4}}>RUT: {formatRut(selectedEvent.pacienteRut)}</div>
+                                </div>
+                                <div style={{background:'#ecfdf5', color:'#065f46', padding:'4px 12px', borderRadius:20, fontSize:'0.75rem', fontWeight:'600', border:'1px solid #a7f3d0', textTransform:'uppercase'}}>
+                                    Confirmada
+                                </div>
+                            </div>
 
-                                <div style={{gridColumn:'1 / -1', marginTop:15, borderTop:'1px solid #eee', paddingTop:15}}> 
-                                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:5}}> 
-                                        <strong>📧 Email:</strong> <span>{selectedEvent.pacienteEmail || '-'}</span> 
-                                    </div> 
-                                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:15}}> 
-                                        <strong>📞 Teléfono:</strong> <span>{selectedEvent.pacienteTelefono || '-'}</span> 
-                                    </div> 
-                                    <div style={{background:'#ecfdf5', color:'#065f46', padding:'10px', borderRadius:6, textAlign:'center', fontWeight:'bold', border:'1px solid #a7f3d0'}}> 
-                                        ESTADO: CONFIRMADA Y PAGADA ({fmtMoney(selectedEvent.valor || 0)}) 
-                                    </div> 
-                                </div> 
-                            </div> 
-                            <div className="detail-actions" style={{marginTop:20, display:'flex', gap:10}}> 
-                                <button className="btn-edit" onClick={startEditing} style={{flex:1}}>Modificar Cita</button>
-                                <button className="btn-danger" onClick={()=>deleteReserva(selectedEvent.id)} style={{flex:1}}>Cancelar Cita</button> 
+                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20}}>
+                                <div>
+                                    <label style={{fontSize:'0.75rem', textTransform:'uppercase', color:'#9ca3af', fontWeight:'700', letterSpacing:'0.05em'}}>Fecha</label>
+                                    <div style={{color:'#111827', fontWeight:'500'}}>{fmtDate(selectedEvent.fecha)}</div>
+                                </div>
+                                <div>
+                                    <label style={{fontSize:'0.75rem', textTransform:'uppercase', color:'#9ca3af', fontWeight:'700', letterSpacing:'0.05em'}}>Hora</label>
+                                    <div style={{color:'#111827', fontWeight:'500'}}>{fmtTime(selectedEvent.fecha)}</div>
+                                </div>
+                                <div>
+                                    <label style={{fontSize:'0.75rem', textTransform:'uppercase', color:'#9ca3af', fontWeight:'700', letterSpacing:'0.05em'}}>Profesional</label>
+                                    <div style={{color:'#111827', fontWeight:'500'}}>{selectedEvent.profesionalNombre}</div>
+                                </div>
+                                <div>
+                                    <label style={{fontSize:'0.75rem', textTransform:'uppercase', color:'#9ca3af', fontWeight:'700', letterSpacing:'0.05em'}}>Tratamiento</label>
+                                    <div style={{color:'#111827', fontWeight:'500'}}>{selectedEvent.motivo}</div>
+                                </div>
+                            </div>
+
+                            <div style={{background:'#f9fafb', padding:15, borderRadius:8, border:'1px solid #f3f4f6', marginBottom:20}}>
+                                <div style={{display:'flex', justifyContent:'space-between', marginBottom:8}}>
+                                    <span style={{color:'#6b7280', fontSize:'0.9rem'}}>Email:</span>
+                                    <span style={{color:'#374151', fontWeight:'500'}}>{selectedEvent.pacienteEmail || '-'}</span>
+                                </div>
+                                <div style={{display:'flex', justifyContent:'space-between', marginBottom:8}}>
+                                    <span style={{color:'#6b7280', fontSize:'0.9rem'}}>Teléfono:</span>
+                                    <span style={{color:'#374151', fontWeight:'500'}}>{selectedEvent.pacienteTelefono || '-'}</span>
+                                </div>
+                                <div style={{display:'flex', justifyContent:'space-between', borderTop:'1px solid #e5e7eb', paddingTop:8, marginTop:8}}>
+                                    <span style={{color:'#6b7280', fontSize:'0.9rem'}}>Valor Pagado:</span>
+                                    <span style={{color:'#059669', fontWeight:'700'}}>{fmtMoney(selectedEvent.valor || 0)}</span>
+                                </div>
+                            </div>
+                            
+                            {/* BOTÓN DE VIDEOLLAMADA */}
+                            {(selectedEvent.motivo.toLowerCase().includes('online') || selectedEvent.motivo.toLowerCase().includes('teleconsulta')) && (
+                                <div style={{marginBottom: 20}}>
+                                    <a 
+                                        href={`https://meet.jit.si/CISD-Reserva-${selectedEvent.id}#userInfo.displayName=${encodeURIComponent(user.nombre)}`} 
+                                        target="_blank" 
+                                        rel="noreferrer"
+                                        style={{
+                                            display:'flex', justifyContent:'center', alignItems:'center', gap:8,
+                                            background:'#2563eb', color:'white', textDecoration:'none', padding:'12px', 
+                                            borderRadius:6, fontWeight:'600', transition:'background 0.2s'
+                                        }}
+                                        onMouseOver={e => e.currentTarget.style.background = '#1d4ed8'}
+                                        onMouseOut={e => e.currentTarget.style.background = '#2563eb'}
+                                    >
+                                        <span>🎥</span> Conectarse a Videollamada
+                                    </a>
+                                    <p style={{fontSize:'0.75rem', color:'#9ca3af', textAlign:'center', marginTop:5}}>
+                                        *Requiere inicio de sesión con Google la primera vez.
+                                    </p>
+                                </div>
+                            )}
+
+                            <div style={{display:'flex', gap:10, borderTop:'1px solid #eee', paddingTop:20}}> 
+                                <button className="btn-edit" onClick={startEditing} style={{flex:1, justifyContent:'center'}}>Modificar Cita</button>
+                                <button className="btn-danger" onClick={()=>deleteReserva(selectedEvent.id)} style={{flex:1, justifyContent:'center', background:'#fee2e2', color:'#991b1b', border:'1px solid #fecaca'}}>Cancelar Cita</button> 
                             </div> 
                         </>
                     )}
