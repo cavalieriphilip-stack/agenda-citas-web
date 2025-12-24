@@ -252,7 +252,7 @@ function DashboardContent({ module, view, user, isAdmin }) {
 }
 
 // ==========================================
-// 📅 AGENDA: CALENDARIO RESUMEN (CON EDICIÓN FIXED)
+// 📅 AGENDA: CALENDARIO RESUMEN (CON EDICIÓN Y VIDEO)
 // ==========================================
 
 function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
@@ -447,6 +447,22 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                                 <div className="detalle-row"><strong>⏰ Hora:</strong> {fmtTime(selectedEvent.fecha)}</div> 
                                 <div className="detalle-row"><strong>👨‍⚕️ Profesional:</strong> {selectedEvent.profesionalNombre}</div> 
                                 <div className="detalle-row"><strong>🩺 Tratamiento:</strong> {selectedEvent.motivo}</div> 
+                                
+                                {/* BOTÓN DE VIDEOLLAMADA */}
+                                {(selectedEvent.motivo.toLowerCase().includes('online') || selectedEvent.motivo.toLowerCase().includes('teleconsulta')) && (
+                                    <div style={{gridColumn:'1 / -1', marginTop: 10, textAlign:'center'}}>
+                                        <a 
+                                            href={`https://meet.jit.si/CISD-Reserva-${selectedEvent.id}`} 
+                                            target="_blank" 
+                                            rel="noreferrer"
+                                            className="btn-primary"
+                                            style={{display:'block', textDecoration:'none', padding:'12px', background:'#2563eb', fontSize:'1rem'}}
+                                        >
+                                            🎥 Conectarse a Videollamada
+                                        </a>
+                                    </div>
+                                )}
+
                                 <div style={{gridColumn:'1 / -1', marginTop:15, borderTop:'1px solid #eee', paddingTop:15}}> 
                                     <div style={{display:'flex', justifyContent:'space-between', marginBottom:5}}> 
                                         <strong>📧 Email:</strong> <span>{selectedEvent.pacienteEmail || '-'}</span> 
