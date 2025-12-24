@@ -11,8 +11,11 @@ import {
     buscarPacientePorRut, updateProfesional, deleteProfesional, uploadFile
 } from './api';
 
-// Inicializar Mercado Pago
+// --- CONFIGURACIÓN GLOBAL ---
 initMercadoPago('APP_USR-a5a67c3b-4b4b-44a1-b973-ff2fd82fe90a', { locale: 'es-CL' });
+
+// 🔥 VARIABLE RESTAURADA (Causante del error anterior)
+const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
 
 // ==========================================
 // 🛠️ HELPERS & UTILS
@@ -22,9 +25,7 @@ const fmtMoney = (v) => `$${(v || 0).toLocaleString('es-CL')}`;
 
 const parseDate = (iso) => {
     if (!iso) return new Date();
-    // Si viene solo fecha YYYY-MM-DD, forzamos mediodía
     if (iso.length === 10) return new Date(iso + 'T12:00:00Z');
-    // Asegurar formato ISO con Z
     const clean = iso.endsWith('Z') ? iso : iso + 'Z';
     return new Date(clean);
 };
@@ -249,7 +250,7 @@ function DashboardContent({ module, view, user, isAdmin }) {
 }
 
 // ==========================================
-// 📅 AGENDA: CALENDARIO RESUMEN (CON EDICIÓN)
+// 📅 AGENDA: CALENDARIO RESUMEN
 // ==========================================
 
 function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
@@ -708,8 +709,7 @@ function FichaClinicaViewer({ paciente, onClose }) {
                         <input type="file" ref={fileInputRef} style={{display: 'none'}} onChange={handleFileSelect} accept="image/*,application/pdf" /> 
                     </div> 
                     <div style={{ marginTop: 20, textAlign:'right' }}> 
-                        <button className="btn-edit" onClick={() => setModoNueva(false)} style={{marginRight:10}}>Cancelar</button> 
-                        <button className="btn-primary" onClick={guardarFicha}>Guardar</button> 
+                        <button className="btn-edit" onClick={() => setModoNueva(false)} style={{marginRight:10}}>Cancelar</button> <button className="btn-primary" onClick={guardarFicha}>Guardar</button> 
                     </div> 
                 </div> 
             ) : ( 
