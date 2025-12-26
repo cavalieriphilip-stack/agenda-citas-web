@@ -330,13 +330,13 @@ function WebPaciente() {
                     <h2 className="web-title">Horario</h2>
                     {visibleMonthTitle && <div style={{textAlign:'center', marginBottom:10, fontWeight:'bold', color:'#374151'}}>{visibleMonthTitle}</div>}
                     
-                    {/* SCROLL CON FLECHAS */}
+                    {/* 🔥 FIX: FLECHAS REDONDAS Y CENTRADAS USANDO NUEVA CLASE CSS */}
                     <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:15}}>
-                        <button onClick={scrollLeft} style={{background:'#e5e7eb', border:'none', borderRadius:'50%', width:36, height:36, cursor:'pointer', fontSize:'1.2rem', color:'#374151'}}>‹</button>
+                        <button onClick={scrollLeft} className="cal-arrow-btn">‹</button>
                         <div className="rs-date-tabs" ref={dateListRef} style={{flex:1, overflowX:'auto', whiteSpace:'nowrap', scrollBehavior:'smooth', margin:'0 10px', paddingBottom:5}}>
                             {availableDates.map(dateStr => { const dateObj = parseDate(dateStr + 'T00:00:00'); return ( <div key={dateStr} className={`rs-date-tab ${selectedDateKey === dateStr ? 'selected' : ''}`} onClick={() => setSelectedDateKey(dateStr)} style={{display:'inline-block', marginRight:8}}><div className="rs-day-name">{dateObj.toLocaleDateString('es-CL', {weekday: 'short', timeZone: 'UTC'})}</div><div className="rs-day-number">{dateObj.getUTCDate()}</div></div> ); })}
                         </div>
-                        <button onClick={scrollRight} style={{background:'#e5e7eb', border:'none', borderRadius:'50%', width:36, height:36, cursor:'pointer', fontSize:'1.2rem', color:'#374151'}}>›</button>
+                        <button onClick={scrollRight} className="cal-arrow-btn">›</button>
                     </div>
 
                     <div className="rs-pro-list" style={{maxHeight:'400px', overflowY:'auto', paddingRight:'5px'}}>
