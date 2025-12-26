@@ -281,3 +281,55 @@ html, body, #root {
     color: #9ca3af;
     font-size: 0.85rem;
 }
+
+/* ... resto del css ... */
+
+/* ESTILOS NUEVOS PARA V8 */
+.rs-date-tabs {
+    flex: 1; 
+    overflow-x: auto; 
+    white-space: nowrap; 
+    scroll-behavior: smooth; 
+    margin: 0 10px; 
+    padding-bottom: 5px;
+    /* Ocultar barra de scroll nativa pero permitir scroll */
+    scrollbar-width: none; 
+}
+.rs-date-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.rs-date-tab {
+    display: inline-block;
+    vertical-align: top;
+    margin-right: 8px;
+    width: 80px; 
+    height: 90px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fff;
+    cursor: pointer;
+    text-align: center;
+    padding-top: 15px;
+    transition: all 0.2s;
+}
+
+.rs-date-tab.selected {
+    background: #000;
+    color: #fff;
+    border-color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.rs-day-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.rs-day-number {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-top: 5px;
+}
