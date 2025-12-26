@@ -109,11 +109,11 @@ html, body, #root {
    ============================================================ */
 .web-shell { min-height: 100vh; height: 100dvh; width: 100%; background: #fff; display: flex; flex-direction: column; position: relative; overflow-x: hidden; }
 
-/* HEADER MÁS ALTO PARA LOGO GRANDE */
+/* 🔥 HEADER MÁS ALTO PARA LOGO GRANDE */
 .web-header { display: flex; align-items: center; justify-content: center; height: 110px; padding: 0 20px; background: #fff; border-bottom: 1px solid #f3f4f6; position: sticky; top: 0; z-index: 50; flex-shrink: 0; }
 .web-back-btn { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 2rem; cursor: pointer; color: #374151; padding: 5px; line-height: 1; margin: 0; }
 
-/* LOGO MUCHO MÁS GRANDE */
+/* 🔥 LOGO MUCHO MÁS GRANDE */
 .cisd-logo-web { height: 90px; width: auto; object-fit: contain; margin: 0; }
 
 .stepper-container { padding: 15px 20px; background: #fff; display: flex; justify-content: center; align-items: center; border-bottom: 1px solid #f9fafb; }
@@ -137,10 +137,10 @@ html, body, #root {
 .btn-block-action:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
 .btn-block-action:active { transform: scale(0.98); }
 
-/* 🔥 CALENDARIO PACIENTE: ESTILO REDSALUD (V14) 🔥 */
+/* 🔥 CALENDARIO PACIENTE: CUADRADOS PERFECTOS Y CENTRADOS 🔥 */
 .rs-date-tabs { 
     display: flex; 
-    gap: 12px; 
+    gap: 10px; 
     overflow-x: auto; 
     padding: 10px 5px 25px 5px; 
     width: 100%; 
@@ -153,75 +153,49 @@ html, body, #root {
 .rs-date-tabs::-webkit-scrollbar { display: none; }
 
 .rs-date-tab { 
-    flex: 0 0 85px; /* ANCHO FIJO */
-    height: 85px; /* ALTO FIJO PARA CUADRADO */
-    border: 1px solid #00695c; /* Borde estilo RedSalud (Teal oscuro) */
-    border-radius: 4px; /* Borde casi cuadrado */
+    flex: 0 0 75px; /* ANCHO FIJO */
+    height: 75px; /* ALTO FIJO IGUAL AL ANCHO = CUADRADO */
+    border: 1px solid #e5e7eb; 
+    border-radius: 12px;
     background: #fff; 
     display: flex; 
-    flex-direction: column; /* Apilar elementos verticalmente */
-    justify-content: center; /* Centrar verticalmente */
-    align-items: center; /* Centrar horizontalmente */
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; /* ESTO CENTRA VERTICALMENTE */
     cursor: pointer; 
     transition: 0.2s; 
+    box-shadow: 0 2px 6px rgba(0,0,0,0.03); 
     scroll-snap-align: start; 
     flex-shrink: 0;
-    color: #00695c; /* Color texto base */
+    padding: 0; /* Sin padding interno para asegurar el centro */
 }
+.rs-date-tab.selected { background: #000; color: #fff; border-color: #000; transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.15); }
 
-/* Estado seleccionado: Invertir colores */
-.rs-date-tab.selected { 
-    background: #00695c; 
-    color: #fff; 
-    border-color: #004d40; 
-    transform: translateY(-2px); 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
-}
+/* Textos dentro del cuadrado */
+.rs-day-name { font-size: 0.75rem; text-transform: uppercase; font-weight: 700; margin: 0 0 4px 0; letter-spacing: 0.5px; line-height: 1; }
+.rs-day-number { font-size: 1.6rem; font-weight: 800; margin: 0; line-height: 1; }
 
-/* 1. MES (Arriba) */
-.rs-month-name {
-    font-size: 0.75rem;
-    text-transform: capitalize; /* Primera letra mayúscula */
-    margin-bottom: 0px;
-    line-height: 1;
-    font-weight: 500;
-}
-
-/* 2. NÚMERO (Medio - Grande) */
-.rs-day-number { 
-    font-size: 2rem; /* Número grande */
-    font-weight: 400; /* Letra fina estilo moderno */
-    margin: 2px 0; 
-    line-height: 1; 
-}
-
-/* 3. DÍA SEMANA (Abajo) */
-.rs-day-name { 
-    font-size: 0.75rem; 
-    text-transform: capitalize; 
-    margin: 0; 
-    line-height: 1; 
-    font-weight: 500;
-}
-
-/* 🔥 FLECHAS REDONDAS Y CENTRADAS */
+/* 🔥 FLECHAS 100% REDONDAS Y CENTRADAS */
 .cal-arrow-btn {
-    background: #f3f4f6;
+    background: #e5e7eb;
     border: none;
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
+    border-radius: 50%; /* Círculo */
+    width: 44px;  /* Ancho fijo */
+    height: 44px; /* Alto fijo igual al ancho */
+    aspect-ratio: 1 / 1; /* Forzar 1:1 */
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.6rem;
+    font-size: 1.5rem;
     color: #374151;
     cursor: pointer;
     transition: all 0.2s;
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    flex-shrink: 0;
+    flex-shrink: 0; /* Evita que se aplaste */
+    padding: 0;
+    line-height: 1;
 }
-.cal-arrow-btn:hover { background: #e5e7eb; color: #000; transform: scale(1.05); }
+.cal-arrow-btn:hover { background: #d1d5db; color: #000; transform: scale(1.05); }
 .cal-arrow-btn:active { transform: scale(0.95); }
 
 /* LISTA DE PROFESIONALES Y HORAS */
@@ -268,6 +242,7 @@ html, body, #root {
 /* ============================================================
    6. VISUALIZACIÓN MÓVIL Y DESKTOP
    ============================================================ */
+/* 🔥 FIX CRÍTICO: OCULTAR MÓDULOS EN DESKTOP */
 .mobile-view-only { display: none !important; } 
 .desktop-view-only { display: block !important; }
 
@@ -304,7 +279,8 @@ html, body, #root {
    ============================================================ */
 @media (max-width: 768px) {
   .desktop-view-only { display: none !important; }
-  .mobile-view-only { display: block !important; }
+  .mobile-view-only { display: block !important; } /* AQUI SE ACTIVA EN MÓVIL */
+  
   .top-nav { padding: 0 15px; height: 60px; }
   .brand-area { gap: 10px; }
   .brand-area span { font-size: 1.1rem; }
@@ -324,7 +300,9 @@ html, body, #root {
   .cal-nav-group { justify-content: space-between; margin-top: 5px; width: 100%; }
   .calendar-grid-wrapper { overflow-x: auto; min-height: 400px; }
   .page-title h1 { font-size: 1.5rem; }
-  .rs-date-tab { flex: 0 0 75px; }
+  
+  /* En móvil, los días pueden ser más pequeños o scroll */
+  .rs-date-tab { flex: 0 0 75px; } 
 }
 
 /* ============================================================
