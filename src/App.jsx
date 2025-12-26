@@ -294,9 +294,10 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
     const activeFilter = isAdmin ? filterPro : user.id; 
     const filtered = reservas.filter(r => activeFilter ? r.profesionalId === parseInt(activeFilter) : true);
     
+    // Al abrir el modal
     const handleEventClick = (r) => {
         setSelectedEvent(r);
-        setIsEditing(false); 
+        setIsEditing(false); // Siempre inicia en modo "Ver"
         setEditProId('');
         setEditSlot('');
         setAvailableSlots([]);
@@ -308,6 +309,7 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
         } 
     };
 
+    // Funciones de Edición
     const startEditing = async () => {
         setIsEditing(true);
         setEditProId(selectedEvent.profesionalId.toString());
@@ -316,6 +318,7 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
 
     const loadSlotsForPro = async (pid) => {
         const slots = await getHorariosByProfesional(pid);
+        // Mostrar solo slots futuros
         const futureSlots = Array.isArray(slots) ? slots.filter(s => new Date(s.fecha) > new Date()) : [];
         setAvailableSlots(futureSlots);
     };
@@ -338,6 +341,7 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
         }
     };
 
+    // 🔥 LOGICA CORREGIDA: Filtro flexible por ESPECIALIDAD
     const relevantPros = selectedEvent ? pros.filter(p => {
         const tratCurrent = tratamientos.find(t => t.nombre === selectedEvent.motivo);
         if (tratCurrent) {
@@ -403,6 +407,7 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                 <Modal title={isEditing ? "Modificar Cita" : "Detalle de la Sesión"} onClose={()=>setSelectedEvent(null)}> 
                     
                     {isEditing ? (
+                        // VISTA DE EDICIÓN
                         <div style={{padding: 10}}>
                             <div className="input-group">
                                 <label className="form-label">Profesional (Misma especialidad)</label>
@@ -429,6 +434,7 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                             </div>
                         </div>
                     ) : (
+                        // VISTA DE DETALLE MEJORADA (PROFESIONAL Y SOBRIA)
                         <>
                             <div style={{marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee', display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
                                 <div>
@@ -476,6 +482,7 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                                 </div>
                             )}
                             
+                            {/* BOTÓN DE VIDEOLLAMADA */}
                             {(selectedEvent.motivo.toLowerCase().includes('online') || selectedEvent.motivo.toLowerCase().includes('teleconsulta')) && selectedEvent.estado !== 'BLOQUEADA' && (
                                 <div style={{marginBottom: 20}}>
                                     <a 
@@ -492,6 +499,9 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                                     >
                                         <span>🎥</span> Conectarse a Videollamada
                                     </a>
+                                    <p style={{fontSize:'0.75rem', color:'#9ca3af', textAlign:'center', marginTop:5}}>
+                                        *Requiere inicio de sesión con Google la primera vez.
+                                    </p>
                                 </div>
                             )}
 
@@ -1353,4 +1363,3 @@ function WebPaciente() {
 }
 
 export default App;
-}
