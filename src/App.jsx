@@ -149,9 +149,15 @@ function WebPaciente() {
         fetch(`${API_BASE_URL}/tratamientos`).then(r=>r.json()).then(setTratamientos);
     },[]);
 
-    const categorias = [...new Set(tratamientos.map(t => getCategoryFromSpecialty(t.especialidad)))].sort();
-    const especialidadesFiltradas = form.categoria ? [...new Set(tratamientos.filter(t => getCategoryFromSpecialty(t.especialidad) === form.categoria).map(t => t.especialidad))] : [];
-    const prestacionesFiltradas = form.especialidad ? tratamientos.filter(t => t.especialidad === form.especialidad) : [];
+    const categorias = [...new Set(tratamientos.map(t => t.categoria || getCategoryFromSpecialty(t.especialidad)))].sort();
+    
+    const especialidadesFiltradas = form.categoria 
+        ? [...new Set(tratamientos.filter(t => (t.categoria || getCategoryFromSpecialty(t.especialidad)) === form.categoria).map(t => t.especialidad))]
+        : [];
+
+    const prestacionesFiltradas = form.especialidad
+        ? tratamientos.filter(t => t.especialidad === form.especialidad)
+        : [];
 
     useEffect(() => {
         const query = new URLSearchParams(window.location.search);
@@ -175,7 +181,9 @@ function WebPaciente() {
     }, []);
 
     const tratamientoSel = tratamientos.find(t => t.id === parseInt(form.tratamientoId));
-    const prosAptos = form.tratamientoId ? profesionales.filter(p => tratamientoSel && p.tratamientos && p.tratamientos.includes(tratamientoSel.nombre)) : [];
+    const prosAptos = form.tratamientoId 
+        ? profesionales.filter(p => tratamientoSel && p.tratamientos && p.tratamientos.includes(tratamientoSel.nombre))
+        : [];
 
     const handleRutSearch = async () => { 
         if(!form.rut) return alert("Ingrese RUT"); 
@@ -456,7 +464,7 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                                 if (duration < 30) duration = 30;
 
                                 return ( 
-                                    <div key={r.id} className={`cal-event ${r.estado === 'BLOQUEADA' ? 'evt-block' : 'evt-blue'}`} style={{top, height: duration, background: r.estado === 'BLOQUEADA' ? '#374151' : '#dbeafe', borderLeft: r.estado === 'BLOQUEADA' ? '4px solid #111' : '4px solid #3b82f6', color: r.estado === 'BLOQUEADA' ? '#fff' : '#1e3a8a', overflow: 'hidden', lineHeight: '1.1', fontSize: '0.75rem'}} onClick={()=>handleEventClick(r)}> 
+                                    <div key={r.id} className={`cal-event ${r.estado === 'BLOQUEADA' ? 'evt-block' : 'evt-blue'}`} style={{top, height: duration, background: r.estado === 'BLOQUEADA' ? '#fee2e2' : '#dbeafe', borderLeft: r.estado === 'BLOQUEADA' ? '4px solid #ef4444' : '4px solid #3b82f6', color: r.estado === 'BLOQUEADA' ? '#991b1b' : '#1e3a8a', overflow: 'hidden', lineHeight: '1.1', fontSize: '0.75rem'}} onClick={()=>handleEventClick(r)}> 
                                         <strong>{st.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', timeZone: 'UTC'})}</strong> 
                                         <span style={{display:'block'}}>{r.estado === 'BLOQUEADA' ? '⛔ BLOQUEO' : r.pacienteNombre}</span> 
                                     </div> 
@@ -471,8 +479,6 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
             {selectedEvent && ( <Modal title="Detalle Cita" onClose={()=>setSelectedEvent(null)}> 
                 {isEditing ? ( <div style={{padding: 10}}> <div className="input-group"><label>Profesional</label><select className="form-control" value={editProId} onChange={handleProChange}>{relevantPros.map(p => (<option key={p.id} value={p.id}>{p.nombreCompleto}</option>))}</select></div> <div className="input-group" style={{marginTop: 15}}><label>Horario</label><select className="form-control" value={editSlot} onChange={e => setEditSlot(e.target.value)}><option value="">Selecciona...</option>{availableSlots.map(s => (<option key={s.id} value={s.fecha}>{fmtDate(s.fecha)} - {fmtTime(s.fecha)}</option>))}</select></div> <div style={{marginTop: 20, display:'flex', gap:10, justifyContent:'flex-end'}}><button className="btn-edit" onClick={() => setIsEditing(false)}>Cancelar</button><button className="btn-primary" onClick={saveChanges}>Guardar</button></div> </div> ) : ( <> 
                 <div style={{background: selectedEvent.estado === 'BLOQUEADA' ? '#374151' : '#ecfdf5', color: selectedEvent.estado === 'BLOQUEADA' ? '#fff' : '#065f46', padding:10, borderRadius:8, marginBottom:15, fontWeight:'bold', textAlign:'center'}}>{selectedEvent.estado === 'BLOQUEADA' ? 'BLOQUEO' : 'CONFIRMADA'}</div>
-                
-                {/* DETALLE COMPLETO RECUPERADO */}
                 <div style={{marginBottom:20, lineHeight:'1.6'}}> 
                     <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:15}}>
                         <div><label style={{fontSize:'0.75rem', fontWeight:'bold', color:'#666'}}>FECHA</label><div>{fmtDate(selectedEvent.fecha)}</div></div>
@@ -580,16 +586,81 @@ function AgendaProfesionales({ tratamientos }) {
     return ( <div> <div className="page-header"><div className="page-title"><h1>Gestión de Profesionales</h1></div></div> <div className="pro-card"> <h3>{isEditing ? 'Editar Profesional' : 'Nuevo Profesional'}</h3> <form onSubmit={save}> <div className="input-row"> <div style={{ flex: 2 }}> <label className="form-label">Nombre Completo</label> <input className="form-control" value={form.nombreCompleto} onChange={e => setForm({ ...form, nombreCompleto: e.target.value })} required /> </div> <div style={{ flex: 1 }}> <label className="form-label">RUT</label> <input className="form-control" value={form.rut} onChange={e => setForm({ ...form, rut: formatRut(e.target.value) })} placeholder="12.345.678-9" /> </div> </div> <div className="input-row"> <div style={{width: '100%'}}> <label className="form-label">Email Notificaciones</label> <input className="form-control" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="medico@cisd.cl" /> </div> </div> <div className="input-row"> <div><MultiSelectDropdown label="1. Especialidades" options={especialidadesUnicas} selectedValues={form.especialidades} onChange={handleSpecChange} /></div> <div><MultiSelectDropdown label="2. Prestaciones" options={tratamientosDisponibles} selectedValues={form.tratamientos} onChange={v => setForm({ ...form, tratamientos: v })} disabled={form.especialidades.length === 0} /></div> </div> <button className="btn-primary">Guardar</button> {isEditing && <button type="button" className="btn-edit" onClick={() => { setIsEditing(false); setForm({ id: null, nombreCompleto: '', rut: '', email: '', especialidades: [], tratamientos: [] }); }} style={{marginLeft: 10}}>Cancelar</button>} </form> </div> <div className="pro-card"> <div className="data-table-container"> <table className="data-table"> <thead><tr><th>Nombre</th><th>RUT</th><th>Email</th><th>Especialidad</th><th>Acciones</th></tr></thead> <tbody> {pros.map(p => ( <tr key={p.id}> <td>{p.nombreCompleto}</td> <td>{formatRut(p.rut)}</td> <td>{p.email || '-'}</td> <td>{p.especialidad}</td> <td> <button className="btn-edit" onClick={() => handleEdit(p)}>Editar</button> <button className="btn-danger" onClick={() => handleDelete(p.id)}>X</button> </td> </tr> ))} </tbody> </table> </div> </div> </div> );
 }
 
-// 6. 💊 GESTIÓN DE PRESTACIONES
+// 6. 💊 GESTIÓN DE PRESTACIONES (NUEVA: CON CAMBIO DE CATEGORÍA)
 function AgendaTratamientos({ reload }) {
-    const [items, setItems] = useState([]); const [form, setForm] = useState({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '', categoria: '' }); const [isEditing, setIsEditing] = useState(false);
+    const [items, setItems] = useState([]); 
+    const [form, setForm] = useState({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '', categoria: '' }); 
+    const [isEditing, setIsEditing] = useState(false);
+    
     const load = () => fetch(`${API_BASE_URL}/tratamientos`).then(r => r.json()).then(setItems);
     useEffect(() => { load(); }, []);
-    const handleSpecChange = (e) => { const spec = e.target.value; const autoCat = getCategoryFromSpecialty(spec); setForm({...form, especialidad: spec, categoria: autoCat}); };
-    const save = async (e) => { e.preventDefault(); const method = isEditing ? 'PUT' : 'POST'; const url = isEditing ? `${API_BASE_URL}/tratamientos/${form.id}` : `${API_BASE_URL}/tratamientos`; const payload = { nombre: form.nombre, codigo: form.codigo, valor: parseInt(form.valor) || 0, descripcion: form.descripcion, especialidad: form.especialidad }; await fetch(url, { method, headers: authHeader(), body: JSON.stringify(payload) }); setForm({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '', categoria: '' }); setIsEditing(false); load(); if(reload) reload(); };
-    const handleEdit = (it) => { setForm({...it, categoria: getCategoryFromSpecialty(it.especialidad)}); setIsEditing(true); window.scrollTo(0,0); };
+    
+    const handleSpecChange = (e) => {
+        setForm({...form, especialidad: e.target.value });
+    };
+
+    const save = async (e) => { 
+        e.preventDefault(); 
+        const method = isEditing ? 'PUT' : 'POST'; 
+        const url = isEditing ? `${API_BASE_URL}/tratamientos/${form.id}` : `${API_BASE_URL}/tratamientos`; 
+        
+        // 🔥 CALCULAMOS O USAMOS LA CATEGORÍA MANUAL
+        const finalCategory = form.categoria || getCategoryFromSpecialty(form.especialidad);
+
+        const payload = {
+            nombre: form.nombre,
+            codigo: form.codigo,
+            valor: parseInt(form.valor) || 0,
+            descripcion: form.descripcion,
+            especialidad: form.especialidad,
+            categoria: finalCategory // SE ENVÍA AL BACKEND
+        };
+
+        await fetch(url, { method, headers: authHeader(), body: JSON.stringify(payload) }); 
+        setForm({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '', categoria: '' }); 
+        setIsEditing(false); load(); if(reload) reload(); 
+    };
+
+    const handleEdit = (it) => { 
+        // Si no tiene categoría guardada, la calculamos
+        const cat = it.categoria || getCategoryFromSpecialty(it.especialidad);
+        setForm({...it, categoria: cat}); 
+        setIsEditing(true); 
+        window.scrollTo(0,0); 
+    };
+
     const handleDelete = async (id) => { if(confirm('¿Eliminar?')) { await fetch(`${API_BASE_URL}/tratamientos/${id}`, { method: 'DELETE', headers: authHeader() }); load(); } };
-    return ( <div> <div className="page-header"><div className="page-title"><h1>Gestión de Prestaciones</h1></div></div> <div className="pro-card"> <h3>{isEditing ? 'Editar' : 'Nueva'}</h3> <form onSubmit={save}> <div className="input-row"> <div><label className="form-label">Nombre del Tratamiento</label><input className="form-control" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} required /></div> <div><label className="form-label">Especialidad (Pública)</label><input className="form-control" value={form.especialidad} onChange={handleSpecChange} required /></div> </div> <div className="input-row"> <div><label className="form-label">Código</label><input className="form-control" value={form.codigo} onChange={e=>setForm({...form, codigo:e.target.value})} /></div> <div><label className="form-label">Categoría (Auto)</label><input className="form-control" value={form.categoria} onChange={e=>setForm({...form, categoria:e.target.value})} /></div> <div><label className="form-label">Valor</label><input type="number" className="form-control" value={form.valor} onChange={e=>setForm({...form, valor:e.target.value})} required /></div> </div> <button className="btn-primary">Guardar</button> {isEditing && <button type="button" className="btn-edit" style={{marginLeft:10}} onClick={()=>{setIsEditing(false); setForm({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '', categoria: '' })}}>Cancelar</button>} </form> </div> <div className="pro-card"> <div className="data-table-container"> <table className="data-table"> <thead><tr><th>Código</th><th>Categoría</th><th>Tratamiento</th><th>Especialidad</th><th>Valor</th><th>Acciones</th></tr></thead> <tbody> {items.map(it => ( <tr key={it.id}> <td>{it.codigo}</td> <td>{getCategoryFromSpecialty(it.especialidad)}</td> <td>{it.nombre}</td> <td>{it.especialidad}</td> <td>{fmtMoney(it.valor)}</td> <td> <button className="btn-edit" onClick={()=>handleEdit(it)}>Edit</button> <button className="btn-danger" onClick={()=>handleDelete(it.id)}>X</button> </td> </tr> ))} </tbody> </table> </div> </div> </div> );
+    
+    return ( 
+        <div> 
+            <div className="page-header"><div className="page-title"><h1>Gestión de Prestaciones</h1></div></div> 
+            <div className="pro-card"> 
+                <h3>{isEditing ? 'Editar' : 'Nueva'}</h3> 
+                <form onSubmit={save}> 
+                    <div className="input-row"> 
+                        <div><label className="form-label">Nombre del Tratamiento</label><input className="form-control" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} required /></div> 
+                        <div><label className="form-label">Especialidad (Pública)</label><input className="form-control" value={form.especialidad} onChange={handleSpecChange} required /></div> 
+                    </div> 
+                    <div className="input-row"> 
+                        <div><label className="form-label">Código</label><input className="form-control" value={form.codigo} onChange={e=>setForm({...form, codigo:e.target.value})} /></div> 
+                        {/* INPUT PARA EDITAR CATEGORÍA */}
+                        <div><label className="form-label">Categoría (Manual)</label><input className="form-control" value={form.categoria} onChange={e=>setForm({...form, categoria:e.target.value})} /></div> 
+                        <div><label className="form-label">Valor</label><input type="number" className="form-control" value={form.valor} onChange={e=>setForm({...form, valor:e.target.value})} required /></div> 
+                    </div> 
+                    <button className="btn-primary">Guardar</button> 
+                    {isEditing && <button type="button" className="btn-edit" style={{marginLeft:10}} onClick={()=>{setIsEditing(false); setForm({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '', categoria: '' })}}>Cancelar</button>} 
+                </form> 
+            </div> 
+            <div className="pro-card"> 
+                <div className="data-table-container"> 
+                    <table className="data-table"> 
+                        <thead><tr><th>Código</th><th>Categoría</th><th>Tratamiento</th><th>Especialidad</th><th>Valor</th><th>Acciones</th></tr></thead> 
+                        <tbody> {items.map(it => ( <tr key={it.id}> <td>{it.codigo}</td> <td>{it.categoria || getCategoryFromSpecialty(it.especialidad)}</td> <td>{it.nombre}</td> <td>{it.especialidad}</td> <td>{fmtMoney(it.valor)}</td> <td> <button className="btn-edit" onClick={()=>handleEdit(it)}>Edit</button> <button className="btn-danger" onClick={()=>handleDelete(it.id)}>X</button> </td> </tr> ))} </tbody> 
+                    </table> 
+                </div> 
+            </div> 
+        </div> 
+    );
 }
 
 // 7. 💰 FINANZAS (DEFINIDA ANTES DEL DASHBOARD)
@@ -614,7 +685,11 @@ function AdminLayout() {
     return (
         <div className="dashboard-layout">
             <nav className="top-nav"> <div className="brand-area"> <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>☰</button> <img src={LOGO_URL} alt="Logo" className="cisd-logo-admin" /> <span className="admin-title-text">CISD {isAdmin ? 'Admin' : 'Profesional'}</span> </div> <div className="module-switcher desktop-view-only"> <button className={`module-tab ${activeModule === 'agenda' ? 'active' : ''}`} onClick={() => handleModuleSwitch('agenda', 'resumen')}>Clínica</button> <button className={`module-tab ${activeModule === 'clientes' ? 'active' : ''}`} onClick={() => handleModuleSwitch('clientes', 'listado')}>Pacientes</button> {isAdmin && <button className={`module-tab ${activeModule === 'finanzas' ? 'active' : ''}`} onClick={() => handleModuleSwitch('finanzas', 'reporte')}>Finanzas</button>} </div> <div className="nav-actions"> <span className="desktop-view-only" style={{marginRight:10, fontSize:'0.9rem', fontWeight:'600'}}>{user.nombre}</span> <button onClick={() => {localStorage.removeItem('usuario'); localStorage.removeItem('token'); navigate('/login');}} className="btn-danger" style={{padding:'5px 15px', fontSize:'0.8rem'}}>Salir</button> </div> </nav>
-            <div className="workspace"> {mobileMenuOpen && <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)}></div>} <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}> <div className="mobile-view-only" style={{marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #eee'}}> <div className="sidebar-header">MÓDULOS</div> <div className={`nav-item ${activeModule === 'agenda' ? 'active' : ''}`} onClick={() => handleModuleSwitch('agenda', 'resumen')}>🏥 Clínica</div> <div className={`nav-item ${activeModule === 'clientes' ? 'active' : ''}`} onClick={() => handleModuleSwitch('clientes', 'listado')}>👥 Pacientes</div> {isAdmin && <div className={`nav-item ${activeModule === 'finanzas' ? 'active' : ''}`} onClick={() => handleModuleSwitch('finanzas', 'reporte')}>💰 Finanzas</div>} </div> <div className="sidebar-header">NAVEGACIÓN</div> {activeModule === 'agenda' && ( <> <div className={`nav-item ${activeView==='resumen'?'active':''}`} onClick={()=>setActiveView('resumen')}>Calendario</div> <div className={`nav-item ${activeView==='reservas'?'active':''}`} onClick={()=>setActiveView('reservas')}>Nueva Reserva</div> <div className={`nav-item ${activeView==='horarios'?'active':''}`} onClick={()=>setActiveView('horarios')}>Mis Horarios</div> {isAdmin && ( <> <div className="sidebar-header" style={{marginTop:20}}>ADMINISTRACIÓN</div> <div className={`nav-item ${activeView==='profesionales'?'active':''}`} onClick={()=>setActiveView('profesionales')}>Profesionales</div> <div className={`nav-item ${activeView==='prestaciones'?'active':''}`} onClick={()=>setActiveView('prestaciones')}>Prestaciones</div> </> )} </> )} {activeModule === 'clientes' && <div className={`nav-item ${activeView==='listado'?'active':''}`} onClick={()=>setActiveView('listado')}>Directorio</div>} {isAdmin && activeModule === 'finanzas' && <div className={`nav-item ${activeView==='reporte'?'active':''}`} onClick={()=>setActiveView('reporte')}>Ver Reportes</div>} </aside> <main className="main-stage"> <DashboardContent module={activeModule} view={activeView} user={user} isAdmin={isAdmin} /> </main> </div>
+            <div className="workspace"> {mobileMenuOpen && <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)}></div>} <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}> 
+            {/* CORRECCIÓN: OCULTAR DUPLICADOS EN DESKTOP, MOSTRAR SOLO EN MOVIL */}
+            <div className="mobile-view-only" style={{marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #eee'}}> <div className="sidebar-header">MÓDULOS</div> <div className={`nav-item ${activeModule === 'agenda' ? 'active' : ''}`} onClick={() => handleModuleSwitch('agenda', 'resumen')}>🏥 Clínica</div> <div className={`nav-item ${activeModule === 'clientes' ? 'active' : ''}`} onClick={() => handleModuleSwitch('clientes', 'listado')}>👥 Pacientes</div> {isAdmin && <div className={`nav-item ${activeModule === 'finanzas' ? 'active' : ''}`} onClick={() => handleModuleSwitch('finanzas', 'reporte')}>💰 Finanzas</div>} </div> 
+            
+            <div className="sidebar-header">NAVEGACIÓN</div> {activeModule === 'agenda' && ( <> <div className={`nav-item ${activeView==='resumen'?'active':''}`} onClick={()=>setActiveView('resumen')}>Calendario</div> <div className={`nav-item ${activeView==='reservas'?'active':''}`} onClick={()=>setActiveView('reservas')}>Nueva Reserva</div> <div className={`nav-item ${activeView==='horarios'?'active':''}`} onClick={()=>setActiveView('horarios')}>Mis Horarios</div> {isAdmin && ( <> <div className="sidebar-header" style={{marginTop:20}}>ADMINISTRACIÓN</div> <div className={`nav-item ${activeView==='profesionales'?'active':''}`} onClick={()=>setActiveView('profesionales')}>Profesionales</div> <div className={`nav-item ${activeView==='prestaciones'?'active':''}`} onClick={()=>setActiveView('prestaciones')}>Prestaciones</div> </> )} </> )} {activeModule === 'clientes' && <div className={`nav-item ${activeView==='listado'?'active':''}`} onClick={()=>setActiveView('listado')}>Directorio</div>} {isAdmin && activeModule === 'finanzas' && <div className={`nav-item ${activeView==='reporte'?'active':''}`} onClick={()=>setActiveView('reporte')}>Ver Reportes</div>} </aside> <main className="main-stage"> <DashboardContent module={activeModule} view={activeView} user={user} isAdmin={isAdmin} /> </main> </div>
         </div>
     );
 }
