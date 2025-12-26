@@ -252,7 +252,7 @@ function DashboardContent({ module, view, user, isAdmin }) {
 }
 
 // ==========================================
-// 📅 AGENDA: CALENDARIO RESUMEN (DISEÑO SOBRIO)
+// 📅 AGENDA: CALENDARIO RESUMEN
 // ==========================================
 
 function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
@@ -262,7 +262,6 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
     const [currentDate, setCurrentDate] = useState(new Date()); 
     const [selectedEvent, setSelectedEvent] = useState(null);
 
-    // Estados para Modificar Cita
     const [isEditing, setIsEditing] = useState(false);
     const [editProId, setEditProId] = useState('');
     const [editSlot, setEditSlot] = useState('');
@@ -294,10 +293,9 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
     const activeFilter = isAdmin ? filterPro : user.id; 
     const filtered = reservas.filter(r => activeFilter ? r.profesionalId === parseInt(activeFilter) : true);
     
-    // Al abrir el modal
     const handleEventClick = (r) => {
         setSelectedEvent(r);
-        setIsEditing(false); // Siempre inicia en modo "Ver"
+        setIsEditing(false); 
         setEditProId('');
         setEditSlot('');
         setAvailableSlots([]);
@@ -309,7 +307,6 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
         } 
     };
 
-    // Funciones de Edición
     const startEditing = async () => {
         setIsEditing(true);
         setEditProId(selectedEvent.profesionalId.toString());
@@ -318,7 +315,6 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
 
     const loadSlotsForPro = async (pid) => {
         const slots = await getHorariosByProfesional(pid);
-        // Mostrar solo slots futuros
         const futureSlots = Array.isArray(slots) ? slots.filter(s => new Date(s.fecha) > new Date()) : [];
         setAvailableSlots(futureSlots);
     };
@@ -341,7 +337,6 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
         }
     };
 
-    // 🔥 LOGICA CORREGIDA: Filtro flexible por ESPECIALIDAD
     const relevantPros = selectedEvent ? pros.filter(p => {
         const tratCurrent = tratamientos.find(t => t.nombre === selectedEvent.motivo);
         if (tratCurrent) {
@@ -407,7 +402,6 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                 <Modal title={isEditing ? "Modificar Cita" : "Detalle de la Sesión"} onClose={()=>setSelectedEvent(null)}> 
                     
                     {isEditing ? (
-                        // VISTA DE EDICIÓN
                         <div style={{padding: 10}}>
                             <div className="input-group">
                                 <label className="form-label">Profesional (Misma especialidad)</label>
@@ -434,7 +428,6 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                             </div>
                         </div>
                     ) : (
-                        // VISTA DE DETALLE MEJORADA (PROFESIONAL Y SOBRIA)
                         <>
                             <div style={{marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee', display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
                                 <div>
@@ -480,7 +473,6 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                                 </div>
                             </div>
                             
-                            {/* BOTÓN DE VIDEOLLAMADA */}
                             {(selectedEvent.motivo.toLowerCase().includes('online') || selectedEvent.motivo.toLowerCase().includes('teleconsulta')) && (
                                 <div style={{marginBottom: 20}}>
                                     <a 
@@ -516,26 +508,27 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
 }
 
 // ==========================================
-// 📅 AGENDA: CONFIGURACIÓN DE HORARIOS (MEJORADA TIPO RESERVO)
+// 📅 AGENDA: CONFIGURACIÓN DE HORARIOS (MEJORADA - TABS)
 // ==========================================
 
 function AgendaHorarios({ user, isAdmin }) {
+    const [activeTab, setActiveTab] = useState('pattern'); // 'pattern' | 'block'
     const [pros, setPros] = useState([]);
     const [rango, setRango] = useState({ inicio: new Date().toISOString().split('T')[0], fin: '' });
     const [configBase, setConfigBase] = useState({ duracionSlot: 45, intervalo: 0 });
     const [profesionalSel, setProfesionalSel] = useState(isAdmin ? '' : user.id);
     const [loading, setLoading] = useState(false);
 
-    // Estado del Patrón Semanal (Lunes a Domingo)
-    // Por defecto: 9:00 a 19:00 con colación de 13:00 a 14:00
+    // Estado del Patrón Semanal (Lunes a Domingo) - SIN HORA DE COLACIÓN RÍGIDA
+    // Ahora usa Turno 1 y Turno 2
     const [patron, setPatron] = useState({
-        1: { id: 1, label: 'Lunes', activo: true, horaInicio: '09:00', horaFin: '19:00', breakInicio: '13:00', breakFin: '14:00' },
-        2: { id: 2, label: 'Martes', activo: true, horaInicio: '09:00', horaFin: '19:00', breakInicio: '13:00', breakFin: '14:00' },
-        3: { id: 3, label: 'Miércoles', activo: true, horaInicio: '09:00', horaFin: '19:00', breakInicio: '13:00', breakFin: '14:00' },
-        4: { id: 4, label: 'Jueves', activo: true, horaInicio: '09:00', horaFin: '19:00', breakInicio: '13:00', breakFin: '14:00' },
-        5: { id: 5, label: 'Viernes', activo: true, horaInicio: '09:00', horaFin: '19:00', breakInicio: '13:00', breakFin: '14:00' },
-        6: { id: 6, label: 'Sábado', activo: false, horaInicio: '10:00', horaFin: '14:00', breakInicio: '12:00', breakFin: '12:00' }, // Sábado medio día
-        7: { id: 7, label: 'Domingo', activo: false, horaInicio: '00:00', horaFin: '00:00', breakInicio: '00:00', breakFin: '00:00' },
+        1: { id: 1, label: 'Lunes', activo: true, turno1Inicio: '09:00', turno1Fin: '13:00', turno2Inicio: '14:00', turno2Fin: '18:00' },
+        2: { id: 2, label: 'Martes', activo: true, turno1Inicio: '09:00', turno1Fin: '13:00', turno2Inicio: '14:00', turno2Fin: '18:00' },
+        3: { id: 3, label: 'Miércoles', activo: true, turno1Inicio: '09:00', turno1Fin: '13:00', turno2Inicio: '14:00', turno2Fin: '18:00' },
+        4: { id: 4, label: 'Jueves', activo: true, turno1Inicio: '09:00', turno1Fin: '13:00', turno2Inicio: '14:00', turno2Fin: '18:00' },
+        5: { id: 5, label: 'Viernes', activo: true, turno1Inicio: '09:00', turno1Fin: '13:00', turno2Inicio: '14:00', turno2Fin: '17:00' },
+        6: { id: 6, label: 'Sábado', activo: false, turno1Inicio: '10:00', turno1Fin: '13:00', turno2Inicio: '', turno2Fin: '' }, 
+        7: { id: 7, label: 'Domingo', activo: false, turno1Inicio: '', turno1Fin: '', turno2Inicio: '', turno2Fin: '' },
     });
 
     useEffect(() => { getProfesionales().then(setPros); }, []);
@@ -559,7 +552,7 @@ function AgendaHorarios({ user, isAdmin }) {
         if (!rango.inicio || !rango.fin) return alert("Selecciona fecha inicio y fin");
         if (new Date(rango.fin) < new Date(rango.inicio)) return alert("La fecha fin debe ser mayor a la de inicio");
 
-        if (!confirm(`⚠️ ATENCIÓN:\n\nEsto generará horarios para todos los días seleccionados entre ${rango.inicio} y ${rango.fin}.\n\nSi ya existían horarios en esos días, serán REEMPLAZADOS por esta nueva configuración.\n\n¿Deseas continuar?`)) return;
+        if (!confirm(`⚠️ ATENCIÓN:\n\nSe generará la agenda.\nSi ya existían horarios en esos días, serán REEMPLAZADOS.\n\n¿Confirmar?`)) return;
 
         setLoading(true);
         try {
@@ -591,88 +584,156 @@ function AgendaHorarios({ user, isAdmin }) {
         }
     };
 
+    // FUNCIÓN PARA BLOQUEAR (ELIMINAR) DISPONIBILIDAD
+    const bloquearRango = async () => {
+        if (!profesionalSel) return alert("Selecciona un profesional");
+        if (!rango.inicio || !rango.fin) return alert("Selecciona las fechas a bloquear");
+        
+        if (!confirm(`⚠️ ¿Estás seguro de que quieres BLOQUEAR (Eliminar disponibilidad) entre estas fechas?`)) return;
+
+        setLoading(true);
+        try {
+            const payload = {
+                profesionalId: profesionalSel,
+                fechaInicio: rango.inicio,
+                fechaFin: rango.fin
+            };
+            
+            const response = await fetch(`${API_BASE_URL}/configuracion/bloquear`, {
+                method: 'POST',
+                headers: authHeader(),
+                body: JSON.stringify(payload)
+            });
+
+            if(response.ok) {
+                const data = await response.json();
+                alert(`🚫 Bloqueo Exitoso: ${data.message}`);
+            } else {
+                alert("Error al bloquear");
+            }
+        } catch(e) {
+            alert("Error de conexión");
+        } finally {
+            setLoading(false);
+        }
+    }
+
     return (
         <div>
-            <div className="page-header"><div className="page-title"><h1>Gestor de Disponibilidad Masiva</h1></div></div>
+            <div className="page-header"><div className="page-title"><h1>Gestor de Disponibilidad</h1></div></div>
 
             <div className="pro-card" style={{ maxWidth: 1000, margin: '0 auto' }}>
-                {/* 1. SELECCIÓN GLOBAL */}
-                <div style={{ background: '#f3f4f6', padding: 15, borderRadius: 8, marginBottom: 20 }}>
-                    <h3 style={{ marginTop: 0, fontSize: '1rem', color: '#374151' }}>1. Configuración General</h3>
-                    <div className="input-row">
-                        <div>
-                            <label className="form-label">Profesional</label>
-                            {isAdmin ? (
-                                <select className="form-control" value={profesionalSel} onChange={e => setProfesionalSel(e.target.value)}>
-                                    <option value="">Seleccionar...</option>
-                                    {pros.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}
-                                </select>
-                            ) : (
-                                <input className="form-control" value={user.nombre} disabled />
-                            )}
-                        </div>
-                        <div>
-                            <label className="form-label">Duración Atención (Min)</label>
-                            <select className="form-control" value={configBase.duracionSlot} onChange={e => setConfigBase({ ...configBase, duracionSlot: e.target.value })}>
-                                <option value="15">15 Min</option>
-                                <option value="30">30 Min</option>
-                                <option value="45">45 Min (Estándar)</option>
-                                <option value="60">60 Min</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div className="input-row">
-                        <div><label className="form-label">Desde (Fecha)</label><input type="date" className="form-control" value={rango.inicio} onChange={e => setRango({ ...rango, inicio: e.target.value })} /></div>
-                        <div><label className="form-label">Hasta (Fecha)</label><input type="date" className="form-control" value={rango.fin} onChange={e => setRango({ ...rango, fin: e.target.value })} /></div>
-                    </div>
-                </div>
-
-                {/* 2. GRILLA SEMANAL */}
-                <h3 style={{ marginTop: 0, fontSize: '1rem', color: '#374151', marginBottom: 10 }}>2. Define tu Semana Tipo</h3>
-                <div style={{ overflowX: 'auto' }}>
-                    <table className="data-table" style={{ fontSize: '0.9rem' }}>
-                        <thead>
-                            <tr style={{ background: '#111827', color: 'white' }}>
-                                <th style={{ width: 50 }}>Activo</th>
-                                <th style={{ width: 100 }}>Día</th>
-                                <th>Entrada</th>
-                                <th>Inicio Colación 🍎</th>
-                                <th>Fin Colación</th>
-                                <th>Salida</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {Object.values(patron).map(dia => (
-                                <tr key={dia.id} style={{ background: dia.activo ? '#fff' : '#f9fafb', opacity: dia.activo ? 1 : 0.5 }}>
-                                    <td style={{ textAlign: 'center' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={dia.activo}
-                                            onChange={() => toggleDia(dia.id)}
-                                            style={{ width: 18, height: 18, cursor: 'pointer' }}
-                                        />
-                                    </td>
-                                    <td><strong>{dia.label}</strong></td>
-                                    <td><input type="time" className="form-control" disabled={!dia.activo} value={dia.horaInicio} onChange={e => handlePatronChange(dia.id, 'horaInicio', e.target.value)} /></td>
-                                    <td><input type="time" className="form-control" disabled={!dia.activo} value={dia.breakInicio} onChange={e => handlePatronChange(dia.id, 'breakInicio', e.target.value)} style={{ borderColor: '#fca5a5' }} /></td>
-                                    <td><input type="time" className="form-control" disabled={!dia.activo} value={dia.breakFin} onChange={e => handlePatronChange(dia.id, 'breakFin', e.target.value)} style={{ borderColor: '#fca5a5' }} /></td>
-                                    <td><input type="time" className="form-control" disabled={!dia.activo} value={dia.horaFin} onChange={e => handlePatronChange(dia.id, 'horaFin', e.target.value)} /></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                <div style={{ marginTop: 25, textAlign: 'right' }}>
-                    <button
-                        className="btn-primary"
-                        style={{ padding: '15px 30px', fontSize: '1rem', opacity: loading ? 0.7 : 1 }}
-                        disabled={loading}
-                        onClick={generarHorarioMasivo}
+                
+                {/* TABS DE NAVEGACIÓN */}
+                <div style={{ display: 'flex', borderBottom: '2px solid #eee', marginBottom: 20 }}>
+                    <button 
+                        onClick={() => setActiveTab('pattern')}
+                        style={{ padding: '10px 20px', background: activeTab === 'pattern' ? '#eee' : 'transparent', border: 'none', borderBottom: activeTab === 'pattern' ? '3px solid #000' : 'none', fontWeight: 'bold', cursor: 'pointer' }}
                     >
-                        {loading ? 'Generando Agenda...' : '🚀 Generar Agenda Masiva'}
+                        📅 Generador Semanal
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('block')}
+                        style={{ padding: '10px 20px', background: activeTab === 'block' ? '#fee2e2' : 'transparent', border: 'none', borderBottom: activeTab === 'block' ? '3px solid #dc2626' : 'none', fontWeight: 'bold', cursor: 'pointer', color: activeTab === 'block' ? '#991b1b' : '#666' }}
+                    >
+                        🚫 Bloquear Días / Vacaciones
                     </button>
                 </div>
+
+                {/* SELECTOR DE PROFESIONAL (COMÚN) */}
+                <div style={{ marginBottom: 20 }}>
+                    <label className="form-label">Profesional a Configurar</label>
+                    {isAdmin ? (
+                        <select className="form-control" value={profesionalSel} onChange={e => setProfesionalSel(e.target.value)}>
+                            <option value="">Seleccionar...</option>
+                            {pros.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}
+                        </select>
+                    ) : (
+                        <input className="form-control" value={user.nombre} disabled />
+                    )}
+                </div>
+
+                {/* CONTENIDO TAB 1: PATRÓN SEMANAL */}
+                {activeTab === 'pattern' && (
+                    <div style={{animation: 'fadeIn 0.3s'}}>
+                        <div style={{ background: '#f3f4f6', padding: 15, borderRadius: 8, marginBottom: 20 }}>
+                            <div className="input-row">
+                                <div>
+                                    <label className="form-label">Duración Atención (Min)</label>
+                                    <select className="form-control" value={configBase.duracionSlot} onChange={e => setConfigBase({ ...configBase, duracionSlot: e.target.value })}>
+                                        <option value="15">15 Min</option>
+                                        <option value="30">30 Min</option>
+                                        <option value="45">45 Min (Estándar)</option>
+                                        <option value="60">60 Min</option>
+                                    </select>
+                                </div>
+                                <div><label className="form-label">Desde</label><input type="date" className="form-control" value={rango.inicio} onChange={e => setRango({ ...rango, inicio: e.target.value })} /></div>
+                                <div><label className="form-label">Hasta (Inclusive)</label><input type="date" className="form-control" value={rango.fin} onChange={e => setRango({ ...rango, fin: e.target.value })} /></div>
+                            </div>
+                        </div>
+
+                        <div style={{ overflowX: 'auto' }}>
+                            <table className="data-table" style={{ fontSize: '0.9rem' }}>
+                                <thead>
+                                    <tr style={{ background: '#111827', color: 'white' }}>
+                                        <th style={{ width: 50 }}>Activo</th>
+                                        <th style={{ width: 100 }}>Día</th>
+                                        <th>Turno Mañana (Inicio - Fin)</th>
+                                        <th>Turno Tarde (Inicio - Fin)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {Object.values(patron).map(dia => (
+                                        <tr key={dia.id} style={{ background: dia.activo ? '#fff' : '#f9fafb', opacity: dia.activo ? 1 : 0.5 }}>
+                                            <td style={{ textAlign: 'center' }}>
+                                                <input type="checkbox" checked={dia.activo} onChange={() => toggleDia(dia.id)} style={{ width: 18, height: 18, cursor: 'pointer' }} />
+                                            </td>
+                                            <td><strong>{dia.label}</strong></td>
+                                            <td style={{display:'flex', gap:5, alignItems:'center'}}>
+                                                <input type="time" className="form-control" disabled={!dia.activo} value={dia.turno1Inicio} onChange={e => handlePatronChange(dia.id, 'turno1Inicio', e.target.value)} />
+                                                <span>a</span>
+                                                <input type="time" className="form-control" disabled={!dia.activo} value={dia.turno1Fin} onChange={e => handlePatronChange(dia.id, 'turno1Fin', e.target.value)} />
+                                            </td>
+                                            <td>
+                                                <div style={{display:'flex', gap:5, alignItems:'center'}}>
+                                                    <input type="time" className="form-control" disabled={!dia.activo} value={dia.turno2Inicio} onChange={e => handlePatronChange(dia.id, 'turno2Inicio', e.target.value)} />
+                                                    <span>a</span>
+                                                    <input type="time" className="form-control" disabled={!dia.activo} value={dia.turno2Fin} onChange={e => handlePatronChange(dia.id, 'turno2Fin', e.target.value)} />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style={{ marginTop: 25, textAlign: 'right' }}>
+                            <button className="btn-primary" style={{ padding: '15px 30px', fontSize: '1rem', opacity: loading ? 0.7 : 1 }} disabled={loading} onClick={generarHorarioMasivo}>
+                                {loading ? 'Generando...' : '🚀 Crear Disponibilidad'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* CONTENIDO TAB 2: BLOQUEAR */}
+                {activeTab === 'block' && (
+                    <div style={{animation: 'fadeIn 0.3s', padding: 20, border: '2px dashed #fca5a5', borderRadius: 10, background: '#fef2f2'}}>
+                        <h3 style={{color: '#991b1b', marginTop:0}}>Bloquear Días (Ausencias / Vacaciones)</h3>
+                        <p style={{marginBottom: 20, color:'#666'}}>Selecciona un rango de fechas para ELIMINAR toda disponibilidad. Útil para días administrativos, feriados o licencias.</p>
+                        
+                        <div className="input-row">
+                            <div><label className="form-label">Desde</label><input type="date" className="form-control" value={rango.inicio} onChange={e => setRango({ ...rango, inicio: e.target.value })} /></div>
+                            <div><label className="form-label">Hasta (Inclusive)</label><input type="date" className="form-control" value={rango.fin} onChange={e => setRango({ ...rango, fin: e.target.value })} /></div>
+                        </div>
+
+                        <div style={{ marginTop: 25, textAlign: 'right' }}>
+                            <button className="btn-danger" style={{ padding: '15px 30px', fontSize: '1rem', opacity: loading ? 0.7 : 1 }} disabled={loading} onClick={bloquearRango}>
+                                {loading ? 'Procesando...' : '⛔ Bloquear Fechas Seleccionadas'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
             </div>
         </div>
     );
