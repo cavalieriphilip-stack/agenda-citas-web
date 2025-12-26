@@ -14,123 +14,53 @@ import {
 // Inicializar Mercado Pago
 initMercadoPago('APP_USR-a5a67c3b-4b4b-44a1-b973-ff2fd82fe90a', { locale: 'es-CL' });
 
-// 🔥 VARIABLE GLOBALES
 const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
 
 // ==========================================
-// 🛠️ HELPERS & UTILS
+// 🛠️ HELPERS
 // ==========================================
-
 const fmtMoney = (v) => `$${(v || 0).toLocaleString('es-CL')}`;
-
-const parseDate = (iso) => {
-    if (!iso) return new Date();
-    if (iso.length === 10) return new Date(iso + 'T12:00:00Z');
-    const clean = iso.endsWith('Z') ? iso : iso + 'Z';
-    return new Date(clean);
-};
-
+const parseDate = (iso) => { if (!iso) return new Date(); if (iso.length === 10) return new Date(iso + 'T12:00:00Z'); const clean = iso.endsWith('Z') ? iso : iso + 'Z'; return new Date(clean); };
 const fmtDate = (iso) => iso ? parseDate(iso).toLocaleDateString('es-CL', { day:'2-digit', month:'2-digit', year:'numeric', timeZone: 'UTC' }) : '-';
 const fmtTime = (iso) => iso ? parseDate(iso).toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit', timeZone: 'UTC' }) : '-';
 const toDateKey = (iso) => iso ? iso.split('T')[0] : '';
-
-const formatRut = (rut) => {
-    if (!rut) return '';
-    let value = rut.replace(/[^0-9kK]/g, '').toUpperCase();
-    if (value.length < 2) return value;
-    return value.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, ".") + '-' + value.slice(-1);
-};
-
-const validateRut = (rut) => {
-    if (!rut || rut.length < 2) return false;
-    const value = rut.replace(/[^0-9kK]/g, '').toUpperCase();
-    const body = value.slice(0, -1);
-    const dv = value.slice(-1);
-    let suma = 0, multiplo = 2;
-    for (let i = body.length - 1; i >= 0; i--) {
-        suma += multiplo * parseInt(body.charAt(i));
-        multiplo = multiplo < 7 ? multiplo + 1 : 2;
-    }
-    const dvEsperado = 11 - (suma % 11);
-    const dvCalculado = dvEsperado === 11 ? '0' : dvEsperado === 10 ? 'K' : dvEsperado.toString();
-    return dvCalculado === dv;
-};
-
+const formatRut = (rut) => { if (!rut) return ''; let value = rut.replace(/[^0-9kK]/g, '').toUpperCase(); if (value.length < 2) return value; return value.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, ".") + '-' + value.slice(-1); };
+const validateRut = (rut) => { if (!rut || rut.length < 2) return false; const value = rut.replace(/[^0-9kK]/g, '').toUpperCase(); const body = value.slice(0, -1); const dv = value.slice(-1); let suma = 0, multiplo = 2; for (let i = body.length - 1; i >= 0; i--) { suma += multiplo * parseInt(body.charAt(i)); multiplo = multiplo < 7 ? multiplo + 1 : 2; } const dvEsperado = 11 - (suma % 11); const dvCalculado = dvEsperado === 11 ? '0' : dvEsperado === 10 ? 'K' : dvEsperado.toString(); return dvCalculado === dv; };
 const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
+// Función mejorada para detectar categoría
 const getCategoryFromSpecialty = (specName) => {
     const s = (specName || '').toLowerCase();
     if (s.includes('pack')) return 'Packs'; 
-    if (s.includes('fonoaudiología') || s.includes('fonoaudiologia')) return 'Fonoaudiología';
-    if (s.includes('psicología') || s.includes('psicologia')) return 'Psicología';
-    if (s.includes('matrona')) return 'Matrona';
-    if (s.includes('terapia')) return 'Terapia Ocupacional';
+    if (s.includes('fonoaudiología') || s.includes('fonoaudiologia') || s.includes('lenguaje')) return 'Fonoaudiología';
+    if (s.includes('psicología') || s.includes('psicologia') || s.includes('mental')) return 'Psicología';
+    if (s.includes('matrona') || s.includes('mujer')) return 'Matrona';
+    if (s.includes('terapia') || s.includes('ocupacional')) return 'Terapia Ocupacional';
+    if (s.includes('nutri')) return 'Nutrición';
+    if (s.includes('kine')) return 'Kinesiología';
     return 'Otros';
 };
 
-const authHeader = () => {
-    const token = localStorage.getItem('token');
-    return { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' };
-};
+const authHeader = () => { const token = localStorage.getItem('token'); return { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' }; };
 
 // ==========================================
-// 🧩 COMPONENTES UI GLOBALES
+// 🧩 COMPONENTS
 // ==========================================
-
 function MultiSelectDropdown({ options, selectedValues, onChange, label, disabled }) {
     const [isOpen, setIsOpen] = useState(false);
     const wrapperRef = useRef(null);
     const safeSelected = Array.isArray(selectedValues) ? selectedValues : [];
-
-    useEffect(() => { 
-        function handleClickOutside(event) { 
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setIsOpen(false); 
-        } 
-        document.addEventListener("mousedown", handleClickOutside); 
-        return () => document.removeEventListener("mousedown", handleClickOutside); 
-    }, []);
-
-    return ( 
-        <div className="dropdown-wrapper" ref={wrapperRef}> 
-            <label className="form-label">{label}</label> 
-            <div className="dropdown-header" onClick={() => !disabled && setIsOpen(!isOpen)} style={{ opacity: disabled ? 0.6 : 1, cursor: disabled ? 'not-allowed' : 'pointer', background: disabled ? '#f9fafb' : '#fff' }}> 
-                <span>{safeSelected.length > 0 ? `${safeSelected.length} seleccionados` : 'Seleccionar...'}</span> 
-                <span>{isOpen ? '▲' : '▼'}</span> 
-            </div> 
-            {isOpen && !disabled && ( 
-                <div className="dropdown-list"> 
-                    {options.map(opt => ( 
-                        <div key={opt} className="dropdown-item" onClick={() => { 
-                            if (safeSelected.includes(opt)) onChange(safeSelected.filter(v => v !== opt)); 
-                            else onChange([...safeSelected, opt]); 
-                        }}> 
-                            <input type="checkbox" checked={safeSelected.includes(opt)} readOnly /> 
-                            <span>{opt}</span> 
-                        </div> 
-                    ))} 
-                </div> 
-            )} 
-        </div> 
-    );
+    useEffect(() => { function handleClickOutside(event) { if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setIsOpen(false); } document.addEventListener("mousedown", handleClickOutside); return () => document.removeEventListener("mousedown", handleClickOutside); }, []);
+    return ( <div className="dropdown-wrapper" ref={wrapperRef}> <label className="form-label">{label}</label> <div className="dropdown-header" onClick={() => !disabled && setIsOpen(!isOpen)} style={{ opacity: disabled ? 0.6 : 1, cursor: disabled ? 'not-allowed' : 'pointer', background: disabled ? '#f9fafb' : '#fff' }}> <span>{safeSelected.length > 0 ? `${safeSelected.length} seleccionados` : 'Seleccionar...'}</span> <span>{isOpen ? '▲' : '▼'}</span> </div> {isOpen && !disabled && ( <div className="dropdown-list"> {options.map(opt => ( <div key={opt} className="dropdown-item" onClick={() => { if (safeSelected.includes(opt)) onChange(safeSelected.filter(v => v !== opt)); else onChange([...safeSelected, opt]); }}> <input type="checkbox" checked={safeSelected.includes(opt)} readOnly /> <span>{opt}</span> </div> ))} </div> )} </div> );
 }
 
 function Modal({ title, children, onClose }) {
-    return createPortal(
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
-                <button className="modal-close" onClick={onClose}>×</button>
-                {title && <h2 style={{marginTop:0, marginBottom:20, borderBottom:'1px solid #eee', paddingBottom:10}}>{title}</h2>}
-                {children}
-            </div>
-        </div>, document.body
-    );
+    return createPortal( <div className="modal-overlay" onClick={onClose}> <div className="modal-content" onClick={e => e.stopPropagation()}> <button className="modal-close" onClick={onClose}>×</button> {title && <h2 style={{marginTop:0, marginBottom:20, borderBottom:'1px solid #eee', paddingBottom:10}}>{title}</h2>} {children} </div> </div>, document.body );
 }
 
 // ==========================================
-// 🚀 COMPONENTES PRINCIPALES (Definidos antes de App)
+// 🔴 WEB PACIENTE
 // ==========================================
-
-// 🔴 WEB PACIENTE (FRONTEND PÚBLICO)
 function WebPaciente() {
     const [step, setStep] = useState(0); 
     const [profesionales, setProfesionales] = useState([]);
@@ -182,7 +112,6 @@ function WebPaciente() {
     }, []);
 
     const tratamientoSel = tratamientos.find(t => t.id === parseInt(form.tratamientoId));
-    
     const prosAptos = form.tratamientoId 
         ? profesionales.filter(p => tratamientoSel && p.tratamientos && p.tratamientos.includes(tratamientoSel.nombre))
         : [];
@@ -325,7 +254,6 @@ function WebPaciente() {
                 {step === 1 && ( <> <h2 className="web-title">Datos Personales</h2><div className="input-group"><label className="web-label">Nombre</label><input className="web-input" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} /></div><div className="input-group"><label className="web-label">Email</label><input className="web-input" value={form.email} onChange={e=>setForm({...form, email:e.target.value})} /></div><div className="input-group"><label className="web-label">Teléfono</label><input className="web-input" value={form.telefono} onChange={e=>setForm({...form, telefono:e.target.value})} /></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.nombre || !validateEmail(form.email)} onClick={()=>setStep(2)}>Guardar Datos</button></div> </> )} 
                 {step === 2 && ( <> <h2 className="web-title">¿Qué necesitas?</h2> <div className="input-group"><label className="web-label">Categoría</label><select className="web-select" value={form.categoria} onChange={e=>setForm({...form, categoria:e.target.value, especialidad:'', tratamientoId:''})}><option value="">Selecciona...</option>{categorias.map(c=><option key={c} value={c}>{c}</option>)}</select></div> <div className="input-group"><label className="web-label">Especialidad</label><select className="web-select" disabled={!form.categoria} value={form.especialidad} onChange={e=>setForm({...form, especialidad:e.target.value, tratamientoId:''})}><option value="">Selecciona...</option>{especialidadesFiltradas.map(e=><option key={e} value={e}>{e}</option>)}</select></div> <div className="input-group"><label className="web-label">Tratamiento</label><select className="web-select" disabled={!form.especialidad} value={form.tratamientoId} onChange={e=>setForm({...form, tratamientoId:e.target.value})}><option value="">Selecciona...</option>{prestacionesFiltradas.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}</select></div> <div className="bottom-bar"><button className="btn-block-action" disabled={!form.tratamientoId || loading} onClick={handleTreatmentConfirm}>{loading ? 'Buscando...' : 'Buscar Horas'}</button></div> </> )} 
                 {step === 3 && ( <> <h2 className="web-title">Elige tu Hora</h2><div className="rs-date-tabs">{availableDates.map(dateStr => { const dateObj = parseDate(dateStr + 'T00:00:00'); return ( <div key={dateStr} className={`rs-date-tab ${selectedDateKey === dateStr ? 'selected' : ''}`} onClick={() => setSelectedDateKey(dateStr)}><div className="rs-day-name">{dateObj.toLocaleDateString('es-CL', {weekday: 'short', timeZone: 'UTC'})}</div><div className="rs-day-number">{dateObj.getUTCDate()}</div></div> ); })}</div>
-                {/* 🔥 CONTAINER CON SCROLL PARA MUCHAS HORAS */}
                 <div className="rs-pro-list" style={{maxHeight:'400px', overflowY:'auto', paddingRight:'5px'}}>
                     {multiAgenda[selectedDateKey]?.map((entry) => ( <div key={entry.profesional.id} className="rs-pro-card"><div className="rs-pro-header"><div className="rs-avatar-circle">{entry.profesional.nombreCompleto.charAt(0)}</div><div className="rs-pro-details"><strong>{entry.profesional.nombreCompleto}</strong><span>{entry.profesional.especialidad}</span></div></div><div className="rs-slots-grid">{entry.slots.sort((a,b)=>parseDate(a.fecha)-parseDate(b.fecha)).map(slot => ( <button key={slot.id} className="rs-slot-btn" onClick={() => selectSlot(entry.profesional.id, slot.fecha)}>{fmtTime(slot.fecha)}</button> ))}</div></div> ))}
                 </div> </> )} 
@@ -344,115 +272,168 @@ function WebPaciente() {
     )
 }
 
-// 🔐 LAYOUT ADMINISTRATIVO
-function AdminLayout() {
-    const [activeModule, setActiveModule] = useState('agenda');
-    const [activeView, setActiveView] = useState('resumen');
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const navigate = useNavigate();
+// ==========================================
+// 📅 AGENDA: NUEVA RESERVA MANUAL (Corregida la referencia a props y estados)
+// ==========================================
+function AgendaNuevaReserva({ reload, reservas, tratamientos, user, isAdmin }) {
+    const [pacientes, setPacientes] = useState([]); 
+    const [pros, setPros] = useState([]); 
+    const [horarios, setHorarios] = useState([]); 
+    const [form, setForm] = useState({ pacienteId: '', profesionalId: isAdmin ? '' : user.id, horarioId: '', especialidad: '', tratamientoId: '' });
     
-    const user = JSON.parse(localStorage.getItem('usuario') || '{}');
-    const token = localStorage.getItem('token');
-    const isAdmin = user.rol === 'ADMIN';
-
-    useEffect(() => { 
-        if (!user.id || !token) navigate('/login'); 
-    }, [navigate, user.id, token]);
-
-    const handleModuleSwitch = (mod, view) => { setActiveModule(mod); setActiveView(view); setMobileMenuOpen(false); }
+    useEffect(() => { getPacientes().then(setPacientes); getProfesionales().then(setPros); if (!isAdmin && user.id) { handlePro(user.id); } }, []);
     
+    const especialidades = [...new Set(tratamientos.map(t => t.especialidad))]; 
+    const prestaciones = tratamientos.filter(t => t.especialidad === form.especialidad); 
+    const prosFiltrados = isAdmin ? (form.tratamientoId ? pros.filter(p => { const trat = tratamientos.find(x => x.id === parseInt(form.tratamientoId)); return trat && p.tratamientos && p.tratamientos.includes(trat.nombre); }) : []) : [user];
+    
+    const handlePro = async (pid) => { 
+        setForm(prev => ({ ...prev, profesionalId: pid })); setHorarios([]); if (!pid) return; 
+        try { const h = await getHorariosByProfesional(pid); if (Array.isArray(h)) setHorarios(h.filter(x => new Date(x.fecha) > new Date())); } catch(e) { setHorarios([]); } 
+    };
+    
+    const save = async (e) => { 
+        e.preventDefault(); 
+        if (!form.tratamientoId) return alert("Faltan datos"); 
+        const trat = tratamientos.find(t => t.id === parseInt(form.tratamientoId)); 
+        try { await crearReserva({ pacienteId: parseInt(form.pacienteId), profesionalId: parseInt(form.profesionalId), horarioDisponibleId: form.horarioId, motivo: trat.nombre }); alert('Creada'); reload(); } catch (e) { alert('Error'); } 
+    };
+    
+    return ( 
+        <div> 
+            <div className="page-header"><div className="page-title"><h1>Nueva Reserva Manual</h1></div></div> 
+            <div className="pro-card"> 
+                <form onSubmit={save}> 
+                    <div className="input-row"> 
+                        <div><label className="form-label">Especialidad</label><select className="form-control" value={form.especialidad} onChange={e => setForm({ ...form, especialidad: e.target.value, tratamientoId: '' })}><option>Seleccionar...</option>{especialidades.map(e => <option key={e} value={e}>{e}</option>)}</select></div> 
+                        <div><label className="form-label">Tratamiento</label><select className="form-control" disabled={!form.especialidad} value={form.tratamientoId} onChange={e => setForm({ ...form, tratamientoId: e.target.value })}><option>Seleccionar...</option>{prestaciones.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}</select></div> 
+                    </div> 
+                    <div className="input-row"> 
+                        <div><label className="form-label">Paciente</label><select className="form-control" value={form.pacienteId} onChange={e => setForm({ ...form, pacienteId: e.target.value })}><option>Seleccionar...</option>{pacientes.filter(p => p.rut !== 'BLOQUEO').map(p => <option key={p.id} value={p.id}>{p.nombreCompleto} ({formatRut(p.rut)})</option>)}</select></div> 
+                        <div> <label className="form-label">Profesional</label> {isAdmin ? ( <select className="form-control" disabled={!form.tratamientoId} value={form.profesionalId} onChange={e => handlePro(e.target.value)}><option>Seleccionar...</option>{prosFiltrados.map(p => <option key={p.id} value={p.id}>{p.nombreCompleto}</option>)}</select> ) : ( <input className="form-control" value={user.nombre} disabled /> )} </div> 
+                    </div> 
+                    <div style={{ marginBottom: 20 }}> 
+                        <label className="form-label">Horario</label> <select className="form-control" onChange={e => setForm({ ...form, horarioId: e.target.value })}><option>Seleccionar...</option>{Array.isArray(horarios) && horarios.map(h => <option key={h.id} value={h.id}>{fmtDate(h.fecha)} - {fmtTime(h.fecha)}</option>)}</select> 
+                    </div> 
+                    <button className="btn-primary">Crear Reserva</button> 
+                </form> 
+            </div> 
+        </div> 
+    );
+}
+
+// ==========================================
+// 👔 GESTIÓN DE PROFESIONALES (Corregida referencia)
+// ==========================================
+function AgendaProfesionales({ tratamientos }) {
+    const [pros, setPros] = useState([]);
+    const [form, setForm] = useState({ id: null, nombreCompleto: '', rut: '', email: '', especialidades: [], tratamientos: [] });
+    const [isEditing, setIsEditing] = useState(false);
+    
+    const especialidadesUnicas = [...new Set(tratamientos.map(t => t.especialidad))].sort();
+    const tratamientosDisponibles = tratamientos.filter(t => form.especialidades.includes(t.especialidad)).map(t => t.nombre).sort();
+
+    useEffect(() => { getProfesionales().then(setPros) }, []);
+
+    const handleSpecChange = (newSpecs) => {
+        const tratamientosValidos = tratamientos.filter(t => newSpecs.includes(t.especialidad) && form.tratamientos.includes(t.nombre)).map(t => t.nombre);
+        setForm({ ...form, especialidades: newSpecs, tratamientos: tratamientosValidos });
+    };
+
+    const save = async (e) => {
+        e.preventDefault();
+        const payload = {
+            nombreCompleto: form.nombreCompleto,
+            rut: form.rut,
+            email: form.email,
+            especialidad: form.especialidades.join(', '),
+            tratamientos: form.tratamientos.join(', ')
+        };
+        try {
+            if (isEditing) await updateProfesional(form.id, payload);
+            else await fetch(`${API_BASE_URL}/profesionales`, { method: 'POST', headers: authHeader(), body: JSON.stringify(payload) });
+            alert('Guardado');
+            setIsEditing(false);
+            setForm({ id: null, nombreCompleto: '', rut: '', email: '', especialidades: [], tratamientos: [] });
+            getProfesionales().then(setPros);
+        } catch (e) { alert("Error al guardar"); }
+    };
+
+    const handleEdit = (p) => {
+        setForm({
+            id: p.id,
+            nombreCompleto: p.nombreCompleto,
+            rut: formatRut(p.rut || ''),
+            email: p.email || '',
+            especialidades: p.especialidad ? p.especialidad.split(', ').map(s=>s.trim()) : [],
+            tratamientos: p.tratamientos ? p.tratamientos.split(', ').map(s=>s.trim()) : []
+        });
+        setIsEditing(true);
+        window.scrollTo(0, 0);
+    };
+
+    const handleDelete = async (id) => {
+        if (confirm('¿Eliminar profesional?')) { await deleteProfesional(id); getProfesionales().then(setPros); }
+    };
+
     return (
-        <div className="dashboard-layout">
-            <nav className="top-nav">
-                <div className="brand-area">
-                    <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>☰</button>
-                    <img src={LOGO_URL} alt="Logo" className="cisd-logo-admin" />
-                    <span className="admin-title-text">CISD {isAdmin ? 'Admin' : 'Profesional'}</span>
-                </div>
-                <div className="module-switcher desktop-view-only">
-                    <button className={`module-tab ${activeModule === 'agenda' ? 'active' : ''}`} onClick={() => handleModuleSwitch('agenda', 'resumen')}>Clínica</button>
-                    <button className={`module-tab ${activeModule === 'clientes' ? 'active' : ''}`} onClick={() => handleModuleSwitch('clientes', 'listado')}>Pacientes</button>
-                    {isAdmin && <button className={`module-tab ${activeModule === 'finanzas' ? 'active' : ''}`} onClick={() => handleModuleSwitch('finanzas', 'reporte')}>Finanzas</button>}
-                </div>
-                <div className="nav-actions">
-                    <span className="desktop-view-only" style={{marginRight:10, fontSize:'0.9rem', fontWeight:'600'}}>{user.nombre}</span>
-                    <button onClick={() => {localStorage.removeItem('usuario'); localStorage.removeItem('token'); navigate('/login');}} className="btn-danger" style={{padding:'5px 15px', fontSize:'0.8rem'}}>Salir</button>
-                </div>
-            </nav>
-            <div className="workspace">
-                {mobileMenuOpen && <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)}></div>}
-                <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
-                    <div className="mobile-view-only" style={{marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #eee'}}>
-                        <div className="sidebar-header">MÓDULOS</div>
-                        <div className={`nav-item ${activeModule === 'agenda' ? 'active' : ''}`} onClick={() => handleModuleSwitch('agenda', 'resumen')}>🏥 Clínica</div>
-                        <div className={`nav-item ${activeModule === 'clientes' ? 'active' : ''}`} onClick={() => handleModuleSwitch('clientes', 'listado')}>👥 Pacientes</div>
-                        {isAdmin && <div className={`nav-item ${activeModule === 'finanzas' ? 'active' : ''}`} onClick={() => handleModuleSwitch('finanzas', 'reporte')}>💰 Finanzas</div>}
+        <div>
+            <div className="page-header"><div className="page-title"><h1>Gestión de Profesionales</h1></div></div>
+            <div className="pro-card">
+                <h3>{isEditing ? 'Editar Profesional' : 'Nuevo Profesional'}</h3>
+                <form onSubmit={save}>
+                    <div className="input-row">
+                        <div style={{ flex: 2 }}>
+                            <label className="form-label">Nombre Completo</label>
+                            <input className="form-control" value={form.nombreCompleto} onChange={e => setForm({ ...form, nombreCompleto: e.target.value })} required />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <label className="form-label">RUT</label>
+                            <input className="form-control" value={form.rut} onChange={e => setForm({ ...form, rut: formatRut(e.target.value) })} placeholder="12.345.678-9" />
+                        </div>
                     </div>
-                    <div className="sidebar-header">NAVEGACIÓN</div>
-                    {activeModule === 'agenda' && ( 
-                        <>
-                            <div className={`nav-item ${activeView==='resumen'?'active':''}`} onClick={()=>setActiveView('resumen')}>Calendario</div>
-                            <div className={`nav-item ${activeView==='reservas'?'active':''}`} onClick={()=>setActiveView('reservas')}>Nueva Reserva</div>
-                            <div className={`nav-item ${activeView==='horarios'?'active':''}`} onClick={()=>setActiveView('horarios')}>Mis Horarios</div>
-                            {isAdmin && (
-                                <>
-                                    <div className="sidebar-header" style={{marginTop:20}}>ADMINISTRACIÓN</div>
-                                    <div className={`nav-item ${activeView==='profesionales'?'active':''}`} onClick={()=>setActiveView('profesionales')}>Profesionales</div>
-                                    <div className={`nav-item ${activeView==='prestaciones'?'active':''}`} onClick={()=>setActiveView('prestaciones')}>Prestaciones</div>
-                                </>
-                            )}
-                        </> 
-                    )}
-                    {activeModule === 'clientes' && <div className={`nav-item ${activeView==='listado'?'active':''}`} onClick={()=>setActiveView('listado')}>Directorio</div>}
-                    {isAdmin && activeModule === 'finanzas' && <div className={`nav-item ${activeView==='reporte'?'active':''}`} onClick={()=>setActiveView('reporte')}>Ver Reportes</div>}
-                </aside>
-                <main className="main-stage">
-                    <DashboardContent module={activeModule} view={activeView} user={user} isAdmin={isAdmin} />
-                </main>
+                    {/* CAMPO DE EMAIL */}
+                    <div className="input-row">
+                        <div style={{width: '100%'}}>
+                            <label className="form-label">Email Notificaciones</label>
+                            <input className="form-control" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="medico@cisd.cl" />
+                        </div>
+                    </div>
+
+                    <div className="input-row">
+                        <div><MultiSelectDropdown label="1. Especialidades" options={especialidadesUnicas} selectedValues={form.especialidades} onChange={handleSpecChange} /></div>
+                        <div><MultiSelectDropdown label="2. Prestaciones" options={tratamientosDisponibles} selectedValues={form.tratamientos} onChange={v => setForm({ ...form, tratamientos: v })} disabled={form.especialidades.length === 0} /></div>
+                    </div>
+                    <button className="btn-primary">Guardar</button>
+                    {isEditing && <button type="button" className="btn-edit" onClick={() => { setIsEditing(false); setForm({ id: null, nombreCompleto: '', rut: '', email: '', especialidades: [], tratamientos: [] }); }} style={{marginLeft: 10}}>Cancelar</button>}
+                </form>
+            </div>
+            <div className="pro-card">
+                <div className="data-table-container">
+                    <table className="data-table">
+                        <thead><tr><th>Nombre</th><th>RUT</th><th>Email</th><th>Especialidad</th><th>Acciones</th></tr></thead>
+                        <tbody>
+                            {pros.map(p => (
+                                <tr key={p.id}>
+                                    <td>{p.nombreCompleto}</td>
+                                    <td>{formatRut(p.rut)}</td>
+                                    <td>{p.email || '-'}</td>
+                                    <td>{p.especialidad}</td>
+                                    <td>
+                                        <button className="btn-edit" onClick={() => handleEdit(p)}>Editar</button>
+                                        <button className="btn-danger" onClick={() => handleDelete(p.id)}>X</button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );
 }
 
-function DashboardContent({ module, view, user, isAdmin }) {
-    const [reservas, setReservas] = useState([]);
-    const [tratamientos, setTratamientos] = useState([]);
-    
-    const refreshData = async () => { 
-        try { 
-            const data = await getReservasDetalle(); 
-            setReservas(data || []); 
-            const trats = await fetch(`${API_BASE_URL}/tratamientos`).then(r => r.json()); 
-            setTratamientos(trats || []); 
-        } catch (e) { console.error(e); } 
-    };
-    
-    useEffect(() => { refreshData(); }, []);
-
-    if (module === 'agenda') {
-        if (view === 'resumen') return <AgendaResumen reservas={reservas} tratamientos={tratamientos} reload={refreshData} user={user} isAdmin={isAdmin} />;
-        if (view === 'reservas') return <AgendaNuevaReserva reload={refreshData} reservas={reservas} tratamientos={tratamientos} user={user} isAdmin={isAdmin} />;
-        if (view === 'horarios') return <AgendaHorarios user={user} isAdmin={isAdmin} />;
-        if (isAdmin) { 
-            if (view === 'profesionales') return <AgendaProfesionales tratamientos={tratamientos} />; 
-            if (view === 'prestaciones') return <AgendaTratamientos reload={refreshData} />; 
-        } 
-        else { 
-            if (view === 'profesionales' || view === 'prestaciones') return <AgendaResumen reservas={reservas} tratamientos={tratamientos} reload={refreshData} user={user} isAdmin={isAdmin} />; 
-        }
-    }
-    if (module === 'clientes') return <AgendaPacientes />;
-    if (module === 'finanzas' && isAdmin) { 
-        const total = reservas.reduce((acc, r) => acc + (r.valor || 0), 0); 
-        return <FinanzasReporte total={total} count={reservas.length} reservas={reservas} />; 
-    }
-    return <div>Cargando...</div>;
-}
-
-// ==========================================
-// 📅 AGENDA: CALENDARIO RESUMEN
-// ==========================================
-
+// 📅 AGENDA RESUMEN (CALENDARIO)
 function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
     const [pros, setPros] = useState([]); 
     const [filterPro, setFilterPro] = useState(isAdmin ? '' : user.id); 
@@ -584,6 +565,7 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                                 return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth(); 
                             }).map(r=>{ 
                                 const st = parseDate(r.fecha); 
+                                // Calcular fin para dibujar bloque
                                 const et = r.fechaFin ? parseDate(r.fechaFin) : new Date(st.getTime() + 45*60000);
                                 const h=st.getUTCHours(), m=st.getUTCMinutes(); 
                                 const top = ((h-8)*60)+m; 
@@ -684,16 +666,25 @@ function PerfilPaciente({ paciente, onBack }) {
     return ( <div style={{animation: 'fadeIn 0.3s'}}> <div style={{display:'flex', alignItems:'center', gap:15, marginBottom:20}}> <button className="btn-edit" onClick={onBack}>← Volver al listado</button> <h1 style={{margin:0, fontSize:'1.5rem'}}>{paciente.nombreCompleto}</h1> </div> <div className="tabs-header" style={{borderBottom:'2px solid #eee', marginBottom:20, display:'flex', gap:20}}> <div className={`tab-item ${activeTab==='datos'?'active-tab':''}`} onClick={()=>setActiveTab('datos')} style={{padding:'10px 0', cursor:'pointer', fontWeight: activeTab==='datos'?700:400, borderBottom: activeTab==='datos'?'2px solid #000':'none', marginBottom:-2}}>Datos Personales</div> <div className={`tab-item ${activeTab==='historial'?'active-tab':''}`} onClick={()=>setActiveTab('historial')} style={{padding:'10px 0', cursor:'pointer', fontWeight: activeTab==='historial'?700:400, borderBottom: activeTab==='historial'?'2px solid #000':'none', marginBottom:-2}}>Historial de Citas</div> <div className={`tab-item ${activeTab==='ficha'?'active-tab':''}`} onClick={()=>setActiveTab('ficha')} style={{padding:'10px 0', cursor:'pointer', fontWeight: activeTab==='ficha'?700:400, borderBottom: activeTab==='ficha'?'2px solid #000':'none', marginBottom:-2}}>Ficha Clínica</div> </div> {activeTab === 'datos' && ( <div className="pro-card"> <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:20}}> <div><div className="mobile-label">RUT</div><div style={{fontSize:'1.1rem'}}>{formatRut(paciente.rut)}</div></div> <div><div className="mobile-label">Email</div><div style={{fontSize:'1.1rem'}}>{paciente.email}</div></div> <div><div className="mobile-label">Teléfono</div><div style={{fontSize:'1.1rem'}}>{paciente.telefono}</div></div> <div><div className="mobile-label">Inversión Total (Est.)</div><div style={{fontSize:'1.1rem', fontWeight:'bold', color:'#059669'}}>{fmtMoney(totalPagado)}</div></div> </div> </div> )} {activeTab === 'historial' && ( <div className="pro-card"> <h3 style={{marginTop:0}}>Citas Agendadas</h3> <table className="data-table"> <thead><tr><th>Fecha</th><th>Profesional</th><th>Tratamiento</th><th>Estado</th><th>Valor</th></tr></thead> <tbody> {historial.map(h => ( <tr key={h.id}> <td>{fmtDate(h.fechaHoraInicio)} {fmtTime(h.fechaHoraInicio)}</td> <td>{h.profesional?.nombreCompleto}</td> <td>{h.motivoConsulta}</td> <td><span style={{padding:'2px 8px', borderRadius:4, background: h.estado==='CONFIRMADA'?'#d1fae5':'#fee2e2', color: h.estado==='CONFIRMADA'?'#065f46':'#991b1b', fontSize:'0.85rem', fontWeight:'bold'}}>{h.estado}</span></td> <td>{fmtMoney(h.estado==='CONFIRMADA' ? 20000 : 0)}</td> </tr> ))} {historial.length === 0 && <tr><td colSpan="5" style={{textAlign:'center', color:'#666'}}>Sin historial disponible</td></tr>} </tbody> </table> </div> )} {activeTab === 'ficha' && <FichaClinicaViewer paciente={paciente} onClose={onBack} />} </div> );
 }
 
-// 💊 GESTIÓN DE PRESTACIONES (TABLA CORREGIDA)
+// 💊 GESTIÓN DE PRESTACIONES (NUEVAS COLUMNAS Y CATEGORÍA)
 function AgendaTratamientos({ reload }) {
-    const [items, setItems] = useState([]); const [form, setForm] = useState({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '' }); const [isEditing, setIsEditing] = useState(false);
+    const [items, setItems] = useState([]); const [form, setForm] = useState({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '', categoria: '' }); const [isEditing, setIsEditing] = useState(false);
     const load = () => fetch(`${API_BASE_URL}/tratamientos`).then(r => r.json()).then(setItems);
     useEffect(() => { load(); }, []);
-    const save = async (e) => { e.preventDefault(); const method = isEditing ? 'PUT' : 'POST'; const url = isEditing ? `${API_BASE_URL}/tratamientos/${form.id}` : `${API_BASE_URL}/tratamientos`; await fetch(url, { method, headers: authHeader(), body: JSON.stringify(form) }); setForm({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '' }); setIsEditing(false); load(); if(reload) reload(); };
-    const handleEdit = (it) => { setForm(it); setIsEditing(true); window.scrollTo(0,0); };
+    
+    // Categoría Automática o Manual
+    const handleSpecChange = (e) => {
+        const spec = e.target.value;
+        const autoCat = getCategoryFromSpecialty(spec);
+        setForm({...form, especialidad: spec, categoria: autoCat});
+    };
+
+    const save = async (e) => { e.preventDefault(); const method = isEditing ? 'PUT' : 'POST'; const url = isEditing ? `${API_BASE_URL}/tratamientos/${form.id}` : `${API_BASE_URL}/tratamientos`; await fetch(url, { method, headers: authHeader(), body: JSON.stringify(form) }); setForm({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '', categoria: '' }); setIsEditing(false); load(); if(reload) reload(); };
+    const handleEdit = (it) => { setForm({...it, categoria: getCategoryFromSpecialty(it.especialidad)}); setIsEditing(true); window.scrollTo(0,0); };
     const handleDelete = async (id) => { if(confirm('¿Eliminar?')) { await fetch(`${API_BASE_URL}/tratamientos/${id}`, { method: 'DELETE', headers: authHeader() }); load(); } };
-    return ( <div> <div className="page-header"><div className="page-title"><h1>Gestión de Prestaciones</h1></div></div> <div className="pro-card"> <h3>{isEditing ? 'Editar' : 'Nueva'}</h3> <form onSubmit={save}> <div className="input-row"> <div><label className="form-label">Nombre del Tratamiento</label><input className="form-control" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} required /></div> <div><label className="form-label">Especialidad (Pública)</label><input className="form-control" value={form.especialidad} onChange={e=>setForm({...form, especialidad:e.target.value})} required /></div> </div> <div className="input-row"> <div><label className="form-label">Código</label><input className="form-control" value={form.codigo} onChange={e=>setForm({...form, codigo:e.target.value})} /></div> <div><label className="form-label">Valor</label><input type="number" className="form-control" value={form.valor} onChange={e=>setForm({...form, valor:e.target.value})} required /></div> </div> <button className="btn-primary">Guardar</button> {isEditing && <button type="button" className="btn-edit" style={{marginLeft:10}} onClick={()=>{setIsEditing(false); setForm({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '' })}}>Cancelar</button>} </form> </div> <div className="pro-card"> <div className="data-table-container"> 
-        {/* 🔥 TABLA REORDENADA */}
+    
+    return ( <div> <div className="page-header"><div className="page-title"><h1>Gestión de Prestaciones</h1></div></div> <div className="pro-card"> <h3>{isEditing ? 'Editar' : 'Nueva'}</h3> <form onSubmit={save}> <div className="input-row"> <div><label className="form-label">Nombre del Tratamiento</label><input className="form-control" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} required /></div> <div><label className="form-label">Especialidad (Pública)</label><input className="form-control" value={form.especialidad} onChange={handleSpecChange} required /></div> </div> <div className="input-row"> <div><label className="form-label">Código</label><input className="form-control" value={form.codigo} onChange={e=>setForm({...form, codigo:e.target.value})} /></div> <div><label className="form-label">Categoría (Auto)</label><input className="form-control" value={form.categoria} onChange={e=>setForm({...form, categoria:e.target.value})} /></div> <div><label className="form-label">Valor</label><input type="number" className="form-control" value={form.valor} onChange={e=>setForm({...form, valor:e.target.value})} required /></div> </div> <button className="btn-primary">Guardar</button> {isEditing && <button type="button" className="btn-edit" style={{marginLeft:10}} onClick={()=>{setIsEditing(false); setForm({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '', categoria: '' })}}>Cancelar</button>} </form> </div> <div className="pro-card"> <div className="data-table-container"> 
+        {/* 🔥 TABLA REORDENADA CON CATEGORÍA */}
         <table className="data-table"> <thead><tr><th>Código</th><th>Categoría</th><th>Tratamiento</th><th>Especialidad</th><th>Valor</th><th>Acciones</th></tr></thead> <tbody> {items.map(it => ( <tr key={it.id}> <td>{it.codigo}</td> <td>{getCategoryFromSpecialty(it.especialidad)}</td> <td>{it.nombre}</td> <td>{it.especialidad}</td> <td>{fmtMoney(it.valor)}</td> <td> <button className="btn-edit" onClick={()=>handleEdit(it)}>Edit</button> <button className="btn-danger" onClick={()=>handleDelete(it.id)}>X</button> </td> </tr> ))} </tbody> </table> 
     </div> </div> </div> );
 }
