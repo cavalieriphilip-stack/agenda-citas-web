@@ -14,7 +14,7 @@ import {
 // Inicializar Mercado Pago
 initMercadoPago('APP_USR-a5a67c3b-4b4b-44a1-b973-ff2fd82fe90a', { locale: 'es-CL' });
 
-// 🔥 VARIABLE GLOBAL (Evita pantalla blanca)
+// 🔥 VARIABLE GLOBAL
 const LOGO_URL = "https://cisd.cl/wp-content/uploads/2024/12/Logo-png-negro-150x150.png";
 
 // ==========================================
@@ -25,9 +25,7 @@ const fmtMoney = (v) => `$${(v || 0).toLocaleString('es-CL')}`;
 
 const parseDate = (iso) => {
     if (!iso) return new Date();
-    // Si viene solo fecha YYYY-MM-DD, forzamos mediodía
     if (iso.length === 10) return new Date(iso + 'T12:00:00Z');
-    // Asegurar formato ISO con Z
     const clean = iso.endsWith('Z') ? iso : iso + 'Z';
     return new Date(clean);
 };
@@ -262,6 +260,7 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
     const [currentDate, setCurrentDate] = useState(new Date()); 
     const [selectedEvent, setSelectedEvent] = useState(null);
 
+    // Estados para Modificar Cita
     const [isEditing, setIsEditing] = useState(false);
     const [editProId, setEditProId] = useState('');
     const [editSlot, setEditSlot] = useState('');
@@ -386,9 +385,9 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                                 const st = parseDate(r.fecha), h=st.getUTCHours(), m=st.getUTCMinutes(); 
                                 const top = ((h-8)*60)+m; 
                                 return ( 
-                                    <div key={r.id} className="cal-event evt-blue" style={{top, height:45}} onClick={()=>handleEventClick(r)}> 
+                                    <div key={r.id} className={`cal-event ${r.estado === 'BLOQUEADA' ? 'evt-block' : 'evt-blue'}`} style={{top, height:45, background: r.estado === 'BLOQUEADA' ? '#fecaca' : '#dbeafe', borderLeft: r.estado === 'BLOQUEADA' ? '4px solid #ef4444' : '4px solid #3b82f6'}} onClick={()=>handleEventClick(r)}> 
                                         <strong>{st.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', timeZone: 'UTC'})}</strong> 
-                                        <span>{r.pacienteNombre}</span> 
+                                        <span style={{color: r.estado === 'BLOQUEADA' ? '#991b1b' : '#1e3a8a'}}>{r.estado === 'BLOQUEADA' ? '⛔ BLOQUEADO' : r.pacienteNombre}</span> 
                                     </div> 
                                 ) 
                             })} 
@@ -431,11 +430,11 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                         <>
                             <div style={{marginBottom: 20, paddingBottom: 15, borderBottom: '1px solid #eee', display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
                                 <div>
-                                    <h2 style={{margin:0, fontSize:'1.4rem', color:'#1f2937'}}>{selectedEvent.pacienteNombre}</h2>
-                                    <div style={{color:'#6b7280', fontSize:'0.9rem', marginTop:4}}>RUT: {formatRut(selectedEvent.pacienteRut)}</div>
+                                    <h2 style={{margin:0, fontSize:'1.4rem', color:'#1f2937'}}>{selectedEvent.estado === 'BLOQUEADA' ? 'BLOQUEO ADMINISTRATIVO' : selectedEvent.pacienteNombre}</h2>
+                                    {selectedEvent.estado !== 'BLOQUEADA' && <div style={{color:'#6b7280', fontSize:'0.9rem', marginTop:4}}>RUT: {formatRut(selectedEvent.pacienteRut)}</div>}
                                 </div>
-                                <div style={{background:'#ecfdf5', color:'#065f46', padding:'4px 12px', borderRadius:20, fontSize:'0.75rem', fontWeight:'600', border:'1px solid #a7f3d0', textTransform:'uppercase'}}>
-                                    Confirmada
+                                <div style={{background: selectedEvent.estado === 'BLOQUEADA' ? '#fee2e2' : '#ecfdf5', color: selectedEvent.estado === 'BLOQUEADA' ? '#991b1b' : '#065f46', padding:'4px 12px', borderRadius:20, fontSize:'0.75rem', fontWeight:'600', border: selectedEvent.estado === 'BLOQUEADA' ? '1px solid #fecaca' : '1px solid #a7f3d0', textTransform:'uppercase'}}>
+                                    {selectedEvent.estado === 'BLOQUEADA' ? 'BLOQUEADO' : 'CONFIRMADA'}
                                 </div>
                             </div>
 
@@ -458,22 +457,24 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                                 </div>
                             </div>
 
-                            <div style={{background:'#f9fafb', padding:15, borderRadius:8, border:'1px solid #f3f4f6', marginBottom:20}}>
-                                <div style={{display:'flex', justifyContent:'space-between', marginBottom:8}}>
-                                    <span style={{color:'#6b7280', fontSize:'0.9rem'}}>Email:</span>
-                                    <span style={{color:'#374151', fontWeight:'500'}}>{selectedEvent.pacienteEmail || '-'}</span>
+                            {selectedEvent.estado !== 'BLOQUEADA' && (
+                                <div style={{background:'#f9fafb', padding:15, borderRadius:8, border:'1px solid #f3f4f6', marginBottom:20}}>
+                                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:8}}>
+                                        <span style={{color:'#6b7280', fontSize:'0.9rem'}}>Email:</span>
+                                        <span style={{color:'#374151', fontWeight:'500'}}>{selectedEvent.pacienteEmail || '-'}</span>
+                                    </div>
+                                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:8}}>
+                                        <span style={{color:'#6b7280', fontSize:'0.9rem'}}>Teléfono:</span>
+                                        <span style={{color:'#374151', fontWeight:'500'}}>{selectedEvent.pacienteTelefono || '-'}</span>
+                                    </div>
+                                    <div style={{display:'flex', justifyContent:'space-between', borderTop:'1px solid #e5e7eb', paddingTop:8, marginTop:8}}>
+                                        <span style={{color:'#6b7280', fontSize:'0.9rem'}}>Valor Pagado:</span>
+                                        <span style={{color:'#059669', fontWeight:'700'}}>{fmtMoney(selectedEvent.valor || 0)}</span>
+                                    </div>
                                 </div>
-                                <div style={{display:'flex', justifyContent:'space-between', marginBottom:8}}>
-                                    <span style={{color:'#6b7280', fontSize:'0.9rem'}}>Teléfono:</span>
-                                    <span style={{color:'#374151', fontWeight:'500'}}>{selectedEvent.pacienteTelefono || '-'}</span>
-                                </div>
-                                <div style={{display:'flex', justifyContent:'space-between', borderTop:'1px solid #e5e7eb', paddingTop:8, marginTop:8}}>
-                                    <span style={{color:'#6b7280', fontSize:'0.9rem'}}>Valor Pagado:</span>
-                                    <span style={{color:'#059669', fontWeight:'700'}}>{fmtMoney(selectedEvent.valor || 0)}</span>
-                                </div>
-                            </div>
+                            )}
                             
-                            {(selectedEvent.motivo.toLowerCase().includes('online') || selectedEvent.motivo.toLowerCase().includes('teleconsulta')) && (
+                            {(selectedEvent.motivo.toLowerCase().includes('online') || selectedEvent.motivo.toLowerCase().includes('teleconsulta')) && selectedEvent.estado !== 'BLOQUEADA' && (
                                 <div style={{marginBottom: 20}}>
                                     <a 
                                         href={`https://meet.jit.si/CISD-Reserva-${selectedEvent.id}#userInfo.displayName=${encodeURIComponent(user.nombre)}`} 
@@ -489,15 +490,12 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                                     >
                                         <span>🎥</span> Conectarse a Videollamada
                                     </a>
-                                    <p style={{fontSize:'0.75rem', color:'#9ca3af', textAlign:'center', marginTop:5}}>
-                                        *Requiere inicio de sesión con Google la primera vez.
-                                    </p>
                                 </div>
                             )}
 
                             <div style={{display:'flex', gap:10, borderTop:'1px solid #eee', paddingTop:20}}> 
-                                <button className="btn-edit" onClick={startEditing} style={{flex:1, justifyContent:'center'}}>Modificar Cita</button>
-                                <button className="btn-danger" onClick={()=>deleteReserva(selectedEvent.id)} style={{flex:1, justifyContent:'center', background:'#fee2e2', color:'#991b1b', border:'1px solid #fecaca'}}>Cancelar Cita</button> 
+                                {selectedEvent.estado !== 'BLOQUEADA' && <button className="btn-edit" onClick={startEditing} style={{flex:1, justifyContent:'center'}}>Modificar Cita</button>}
+                                <button className="btn-danger" onClick={()=>deleteReserva(selectedEvent.id)} style={{flex:1, justifyContent:'center', background:'#fee2e2', color:'#991b1b', border:'1px solid #fecaca'}}>{selectedEvent.estado === 'BLOQUEADA' ? 'Eliminar Bloqueo' : 'Cancelar Cita'}</button> 
                             </div> 
                         </>
                     )}
@@ -512,23 +510,25 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
 // ==========================================
 
 function AgendaHorarios({ user, isAdmin }) {
-    const [activeTab, setActiveTab] = useState('pattern'); // 'pattern' | 'block'
+    const [activeTab, setActiveTab] = useState('pattern');
     const [pros, setPros] = useState([]);
     const [rango, setRango] = useState({ inicio: new Date().toISOString().split('T')[0], fin: '' });
-    const [configBase, setConfigBase] = useState({ duracionSlot: 45, intervalo: 0 });
+    const [configBase, setConfigBase] = useState({ duracionSlot: 45, intervalo: 0 }); // Nuevo campo intervalo
     const [profesionalSel, setProfesionalSel] = useState(isAdmin ? '' : user.id);
     const [loading, setLoading] = useState(false);
+    
+    // Bloqueo
+    const [bloqueo, setBloqueo] = useState({ fecha: new Date().toISOString().split('T')[0], horaInicio: '', horaFin: '' });
 
-    // Estado del Patrón Semanal (Lunes a Domingo) - SIN HORA DE COLACIÓN RÍGIDA
-    // Ahora usa Turno 1 y Turno 2
+    // Estado del Patrón Semanal Simplificado
     const [patron, setPatron] = useState({
-        1: { id: 1, label: 'Lunes', activo: true, turno1Inicio: '09:00', turno1Fin: '13:00', turno2Inicio: '14:00', turno2Fin: '18:00' },
-        2: { id: 2, label: 'Martes', activo: true, turno1Inicio: '09:00', turno1Fin: '13:00', turno2Inicio: '14:00', turno2Fin: '18:00' },
-        3: { id: 3, label: 'Miércoles', activo: true, turno1Inicio: '09:00', turno1Fin: '13:00', turno2Inicio: '14:00', turno2Fin: '18:00' },
-        4: { id: 4, label: 'Jueves', activo: true, turno1Inicio: '09:00', turno1Fin: '13:00', turno2Inicio: '14:00', turno2Fin: '18:00' },
-        5: { id: 5, label: 'Viernes', activo: true, turno1Inicio: '09:00', turno1Fin: '13:00', turno2Inicio: '14:00', turno2Fin: '17:00' },
-        6: { id: 6, label: 'Sábado', activo: false, turno1Inicio: '10:00', turno1Fin: '13:00', turno2Inicio: '', turno2Fin: '' }, 
-        7: { id: 7, label: 'Domingo', activo: false, turno1Inicio: '', turno1Fin: '', turno2Inicio: '', turno2Fin: '' },
+        1: { id: 1, label: 'Lunes', activo: true, horaInicio: '09:00', horaFin: '18:00', breakInicio: '', breakFin: '' },
+        2: { id: 2, label: 'Martes', activo: true, horaInicio: '09:00', horaFin: '18:00', breakInicio: '', breakFin: '' },
+        3: { id: 3, label: 'Miércoles', activo: true, horaInicio: '09:00', horaFin: '18:00', breakInicio: '', breakFin: '' },
+        4: { id: 4, label: 'Jueves', activo: true, horaInicio: '09:00', horaFin: '18:00', breakInicio: '', breakFin: '' },
+        5: { id: 5, label: 'Viernes', activo: true, horaInicio: '09:00', horaFin: '17:00', breakInicio: '', breakFin: '' },
+        6: { id: 6, label: 'Sábado', activo: false, horaInicio: '10:00', horaFin: '13:00', breakInicio: '', breakFin: '' }, 
+        7: { id: 7, label: 'Domingo', activo: false, horaInicio: '', horaFin: '', breakInicio: '', breakFin: '' },
     });
 
     useEffect(() => { getProfesionales().then(setPros); }, []);
@@ -552,7 +552,7 @@ function AgendaHorarios({ user, isAdmin }) {
         if (!rango.inicio || !rango.fin) return alert("Selecciona fecha inicio y fin");
         if (new Date(rango.fin) < new Date(rango.inicio)) return alert("La fecha fin debe ser mayor a la de inicio");
 
-        if (!confirm(`⚠️ ATENCIÓN:\n\nSe generará la agenda.\nSi ya existían horarios en esos días, serán REEMPLAZADOS.\n\n¿Confirmar?`)) return;
+        if (!confirm(`⚠️ SE CREARÁN LOS HORARIOS\n\nDesde: ${rango.inicio}\nHasta: ${rango.fin}\n\nSi ya existen horarios, se reemplazarán.`)) return;
 
         setLoading(true);
         try {
@@ -584,19 +584,17 @@ function AgendaHorarios({ user, isAdmin }) {
         }
     };
 
-    // FUNCIÓN PARA BLOQUEAR (ELIMINAR) DISPONIBILIDAD
-    const bloquearRango = async () => {
+    const crearBloqueo = async () => {
         if (!profesionalSel) return alert("Selecciona un profesional");
-        if (!rango.inicio || !rango.fin) return alert("Selecciona las fechas a bloquear");
+        if (!bloqueo.fecha || !bloqueo.horaInicio || !bloqueo.horaFin) return alert("Completa todos los campos");
         
-        if (!confirm(`⚠️ ¿Estás seguro de que quieres BLOQUEAR (Eliminar disponibilidad) entre estas fechas?`)) return;
-
         setLoading(true);
         try {
             const payload = {
                 profesionalId: profesionalSel,
-                fechaInicio: rango.inicio,
-                fechaFin: rango.fin
+                fecha: bloqueo.fecha,
+                horaInicio: bloqueo.horaInicio,
+                horaFin: bloqueo.horaFin
             };
             
             const response = await fetch(`${API_BASE_URL}/configuracion/bloquear`, {
@@ -606,8 +604,8 @@ function AgendaHorarios({ user, isAdmin }) {
             });
 
             if(response.ok) {
-                const data = await response.json();
-                alert(`🚫 Bloqueo Exitoso: ${data.message}`);
+                alert(`🚫 Bloqueo creado para el día ${bloqueo.fecha}`);
+                setBloqueo({ ...bloqueo, horaInicio: '', horaFin: '' });
             } else {
                 alert("Error al bloquear");
             }
@@ -636,11 +634,11 @@ function AgendaHorarios({ user, isAdmin }) {
                         onClick={() => setActiveTab('block')}
                         style={{ padding: '10px 20px', background: activeTab === 'block' ? '#fee2e2' : 'transparent', border: 'none', borderBottom: activeTab === 'block' ? '3px solid #dc2626' : 'none', fontWeight: 'bold', cursor: 'pointer', color: activeTab === 'block' ? '#991b1b' : '#666' }}
                     >
-                        🚫 Bloquear Días / Vacaciones
+                        🚫 Bloqueo de Horas
                     </button>
                 </div>
 
-                {/* SELECTOR DE PROFESIONAL (COMÚN) */}
+                {/* SELECTOR DE PROFESIONAL */}
                 <div style={{ marginBottom: 20 }}>
                     <label className="form-label">Profesional a Configurar</label>
                     {isAdmin ? (
@@ -653,7 +651,7 @@ function AgendaHorarios({ user, isAdmin }) {
                     )}
                 </div>
 
-                {/* CONTENIDO TAB 1: PATRÓN SEMANAL */}
+                {/* TAB 1: PATRÓN SEMANAL */}
                 {activeTab === 'pattern' && (
                     <div style={{animation: 'fadeIn 0.3s'}}>
                         <div style={{ background: '#f3f4f6', padding: 15, borderRadius: 8, marginBottom: 20 }}>
@@ -667,6 +665,12 @@ function AgendaHorarios({ user, isAdmin }) {
                                         <option value="60">60 Min</option>
                                     </select>
                                 </div>
+                                <div>
+                                    <label className="form-label">Tiempo entre sesiones (Min)</label>
+                                    <input type="number" className="form-control" value={configBase.intervalo} onChange={e => setConfigBase({ ...configBase, intervalo: e.target.value })} placeholder="Ej: 10" />
+                                </div>
+                            </div>
+                            <div className="input-row">
                                 <div><label className="form-label">Desde</label><input type="date" className="form-control" value={rango.inicio} onChange={e => setRango({ ...rango, inicio: e.target.value })} /></div>
                                 <div><label className="form-label">Hasta (Inclusive)</label><input type="date" className="form-control" value={rango.fin} onChange={e => setRango({ ...rango, fin: e.target.value })} /></div>
                             </div>
@@ -678,8 +682,10 @@ function AgendaHorarios({ user, isAdmin }) {
                                     <tr style={{ background: '#111827', color: 'white' }}>
                                         <th style={{ width: 50 }}>Activo</th>
                                         <th style={{ width: 100 }}>Día</th>
-                                        <th>Turno Mañana (Inicio - Fin)</th>
-                                        <th>Turno Tarde (Inicio - Fin)</th>
+                                        <th>Horario Entrada</th>
+                                        <th>Horario Salida</th>
+                                        <th style={{background:'#374151'}}>Inicio Almuerzo (Opcional)</th>
+                                        <th style={{background:'#374151'}}>Fin Almuerzo (Opcional)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -689,18 +695,10 @@ function AgendaHorarios({ user, isAdmin }) {
                                                 <input type="checkbox" checked={dia.activo} onChange={() => toggleDia(dia.id)} style={{ width: 18, height: 18, cursor: 'pointer' }} />
                                             </td>
                                             <td><strong>{dia.label}</strong></td>
-                                            <td style={{display:'flex', gap:5, alignItems:'center'}}>
-                                                <input type="time" className="form-control" disabled={!dia.activo} value={dia.turno1Inicio} onChange={e => handlePatronChange(dia.id, 'turno1Inicio', e.target.value)} />
-                                                <span>a</span>
-                                                <input type="time" className="form-control" disabled={!dia.activo} value={dia.turno1Fin} onChange={e => handlePatronChange(dia.id, 'turno1Fin', e.target.value)} />
-                                            </td>
-                                            <td>
-                                                <div style={{display:'flex', gap:5, alignItems:'center'}}>
-                                                    <input type="time" className="form-control" disabled={!dia.activo} value={dia.turno2Inicio} onChange={e => handlePatronChange(dia.id, 'turno2Inicio', e.target.value)} />
-                                                    <span>a</span>
-                                                    <input type="time" className="form-control" disabled={!dia.activo} value={dia.turno2Fin} onChange={e => handlePatronChange(dia.id, 'turno2Fin', e.target.value)} />
-                                                </div>
-                                            </td>
+                                            <td><input type="time" className="form-control" disabled={!dia.activo} value={dia.horaInicio} onChange={e => handlePatronChange(dia.id, 'horaInicio', e.target.value)} /></td>
+                                            <td><input type="time" className="form-control" disabled={!dia.activo} value={dia.horaFin} onChange={e => handlePatronChange(dia.id, 'horaFin', e.target.value)} /></td>
+                                            <td><input type="time" className="form-control" disabled={!dia.activo} value={dia.breakInicio} onChange={e => handlePatronChange(dia.id, 'breakInicio', e.target.value)} style={{ borderColor: '#e5e7eb' }} /></td>
+                                            <td><input type="time" className="form-control" disabled={!dia.activo} value={dia.breakFin} onChange={e => handlePatronChange(dia.id, 'breakFin', e.target.value)} style={{ borderColor: '#e5e7eb' }} /></td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -715,20 +713,23 @@ function AgendaHorarios({ user, isAdmin }) {
                     </div>
                 )}
 
-                {/* CONTENIDO TAB 2: BLOQUEAR */}
+                {/* TAB 2: BLOQUEAR */}
                 {activeTab === 'block' && (
                     <div style={{animation: 'fadeIn 0.3s', padding: 20, border: '2px dashed #fca5a5', borderRadius: 10, background: '#fef2f2'}}>
-                        <h3 style={{color: '#991b1b', marginTop:0}}>Bloquear Días (Ausencias / Vacaciones)</h3>
-                        <p style={{marginBottom: 20, color:'#666'}}>Selecciona un rango de fechas para ELIMINAR toda disponibilidad. Útil para días administrativos, feriados o licencias.</p>
+                        <h3 style={{color: '#991b1b', marginTop:0}}>Bloqueo de Horas Específico</h3>
+                        <p style={{marginBottom: 20, color:'#666'}}>Crea un bloqueo administrativo para que nadie pueda agendar en este horario.</p>
                         
                         <div className="input-row">
-                            <div><label className="form-label">Desde</label><input type="date" className="form-control" value={rango.inicio} onChange={e => setRango({ ...rango, inicio: e.target.value })} /></div>
-                            <div><label className="form-label">Hasta (Inclusive)</label><input type="date" className="form-control" value={rango.fin} onChange={e => setRango({ ...rango, fin: e.target.value })} /></div>
+                            <div><label className="form-label">Fecha del Bloqueo</label><input type="date" className="form-control" value={bloqueo.fecha} onChange={e => setBloqueo({ ...bloqueo, fecha: e.target.value })} /></div>
+                        </div>
+                        <div className="input-row">
+                            <div><label className="form-label">Desde las</label><input type="time" className="form-control" value={bloqueo.horaInicio} onChange={e => setBloqueo({ ...bloqueo, horaInicio: e.target.value })} /></div>
+                            <div><label className="form-label">Hasta las</label><input type="time" className="form-control" value={bloqueo.horaFin} onChange={e => setBloqueo({ ...bloqueo, horaFin: e.target.value })} /></div>
                         </div>
 
                         <div style={{ marginTop: 25, textAlign: 'right' }}>
-                            <button className="btn-danger" style={{ padding: '15px 30px', fontSize: '1rem', opacity: loading ? 0.7 : 1 }} disabled={loading} onClick={bloquearRango}>
-                                {loading ? 'Procesando...' : '⛔ Bloquear Fechas Seleccionadas'}
+                            <button className="btn-danger" style={{ padding: '15px 30px', fontSize: '1rem', opacity: loading ? 0.7 : 1 }} disabled={loading} onClick={crearBloqueo}>
+                                {loading ? 'Procesando...' : '⛔ Bloquear Horario'}
                             </button>
                         </div>
                     </div>
