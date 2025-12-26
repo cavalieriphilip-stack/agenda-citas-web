@@ -25,9 +25,7 @@ const fmtMoney = (v) => `$${(v || 0).toLocaleString('es-CL')}`;
 
 const parseDate = (iso) => {
     if (!iso) return new Date();
-    // Si viene solo fecha YYYY-MM-DD, forzamos mediodía
     if (iso.length === 10) return new Date(iso + 'T12:00:00Z');
-    // Asegurar formato ISO con Z
     const clean = iso.endsWith('Z') ? iso : iso + 'Z';
     return new Date(clean);
 };
