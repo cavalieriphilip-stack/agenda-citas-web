@@ -441,18 +441,12 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                 <div className="cal-nav-group"> <button className="calendar-nav-btn" onClick={()=>handleNav(-1)}>‹</button> <span style={{textTransform:'uppercase', fontWeight:'bold', fontSize:'0.9rem'}}>{mesActual}</span> <button className="calendar-nav-btn" onClick={()=>handleNav(1)}>›</button> </div> 
             </div> 
             <div className="calendar-grid-wrapper"> 
-                <div className="cal-header-row" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}> 
-                    <div className="cal-header-cell">Hora</div> 
-                    {days.map((d, i)=><div key={i} className="cal-header-cell">{d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric'})}</div>)} 
-                </div> 
+                <div className="cal-header-row" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}> <div className="cal-header-cell">Hora</div> {days.map((d, i)=><div key={i} className="cal-header-cell">{d.toLocaleDateString('es-CL',{weekday:'short', day:'numeric'})}</div>)} </div> 
                 <div className="calendar-body" style={{gridTemplateColumns: `60px repeat(${days.length}, 1fr)`}}> 
                     <div>{Array.from({length:13},(_,i)=>i+8).map(h=><div key={h} className="cal-time-label">{h}:00</div>)}</div> 
                     {days.map((d, i)=>( 
                         <div key={i} className="cal-day-col"> 
-                            {filtered.filter(r=>{ 
-                                const rd=parseDate(r.fecha); 
-                                return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth(); 
-                            }).map(r=>{ 
+                            {filtered.filter(r=>{ const rd=parseDate(r.fecha); return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth(); }).map(r=>{ 
                                 const st = parseDate(r.fecha); 
                                 // Calcular fin para dibujar bloque
                                 const et = r.fechaFin ? parseDate(r.fechaFin) : new Date(st.getTime() + 45*60000);
@@ -464,7 +458,7 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                                 if (duration < 30) duration = 30;
 
                                 return ( 
-                                    <div key={r.id} className={`cal-event ${r.estado === 'BLOQUEADA' ? 'evt-block' : 'evt-blue'}`} style={{top, height: duration, background: r.estado === 'BLOQUEADA' ? '#fee2e2' : '#dbeafe', borderLeft: r.estado === 'BLOQUEADA' ? '4px solid #ef4444' : '4px solid #3b82f6', color: r.estado === 'BLOQUEADA' ? '#991b1b' : '#1e3a8a', overflow: 'hidden', lineHeight: '1.1', fontSize: '0.75rem'}} onClick={()=>handleEventClick(r)}> 
+                                    <div key={r.id} className={`cal-event ${r.estado === 'BLOQUEADA' ? 'evt-block' : 'evt-blue'}`} style={{top, height: duration, background: r.estado === 'BLOQUEADA' ? '#374151' : '#dbeafe', borderLeft: r.estado === 'BLOQUEADA' ? '4px solid #111' : '4px solid #3b82f6', color: r.estado === 'BLOQUEADA' ? '#fff' : '#1e3a8a', overflow: 'hidden', lineHeight: '1.1', fontSize: '0.75rem'}} onClick={()=>handleEventClick(r)}> 
                                         <strong>{st.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', timeZone: 'UTC'})}</strong> 
                                         <span style={{display:'block'}}>{r.estado === 'BLOQUEADA' ? '⛔ BLOQUEO' : r.pacienteNombre}</span> 
                                     </div> 
@@ -586,81 +580,16 @@ function AgendaProfesionales({ tratamientos }) {
     return ( <div> <div className="page-header"><div className="page-title"><h1>Gestión de Profesionales</h1></div></div> <div className="pro-card"> <h3>{isEditing ? 'Editar Profesional' : 'Nuevo Profesional'}</h3> <form onSubmit={save}> <div className="input-row"> <div style={{ flex: 2 }}> <label className="form-label">Nombre Completo</label> <input className="form-control" value={form.nombreCompleto} onChange={e => setForm({ ...form, nombreCompleto: e.target.value })} required /> </div> <div style={{ flex: 1 }}> <label className="form-label">RUT</label> <input className="form-control" value={form.rut} onChange={e => setForm({ ...form, rut: formatRut(e.target.value) })} placeholder="12.345.678-9" /> </div> </div> <div className="input-row"> <div style={{width: '100%'}}> <label className="form-label">Email Notificaciones</label> <input className="form-control" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="medico@cisd.cl" /> </div> </div> <div className="input-row"> <div><MultiSelectDropdown label="1. Especialidades" options={especialidadesUnicas} selectedValues={form.especialidades} onChange={handleSpecChange} /></div> <div><MultiSelectDropdown label="2. Prestaciones" options={tratamientosDisponibles} selectedValues={form.tratamientos} onChange={v => setForm({ ...form, tratamientos: v })} disabled={form.especialidades.length === 0} /></div> </div> <button className="btn-primary">Guardar</button> {isEditing && <button type="button" className="btn-edit" onClick={() => { setIsEditing(false); setForm({ id: null, nombreCompleto: '', rut: '', email: '', especialidades: [], tratamientos: [] }); }} style={{marginLeft: 10}}>Cancelar</button>} </form> </div> <div className="pro-card"> <div className="data-table-container"> <table className="data-table"> <thead><tr><th>Nombre</th><th>RUT</th><th>Email</th><th>Especialidad</th><th>Acciones</th></tr></thead> <tbody> {pros.map(p => ( <tr key={p.id}> <td>{p.nombreCompleto}</td> <td>{formatRut(p.rut)}</td> <td>{p.email || '-'}</td> <td>{p.especialidad}</td> <td> <button className="btn-edit" onClick={() => handleEdit(p)}>Editar</button> <button className="btn-danger" onClick={() => handleDelete(p.id)}>X</button> </td> </tr> ))} </tbody> </table> </div> </div> </div> );
 }
 
-// 6. 💊 GESTIÓN DE PRESTACIONES (NUEVA: CON CAMBIO DE CATEGORÍA)
+// 6. 💊 GESTIÓN DE PRESTACIONES
 function AgendaTratamientos({ reload }) {
-    const [items, setItems] = useState([]); 
-    const [form, setForm] = useState({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '', categoria: '' }); 
-    const [isEditing, setIsEditing] = useState(false);
-    
+    const [items, setItems] = useState([]); const [form, setForm] = useState({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '', categoria: '' }); const [isEditing, setIsEditing] = useState(false);
     const load = () => fetch(`${API_BASE_URL}/tratamientos`).then(r => r.json()).then(setItems);
     useEffect(() => { load(); }, []);
-    
-    const handleSpecChange = (e) => {
-        setForm({...form, especialidad: e.target.value });
-    };
-
-    const save = async (e) => { 
-        e.preventDefault(); 
-        const method = isEditing ? 'PUT' : 'POST'; 
-        const url = isEditing ? `${API_BASE_URL}/tratamientos/${form.id}` : `${API_BASE_URL}/tratamientos`; 
-        
-        // 🔥 CALCULAMOS O USAMOS LA CATEGORÍA MANUAL
-        const finalCategory = form.categoria || getCategoryFromSpecialty(form.especialidad);
-
-        const payload = {
-            nombre: form.nombre,
-            codigo: form.codigo,
-            valor: parseInt(form.valor) || 0,
-            descripcion: form.descripcion,
-            especialidad: form.especialidad,
-            categoria: finalCategory // SE ENVÍA AL BACKEND
-        };
-
-        await fetch(url, { method, headers: authHeader(), body: JSON.stringify(payload) }); 
-        setForm({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '', categoria: '' }); 
-        setIsEditing(false); load(); if(reload) reload(); 
-    };
-
-    const handleEdit = (it) => { 
-        // Si no tiene categoría guardada, la calculamos
-        const cat = it.categoria || getCategoryFromSpecialty(it.especialidad);
-        setForm({...it, categoria: cat}); 
-        setIsEditing(true); 
-        window.scrollTo(0,0); 
-    };
-
+    const handleSpecChange = (e) => { const spec = e.target.value; const autoCat = getCategoryFromSpecialty(spec); setForm({...form, especialidad: spec, categoria: autoCat}); };
+    const save = async (e) => { e.preventDefault(); const method = isEditing ? 'PUT' : 'POST'; const url = isEditing ? `${API_BASE_URL}/tratamientos/${form.id}` : `${API_BASE_URL}/tratamientos`; const payload = { nombre: form.nombre, codigo: form.codigo, valor: parseInt(form.valor) || 0, descripcion: form.descripcion, especialidad: form.especialidad, categoria: form.categoria || getCategoryFromSpecialty(form.especialidad) }; await fetch(url, { method, headers: authHeader(), body: JSON.stringify(payload) }); setForm({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '', categoria: '' }); setIsEditing(false); load(); if(reload) reload(); };
+    const handleEdit = (it) => { setForm({...it, categoria: it.categoria || getCategoryFromSpecialty(it.especialidad)}); setIsEditing(true); window.scrollTo(0,0); };
     const handleDelete = async (id) => { if(confirm('¿Eliminar?')) { await fetch(`${API_BASE_URL}/tratamientos/${id}`, { method: 'DELETE', headers: authHeader() }); load(); } };
-    
-    return ( 
-        <div> 
-            <div className="page-header"><div className="page-title"><h1>Gestión de Prestaciones</h1></div></div> 
-            <div className="pro-card"> 
-                <h3>{isEditing ? 'Editar' : 'Nueva'}</h3> 
-                <form onSubmit={save}> 
-                    <div className="input-row"> 
-                        <div><label className="form-label">Nombre del Tratamiento</label><input className="form-control" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} required /></div> 
-                        <div><label className="form-label">Especialidad (Pública)</label><input className="form-control" value={form.especialidad} onChange={handleSpecChange} required /></div> 
-                    </div> 
-                    <div className="input-row"> 
-                        <div><label className="form-label">Código</label><input className="form-control" value={form.codigo} onChange={e=>setForm({...form, codigo:e.target.value})} /></div> 
-                        {/* INPUT PARA EDITAR CATEGORÍA */}
-                        <div><label className="form-label">Categoría (Manual)</label><input className="form-control" value={form.categoria} onChange={e=>setForm({...form, categoria:e.target.value})} /></div> 
-                        <div><label className="form-label">Valor</label><input type="number" className="form-control" value={form.valor} onChange={e=>setForm({...form, valor:e.target.value})} required /></div> 
-                    </div> 
-                    <button className="btn-primary">Guardar</button> 
-                    {isEditing && <button type="button" className="btn-edit" style={{marginLeft:10}} onClick={()=>{setIsEditing(false); setForm({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '', categoria: '' })}}>Cancelar</button>} 
-                </form> 
-            </div> 
-            <div className="pro-card"> 
-                <div className="data-table-container"> 
-                    <table className="data-table"> 
-                        <thead><tr><th>Código</th><th>Categoría</th><th>Tratamiento</th><th>Especialidad</th><th>Valor</th><th>Acciones</th></tr></thead> 
-                        <tbody> {items.map(it => ( <tr key={it.id}> <td>{it.codigo}</td> <td>{it.categoria || getCategoryFromSpecialty(it.especialidad)}</td> <td>{it.nombre}</td> <td>{it.especialidad}</td> <td>{fmtMoney(it.valor)}</td> <td> <button className="btn-edit" onClick={()=>handleEdit(it)}>Edit</button> <button className="btn-danger" onClick={()=>handleDelete(it.id)}>X</button> </td> </tr> ))} </tbody> 
-                    </table> 
-                </div> 
-            </div> 
-        </div> 
-    );
+    return ( <div> <div className="page-header"><div className="page-title"><h1>Gestión de Prestaciones</h1></div></div> <div className="pro-card"> <h3>{isEditing ? 'Editar' : 'Nueva'}</h3> <form onSubmit={save}> <div className="input-row"> <div><label className="form-label">Nombre del Tratamiento</label><input className="form-control" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} required /></div> <div><label className="form-label">Especialidad (Pública)</label><input className="form-control" value={form.especialidad} onChange={handleSpecChange} required /></div> </div> <div className="input-row"> <div><label className="form-label">Código</label><input className="form-control" value={form.codigo} onChange={e=>setForm({...form, codigo:e.target.value})} /></div> <div><label className="form-label">Categoría (Auto)</label><input className="form-control" value={form.categoria} onChange={e=>setForm({...form, categoria:e.target.value})} /></div> <div><label className="form-label">Valor</label><input type="number" className="form-control" value={form.valor} onChange={e=>setForm({...form, valor:e.target.value})} required /></div> </div> <button className="btn-primary">Guardar</button> {isEditing && <button type="button" className="btn-edit" style={{marginLeft:10}} onClick={()=>{setIsEditing(false); setForm({ id: null, nombre: '', codigo: '', valor: '', descripcion: '', especialidad: '', categoria: '' })}}>Cancelar</button>} </form> </div> <div className="pro-card"> <div className="data-table-container"> <table className="data-table"> <thead><tr><th>Código</th><th>Categoría</th><th>Tratamiento</th><th>Especialidad</th><th>Valor</th><th>Acciones</th></tr></thead> <tbody> {items.map(it => ( <tr key={it.id}> <td>{it.codigo}</td> <td>{it.categoria || getCategoryFromSpecialty(it.especialidad)}</td> <td>{it.nombre}</td> <td>{it.especialidad}</td> <td>{fmtMoney(it.valor)}</td> <td> <button className="btn-edit" onClick={()=>handleEdit(it)}>Edit</button> <button className="btn-danger" onClick={()=>handleDelete(it.id)}>X</button> </td> </tr> ))} </tbody> </table> </div> </div> </div> );
 }
 
 // 7. 💰 FINANZAS (DEFINIDA ANTES DEL DASHBOARD)
