@@ -250,7 +250,7 @@ function DashboardContent({ module, view, user, isAdmin }) {
 }
 
 // ==========================================
-// 📅 AGENDA: CALENDARIO RESUMEN
+// 📅 AGENDA: CALENDARIO RESUMEN (DISEÑO SOBRIO)
 // ==========================================
 
 function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
@@ -349,6 +349,8 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
         }
     }) : [];
 
+    const mesActual = currentDate.toLocaleDateString('es-CL', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
     return ( 
         <div style={{height:'100%', display:'flex', flexDirection:'column'}}> 
             <div className="page-header"><div className="page-title"><h1>Calendario</h1></div></div> 
@@ -368,7 +370,7 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                 </div> 
                 <div className="cal-nav-group"> 
                     <button className="calendar-nav-btn" onClick={()=>handleNav(-1)}>‹</button> 
-                    <span>{`Semana del ${days[0]?.getDate()}`}</span> 
+                    <span style={{textTransform:'uppercase', fontWeight:'bold', fontSize:'0.9rem'}}>{mesActual}</span> 
                     <button className="calendar-nav-btn" onClick={()=>handleNav(1)}>›</button> 
                 </div> 
             </div> 
@@ -386,12 +388,33 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                                 const rd=parseDate(r.fecha); 
                                 return rd.getDate()===d.getDate() && rd.getMonth()===d.getMonth(); 
                             }).map(r=>{ 
-                                const st = parseDate(r.fecha), h=st.getUTCHours(), m=st.getUTCMinutes(); 
+                                const st = parseDate(r.fecha);
+                                // Calcular fin estimado si no existe, para dibujar bloque
+                                const et = r.fechaFin ? parseDate(r.fechaFin) : new Date(st.getTime() + 45*60000);
+
+                                const h = st.getUTCHours();
+                                const m = st.getUTCMinutes();
                                 const top = ((h-8)*60)+m; 
+                                
+                                // Altura en pixeles (1 min = 1 px aprox en este css grid)
+                                let duration = (et.getTime() - st.getTime()) / 60000;
+                                if (duration < 30) duration = 30; // Minimo visual
+
                                 return ( 
-                                    <div key={r.id} className={`cal-event ${r.estado === 'BLOQUEADA' ? 'evt-block' : 'evt-blue'}`} style={{top, height:45, background: r.estado === 'BLOQUEADA' ? '#fecaca' : '#dbeafe', borderLeft: r.estado === 'BLOQUEADA' ? '4px solid #ef4444' : '4px solid #3b82f6'}} onClick={()=>handleEventClick(r)}> 
+                                    <div key={r.id} className={`cal-event ${r.estado === 'BLOQUEADA' ? 'evt-block' : 'evt-blue'}`} 
+                                         style={{
+                                             top, 
+                                             height: duration, 
+                                             background: r.estado === 'BLOQUEADA' ? '#fee2e2' : '#dbeafe', 
+                                             borderLeft: r.estado === 'BLOQUEADA' ? '4px solid #ef4444' : '4px solid #3b82f6',
+                                             color: r.estado === 'BLOQUEADA' ? '#991b1b' : '#1e3a8a',
+                                             overflow: 'hidden',
+                                             fontSize: '0.75rem',
+                                             lineHeight: '1.1'
+                                         }} 
+                                         onClick={()=>handleEventClick(r)}> 
                                         <strong>{st.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', timeZone: 'UTC'})}</strong> 
-                                        <span style={{color: r.estado === 'BLOQUEADA' ? '#991b1b' : '#1e3a8a'}}>{r.estado === 'BLOQUEADA' ? '⛔ BLOQUEADO' : r.pacienteNombre}</span> 
+                                        <span style={{display:'block'}}>{r.estado === 'BLOQUEADA' ? '⛔ BLOQUEADO' : r.pacienteNombre}</span> 
                                     </div> 
                                 ) 
                             })} 
@@ -497,9 +520,6 @@ function AgendaResumen({reservas, tratamientos, reload, user, isAdmin}){
                                     >
                                         <span>🎥</span> Conectarse a Videollamada
                                     </a>
-                                    <p style={{fontSize:'0.75rem', color:'#9ca3af', textAlign:'center', marginTop:5}}>
-                                        *Requiere inicio de sesión con Google la primera vez.
-                                    </p>
                                 </div>
                             )}
 
@@ -541,7 +561,26 @@ function AgendaHorarios({ user, isAdmin }) {
         7: { id: 7, label: 'Domingo', activo: false, horaInicio: '', horaFin: '', breakInicio: '', breakFin: '' },
     });
 
-    useEffect(() => { getProfesionales().then(setPros); }, []);
+    // Listas para ver activos
+    const [misConfigs, setMisConfigs] = useState([]);
+    const [misBloqueos, setMisBloqueos] = useState([]);
+
+    useEffect(() => { 
+        getProfesionales().then(setPros);
+        loadData();
+    }, []);
+
+    const loadData = async () => {
+        try {
+            const configs = await getConfiguraciones();
+            setMisConfigs(Array.isArray(configs) ? configs : []);
+            
+            const reservas = await getReservasDetalle();
+            if(Array.isArray(reservas)) {
+                setMisBloqueos(reservas.filter(r => r.estado === 'BLOQUEADA'));
+            }
+        } catch(e) {}
+    }
 
     const handlePatronChange = (diaId, field, value) => {
         setPatron(prev => ({
@@ -584,6 +623,7 @@ function AgendaHorarios({ user, isAdmin }) {
             if (response.ok) {
                 const data = await response.json();
                 alert(`✅ Éxito: ${data.message}`);
+                loadData();
             } else {
                 alert("❌ Error al generar horarios");
             }
@@ -616,6 +656,7 @@ function AgendaHorarios({ user, isAdmin }) {
             if(response.ok) {
                 alert(`🚫 Bloqueo creado para el día ${bloqueo.fecha}`);
                 setBloqueo({ ...bloqueo, horaInicio: '', horaFin: '' });
+                loadData();
             } else {
                 alert("Error al bloquear");
             }
@@ -623,6 +664,20 @@ function AgendaHorarios({ user, isAdmin }) {
             alert("Error de conexión");
         } finally {
             setLoading(false);
+        }
+    }
+
+    const borrarConfig = async (id) => {
+        if(confirm("¿Eliminar esta configuración diaria?")) {
+            await deleteConfiguracion(id);
+            loadData();
+        }
+    }
+
+    const borrarBloqueo = async (id) => {
+        if(confirm("¿Eliminar este bloqueo?")) {
+            await cancelarReserva(id); // Reutilizamos cancelar reserva pues es una reserva BLOQUEADA
+            loadData();
         }
     }
 
@@ -645,6 +700,12 @@ function AgendaHorarios({ user, isAdmin }) {
                         style={{ padding: '10px 20px', background: activeTab === 'block' ? '#fee2e2' : 'transparent', border: 'none', borderBottom: activeTab === 'block' ? '3px solid #dc2626' : 'none', fontWeight: 'bold', cursor: 'pointer', color: activeTab === 'block' ? '#991b1b' : '#666' }}
                     >
                         🚫 Bloqueo de Horas
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('list')}
+                        style={{ padding: '10px 20px', background: activeTab === 'list' ? '#e0f2fe' : 'transparent', border: 'none', borderBottom: activeTab === 'list' ? '3px solid #0284c7' : 'none', fontWeight: 'bold', cursor: 'pointer', color: activeTab === 'list' ? '#0369a1' : '#666' }}
+                    >
+                        📋 Ver Activos
                     </button>
                 </div>
 
@@ -741,6 +802,43 @@ function AgendaHorarios({ user, isAdmin }) {
                             <button className="btn-danger" style={{ padding: '15px 30px', fontSize: '1rem', opacity: loading ? 0.7 : 1 }} disabled={loading} onClick={crearBloqueo}>
                                 {loading ? 'Procesando...' : '⛔ Bloquear Horario'}
                             </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* TAB 3: VER ACTIVOS */}
+                {activeTab === 'list' && (
+                    <div style={{animation: 'fadeIn 0.3s'}}>
+                        <h3>Configuraciones de Disponibilidad</h3>
+                        <div className="data-table-container" style={{maxHeight: 300, overflowY:'auto', marginBottom:30}}>
+                            <table className="data-table">
+                                <thead><tr><th>Fecha</th><th>Horario</th><th>Acción</th></tr></thead>
+                                <tbody>
+                                    {misConfigs.filter(c => !profesionalSel || c.profesionalId == profesionalSel).map(c => (
+                                        <tr key={c.id}>
+                                            <td>{fmtDate(c.fecha)}</td>
+                                            <td>{c.horaInicio} - {c.horaFin}</td>
+                                            <td><button className="btn-danger" onClick={()=>borrarConfig(c.id)}>Eliminar</button></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3 style={{color:'#991b1b'}}>Bloqueos Activos</h3>
+                        <div className="data-table-container" style={{maxHeight: 300, overflowY:'auto'}}>
+                            <table className="data-table">
+                                <thead><tr><th>Fecha</th><th>Bloqueo</th><th>Acción</th></tr></thead>
+                                <tbody>
+                                    {misBloqueos.filter(b => !profesionalSel || b.profesionalId == profesionalSel).map(b => (
+                                        <tr key={b.id} style={{background:'#fff1f2'}}>
+                                            <td>{fmtDate(b.fecha)}</td>
+                                            <td>{fmtTime(b.fecha)} - {fmtTime(b.fechaFin)}</td>
+                                            <td><button className="btn-danger" onClick={()=>borrarBloqueo(b.id)}>Desbloquear</button></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 )}
@@ -1144,220 +1242,6 @@ function FinanzasReporte({total,count,reservas}){
             </div> 
         </div> 
     ) 
-}
-
-// ==========================================
-// 🔴 WEB PACIENTE (FRONTEND PÚBLICO)
-// ==========================================
-
-function WebPaciente() {
-    const [step, setStep] = useState(0); 
-    const [profesionales, setProfesionales] = useState([]);
-    const [tratamientos, setTratamientos] = useState([]);
-    const [form, setForm] = useState({ rut:'', nombre:'', email:'', telefono:'', categoria: '', especialidad:'', tratamientoId:'', profesionalId:'', horarioId:'' });
-    const [loading, setLoading] = useState(false);
-    const [bookingSuccess, setBookingSuccess] = useState(false);
-    const [pacienteId, setPacienteId] = useState(null);
-    const [multiAgenda, setMultiAgenda] = useState({}); 
-    const [selectedDateKey, setSelectedDateKey] = useState(null); 
-    const [availableDates, setAvailableDates] = useState([]);
-    const [preferenceId, setPreferenceId] = useState(null);
-    const [showPayModal, setShowPayModal] = useState(false);
-
-    useEffect(()=>{ 
-        getProfesionales().then(setProfesionales);
-        fetch(`${API_BASE_URL}/tratamientos`).then(r=>r.json()).then(setTratamientos);
-    },[]);
-
-    const categorias = [...new Set(tratamientos.map(t => getCategoryFromSpecialty(t.especialidad)))].sort();
-    
-    const especialidadesFiltradas = form.categoria 
-        ? [...new Set(tratamientos.filter(t => getCategoryFromSpecialty(t.especialidad) === form.categoria).map(t => t.especialidad))]
-        : [];
-
-    const prestacionesFiltradas = form.especialidad
-        ? tratamientos.filter(t => t.especialidad === form.especialidad)
-        : [];
-
-    useEffect(() => {
-        const query = new URLSearchParams(window.location.search);
-        const status = query.get('status');
-        if (status === 'approved') {
-            const savedData = localStorage.getItem('pendingReservation');
-            if (savedData) {
-                const parsed = JSON.parse(savedData);
-                const reservarHora = async () => {
-                    try {
-                        const trats = await fetch(`${API_BASE_URL}/tratamientos`).then(r=>r.json());
-                        const trat = trats.find(t => t.id === parseInt(parsed.tratamientoId));
-                        const motivoTexto = trat ? trat.nombre : "Consulta";
-                        await crearReserva({ pacienteId: parseInt(parsed.pacienteId), profesionalId: parseInt(parsed.profesionalId), horarioDisponibleId: parsed.horarioId, motivo: motivoTexto });
-                        setForm(parsed); setBookingSuccess(true); localStorage.removeItem('pendingReservation'); window.history.replaceState({}, document.title, "/reserva-exitosa");
-                    } catch (error) { setForm(parsed); setBookingSuccess(true); }
-                };
-                reservarHora();
-            }
-        }
-    }, []);
-
-    const tratamientoSel = tratamientos.find(t => t.id === parseInt(form.tratamientoId));
-    
-    // Filtrar profesionales que NO sean admin y tengan el tratamiento
-    const prosAptos = form.tratamientoId 
-        ? profesionales.filter(p => tratamientoSel && p.tratamientos && p.tratamientos.includes(tratamientoSel.nombre))
-        : [];
-
-    const handleRutSearch = async () => { 
-        if(!form.rut) return alert("Ingrese RUT"); 
-        if(!validateRut(form.rut)) return alert("RUT inválido"); 
-        setLoading(true); 
-        try { 
-            const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); 
-            const paciente = await buscarPacientePorRut(rutLimpio); 
-            if (paciente) { 
-                setPacienteId(paciente.id); 
-                setForm(prev => ({...prev, nombre: paciente.nombreCompleto, email: paciente.email, telefono: paciente.telefono})); 
-                setStep(2); 
-            } else { setStep(1); } 
-        } catch(e) { setStep(1); } 
-        setLoading(false); 
-    };
-    
-    const handleTreatmentConfirm = async () => { 
-        setLoading(true); 
-        if (prosAptos.length === 0) { alert("No hay profesionales disponibles para este tratamiento."); setLoading(false); return; } 
-        
-        const promises = prosAptos.map(async p => { 
-            const horarios = await getHorariosByProfesional(p.id); 
-            return { profesional: p, slots: Array.isArray(horarios) ? horarios.filter(x => new Date(x.fecha) > new Date()) : [] }; 
-        }); 
-        
-        const results = await Promise.all(promises); 
-        const agendaMap = {}; 
-        const datesSet = new Set(); 
-        
-        results.forEach(({profesional, slots}) => { 
-            slots.forEach(slot => { 
-                const dateKey = toDateKey(slot.fecha); 
-                datesSet.add(dateKey); 
-                if (!agendaMap[dateKey]) agendaMap[dateKey] = []; 
-                let proEntry = agendaMap[dateKey].find(entry => entry.profesional.id === profesional.id); 
-                if (!proEntry) { proEntry = { profesional, slots: [] }; agendaMap[dateKey].push(proEntry); } 
-                proEntry.slots.push(slot); 
-            }); 
-        }); 
-        
-        const sortedDates = Array.from(datesSet).sort(); 
-        
-        if (sortedDates.length === 0) { alert("No hay horas disponibles próximamente."); setLoading(false); return; } 
-        
-        setMultiAgenda(agendaMap); 
-        setAvailableDates(sortedDates); 
-        if (sortedDates.length > 0) setSelectedDateKey(sortedDates[0]); 
-        setLoading(false); 
-        setStep(3); 
-    };
-    
-    const selectSlot = (pid, fechaIso) => { 
-        setForm(prev => ({ ...prev, profesionalId: pid, horarioId: fechaIso })); 
-        setStep(4); 
-    };
-
-    const initPaymentProcess = async () => { 
-        setLoading(true); 
-        const storageData = { ...form, pacienteId: pacienteId }; 
-        try { 
-            let pid = pacienteId; 
-            if (!pid) { 
-                const rutLimpio = form.rut.replace(/[^0-9kK]/g, ''); 
-                const pac = await crearPaciente({nombreCompleto:form.nombre, email:form.email, telefono:form.telefono, rut: rutLimpio}); 
-                pid = pac.id; setPacienteId(pid); storageData.pacienteId = pid; 
-            } 
-            localStorage.setItem('pendingReservation', JSON.stringify(storageData)); 
-            
-            const response = await fetch(`${API_BASE_URL}/create_preference`, { 
-                method: "POST", 
-                headers: { "Content-Type": "application/json" }, 
-                body: JSON.stringify({ title: tratamientoSel.nombre, quantity: 1, unit_price: tratamientoSel.valor }), 
-            }); 
-            const preference = await response.json(); 
-            
-            if (preference.id) { setPreferenceId(preference.id); setShowPayModal(true); } 
-            else { alert("Error al iniciar el pago"); } 
-        } catch (error) { alert("Error de conexión"); } finally { setLoading(false); } 
-    };
-    
-    const goBack = () => { if(step===0)return; if(step===2 && pacienteId) setStep(0); else setStep(step-1); };
-    
-    const ReservaDetalleCard = ({ title, showTotal }) => { 
-        const slotDate = parseDate(form.horarioId || new Date().toISOString()); 
-        const fechaStr = slotDate.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }); 
-        const horaStr = slotDate.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }); 
-        const currentTratamiento = tratamientos.find(t => t.id === parseInt(form.tratamientoId)); 
-        let proName = "Asignado"; 
-        
-        if (form.profesionalId && profesionales.length > 0) { 
-            const p = profesionales.find(pr => pr.id === parseInt(form.profesionalId)); 
-            if (p) proName = p.nombreCompleto; 
-        } else if (multiAgenda && selectedDateKey && multiAgenda[selectedDateKey]) { 
-            const foundEntry = multiAgenda[selectedDateKey].find(e => e.profesional.id === form.profesionalId); 
-            if (foundEntry) proName = foundEntry.profesional.nombreCompleto; 
-        }
-        
-        return ( 
-            <div className="conf-card"> 
-                <div className="conf-section"> 
-                    <div className="conf-title">Paciente</div> 
-                    <div className="conf-row"><span className="conf-label">Nombre</span><span className="conf-value">{form.nombre}</span></div> 
-                    <div className="conf-row"><span className="conf-label">RUT</span><span className="conf-value">{form.rut}</span></div> 
-                </div> 
-                <div className="conf-section"> 
-                    <div className="conf-title">Servicio</div> 
-                    <div className="conf-row"><span className="conf-label">Tratamiento</span><span className="conf-value">{currentTratamiento?.nombre}</span></div> 
-                </div> 
-                <div className="conf-section"> 
-                    <div className="conf-title">Cita</div> 
-                    <div className="conf-row"><span className="conf-label">Profesional</span><span className="conf-value">{proName}</span></div> 
-                    <div className="conf-row"><span className="conf-label">Fecha</span><span className="conf-value">{fechaStr}</span></div> 
-                    <div className="conf-row"><span className="conf-label">Hora</span><span className="conf-value">{horaStr}</span></div> 
-                </div> 
-                {showTotal && ( 
-                    <div className="conf-section" style={{background:'#fafafa'}}> 
-                        <div className="conf-total"> 
-                            <span className="conf-total-label">Total Pagado</span> 
-                            <span className="conf-total-value" style={{color: '#22c55e'}}>{fmtMoney(currentTratamiento?.valor || 0)}</span> 
-                        </div> 
-                    </div> 
-                )} 
-            </div> 
-        ); 
-    };
-
-    if(bookingSuccess) { return ( <div className="web-shell"> <div className="web-content success-card"> <span className="success-icon-big">✓</span> <h1 className="web-title">¡Reserva Exitosa!</h1> <p className="web-subtitle">Hemos enviado el comprobante a<br/><strong>{form.email}</strong></p> <ReservaDetalleCard title="Comprobante de Pago" showTotal={true} /> <button className="btn-block-action" onClick={()=>window.location.href='/'}>Volver al Inicio</button> </div> </div> ) }
-
-    return ( 
-        <div className="web-shell"> 
-            <header className="web-header">{step > 0 && <button className="web-back-btn" onClick={goBack}>‹</button>}<img src={LOGO_URL} alt="Logo" className="cisd-logo-web" /></header> 
-            <div className="stepper-container"><div className="stepper"><div className={`step-dot ${step >= 0 ? 'active' : ''}`}></div><div className={`step-line ${step >= 1 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 1 ? 'active' : ''}`}></div><div className={`step-line ${step >= 2 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 2 ? 'active' : ''}`}></div><div className={`step-line ${step >= 3 ? 'filled' : ''}`}></div><div className={`step-dot ${step >= 3 ? 'active' : ''}`}></div></div></div> 
-            
-            <div className="web-content"> 
-                {step === 0 && ( <> <div><h2 className="web-title">Bienvenido</h2><p className="web-subtitle">Agenda tu hora médica.</p></div><div className="input-group"><label className="web-label">RUT</label><input className="web-input" placeholder="Ej: 12.345.678-9" value={form.rut} onChange={e=>setForm({...form, rut: formatRut(e.target.value)})} maxLength={12} autoFocus /></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.rut || loading} onClick={handleRutSearch}>{loading ? 'Cargando...' : 'Comenzar'}</button></div> </> )} 
-                {step === 1 && ( <> <h2 className="web-title">Datos Personales</h2><div className="input-group"><label className="web-label">Nombre</label><input className="web-input" value={form.nombre} onChange={e=>setForm({...form, nombre:e.target.value})} /></div><div className="input-group"><label className="web-label">Email</label><input className="web-input" value={form.email} onChange={e=>setForm({...form, email:e.target.value})} /></div><div className="input-group"><label className="web-label">Teléfono</label><input className="web-input" value={form.telefono} onChange={e=>setForm({...form, telefono:e.target.value})} /></div><div className="bottom-bar"><button className="btn-block-action" disabled={!form.nombre || !validateEmail(form.email)} onClick={()=>setStep(2)}>Guardar Datos</button></div> </> )} 
-                {step === 2 && ( <> <h2 className="web-title">¿Qué necesitas?</h2> <div className="input-group"><label className="web-label">Categoría</label><select className="web-select" value={form.categoria} onChange={e=>setForm({...form, categoria:e.target.value, especialidad:'', tratamientoId:''})}><option value="">Selecciona...</option>{categorias.map(c=><option key={c} value={c}>{c}</option>)}</select></div> <div className="input-group"><label className="web-label">Especialidad</label><select className="web-select" disabled={!form.categoria} value={form.especialidad} onChange={e=>setForm({...form, especialidad:e.target.value, tratamientoId:''})}><option value="">Selecciona...</option>{especialidadesFiltradas.map(e=><option key={e} value={e}>{e}</option>)}</select></div> <div className="input-group"><label className="web-label">Tratamiento</label><select className="web-select" disabled={!form.especialidad} value={form.tratamientoId} onChange={e=>setForm({...form, tratamientoId:e.target.value})}><option value="">Selecciona...</option>{prestacionesFiltradas.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}</select></div> <div className="bottom-bar"><button className="btn-block-action" disabled={!form.tratamientoId || loading} onClick={handleTreatmentConfirm}>{loading ? 'Buscando...' : 'Buscar Horas'}</button></div> </> )} 
-                {step === 3 && ( <> <h2 className="web-title">Elige tu Hora</h2><div className="rs-date-tabs">{availableDates.map(dateStr => { const dateObj = parseDate(dateStr + 'T00:00:00'); return ( <div key={dateStr} className={`rs-date-tab ${selectedDateKey === dateStr ? 'selected' : ''}`} onClick={() => setSelectedDateKey(dateStr)}><div className="rs-day-name">{dateObj.toLocaleDateString('es-CL', {weekday: 'short', timeZone: 'UTC'})}</div><div className="rs-day-number">{dateObj.getUTCDate()}</div></div> ); })}</div><div className="rs-pro-list">{multiAgenda[selectedDateKey]?.map((entry) => ( <div key={entry.profesional.id} className="rs-pro-card"><div className="rs-pro-header"><div className="rs-avatar-circle">{entry.profesional.nombreCompleto.charAt(0)}</div><div className="rs-pro-details"><strong>{entry.profesional.nombreCompleto}</strong><span>{entry.profesional.especialidad}</span></div></div><div className="rs-slots-grid">{entry.slots.sort((a,b)=>parseDate(a.fecha)-parseDate(b.fecha)).map(slot => ( <button key={slot.id} className="rs-slot-btn" onClick={() => selectSlot(entry.profesional.id, slot.fecha)}>{fmtTime(slot.fecha)}</button> ))}</div></div> ))}</div> </> )} 
-                {step === 4 && ( <> <h2 className="web-title">Confirmar Reserva</h2><ReservaDetalleCard title="Resumen" showTotal={true} /><div className="bottom-bar"><button className="btn-block-action" disabled={loading} onClick={initPaymentProcess}>{loading ? 'Iniciando Pago...' : 'Ir a Pagar'}</button></div> </> )} 
-            </div> 
-            
-            {showPayModal && preferenceId && ( 
-                <Modal onClose={()=>setShowPayModal(false)} title="Finalizar Pago"> 
-                    <div style={{padding: '10px 0'}}> 
-                        <p style={{marginBottom: 20, textAlign: 'center', color: '#666'}}> Serás redirigido a Mercado Pago de forma segura. </p> 
-                        <Wallet initialization={{ preferenceId: preferenceId }} /> 
-                    </div> 
-                </Modal> 
-            )} 
-        </div> 
-    )
 }
 
 export default App;
